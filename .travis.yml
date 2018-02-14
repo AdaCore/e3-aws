@@ -1,0 +1,11 @@
+language: python
+install:
+  - pip install tox
+script: tox
+matrix:
+    include:
+        - python: 3.6
+          env: TOXENV=py36-cov-codecov,checkstyle,security
+          dist: trusty
+          sudo: false
+          os: linux
