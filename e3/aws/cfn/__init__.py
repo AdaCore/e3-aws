@@ -1,4 +1,3 @@
-from __future__ import absolute_import, division, print_function
 from e3.aws import client
 from enum import Enum
 import re
@@ -73,15 +72,15 @@ class Base64(object):
 
 def getatt_representer(dumper, data):
     return dumper.represent_scalar(
-        u'!GetAtt', '%s.%s' % (data.name, data.attribute))
+        '!GetAtt', '%s.%s' % (data.name, data.attribute))
 
 
 def ref_representer(dumper, data):
-    return dumper.represent_scalar(u'!Ref', data.name)
+    return dumper.represent_scalar('!Ref', data.name)
 
 
 def base64_representer(dumper, data):
-    return dumper.represent_scalar(u'!Base64', data.content)
+    return dumper.represent_scalar('!Base64', data.content)
 
 
 yaml.add_representer(GetAtt, getatt_representer)
@@ -222,7 +221,7 @@ class Stack(object):
         result = {
             'AWSTemplateFormatVersion': '2010-09-09',
             'Resources': {v.name: v.export()
-                          for v in self.resources.values()}}
+                          for v in list(self.resources.values())}}
         if self.description is not None:
             result['Description'] = self.description
         return result

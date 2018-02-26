@@ -1,4 +1,3 @@
-from __future__ import absolute_import, division, print_function
 from e3.aws.cfn import Resource, AWSType, GetAtt
 from e3.aws.ec2.ami import AMI
 
@@ -175,7 +174,7 @@ class Instance(Resource):
         if isinstance(device, NetworkInterface):
             if device.device_index is None:
                 # Assign automatically a device index
-                index = max(self.network_interfaces.keys() + [0]) + 1
+                index = max(list(self.network_interfaces.keys()) + [0]) + 1
                 device.device_index = index
             else:
                 # Ensure the device is not already present
@@ -205,7 +204,8 @@ class Instance(Resource):
             result['IamInstanceProfile'] = self.instance_profile.ref
         if self.network_interfaces:
             result['NetworkInterfaces'] = \
-                [ni.properties for ni in self.network_interfaces.values()]
+                [ni.properties
+                 for ni in self.network_interfaces.values()]
         return result
 
 
