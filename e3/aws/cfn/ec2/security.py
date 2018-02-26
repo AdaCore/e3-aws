@@ -1,15 +1,11 @@
-from __future__ import absolute_import, division, print_function
-
 import abc
 
 from e3.aws.cfn import AWSType, Resource
 from e3.aws.cfn.ec2 import VPC
 
 
-class GroupSecurityRule(object):
+class GroupSecurityRule(object, metaclass=abc.ABCMeta):
     """Security rule for EC2 Security groups."""
-
-    __metaclass__ = abc.ABCMeta
 
     RULE_TYPE = None
     PROTOCOLS = {
@@ -81,12 +77,12 @@ class GroupSecurityRule(object):
         return result
 
 
-class EgressRule(GroupSecurityRule):
-    __metaclass__ = abc.ABCMeta
+class EgressRule(GroupSecurityRule, metaclass=abc.ABCMeta):
+    pass
 
 
-class IngressRule(GroupSecurityRule):
-    __metaclass__ = abc.ABCMeta
+class IngressRule(GroupSecurityRule, metaclass=abc.ABCMeta):
+    pass
 
 
 class Ipv4EgressRule(EgressRule):

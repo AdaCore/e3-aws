@@ -10,5 +10,4 @@ setup(
     author="AdaCore's Production Team",
     packages=find_packages(),
     install_requires=('botocore', 'pyyaml', 'e3-core'),
-    namespace_packages=['e3'],
-    use_2to3=True)
+    namespace_packages=['e3'])

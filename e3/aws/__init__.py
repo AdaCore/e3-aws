@@ -1,4 +1,3 @@
-from __future__ import absolute_import, division, print_function
 from botocore.stub import Stubber
 from e3.env import Env
 import botocore.session
