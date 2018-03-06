@@ -1,4 +1,8 @@
-from e3.aws.cfn import Resource, AWSType, GetAtt
+from email.mime.multipart import MIMEMultipart
+from email.contentmanager import raw_data_manager
+from email.message import EmailMessage
+
+from e3.aws.cfn import Resource, AWSType, GetAtt, Base64
 from e3.aws.ec2.ami import AMI
 
 
@@ -116,6 +120,44 @@ class NetworkInterface(object):
         return result
 
 
+class UserData(object):
+    """EC2 Instance user data."""
+
+    def __init__(self):
+        """Initialize user data."""
+        self.parts = []
+
+    def add(self, name, kind, content):
+        """Add an entry in the user data.
+
+        :param name: name of the entry (aka filename)
+        :type name: str
+        :param kind: MIME subtype (maintype is always text)
+        :type kind: str
+        :param content: the content associated with that value
+        :type content: str
+        """
+        self.parts.append((name, kind, content))
+
+    @property
+    def properties(self):
+        """Serialize the object as a simple dict.
+
+        Can be used to transform to CloudFormation Yaml format.
+
+        :rtype: dict
+        """
+        multi_part = MIMEMultipart()
+        for name, kind, part in self.parts:
+            mime_part = EmailMessage()
+            raw_data_manager.set_content(mime_part,
+                                         part,
+                                         subtype=kind,
+                                         filename=name)
+            multi_part.attach(mime_part)
+        return Base64(multi_part.as_string())
+
+
 class Instance(Resource):
     """EC2 Instance."""
 
@@ -151,6 +193,7 @@ class Instance(Resource):
                              size=disk_size))
         self.instance_profile = None
         self.network_interfaces = {}
+        self.user_data = None
 
     @property
     def public_ip(self):
@@ -188,6 +231,20 @@ class Instance(Resource):
             assert False, 'invalid device %s' % device
         return self
 
+    def add_user_data(self, name, kind, content):
+        """Add a user data entry.
+
+        :param name: name of the entry (aka filename)
+        :type name: str
+        :param kind: MIME subtype (maintype is always text)
+        :type kind: str
+        :param content: the content associated with that value
+        :type content: str
+        """
+        if self.user_data is None:
+            self.user_data = UserData()
+        self.user_data.add(name, kind, content)
+
     @property
     def properties(self):
         """Serialize the object as a simple dict.
@@ -206,6 +263,8 @@ class Instance(Resource):
             result['NetworkInterfaces'] = \
                 [ni.properties
                  for ni in self.network_interfaces.values()]
+        if self.user_data is not None:
+            result['UserData'] = self.user_data.properties
         return result
 
 
