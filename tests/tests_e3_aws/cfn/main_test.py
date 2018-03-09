@@ -22,7 +22,7 @@ def test_stack_compose():
     s2 = Stack(name='teststack2')
     s2.add(Bucket('bucket1')).add(Bucket('bucket2'))
     s += s2
-    assert len(s.resources) == 2
+    assert len(s.export()['Resources']) == 2
 
 
 def test_create_stack():
