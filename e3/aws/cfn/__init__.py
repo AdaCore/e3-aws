@@ -185,15 +185,9 @@ class Stack(object):
         """
         assert isinstance(element, Resource) or isinstance(element, Stack), \
             "a resource or a stack is expected. got %s" % element
-        if isinstance(element, Resource):
-            assert element.name not in self.resources, \
-                'resource already exist: %s' % element.name
-            self.resources[element.name] = element
-        else:
-            for resource in element.resources.values():
-                assert element.name not in self.resources, \
-                    'resource already exist: %s' % resource.name
-                self.resources[resource.name] = resource
+        assert element.name not in self.resources, \
+            'resource already exist: %s' % element.name
+        self.resources[element.name] = element
         return self
 
     def __iadd__(self, element):
@@ -218,10 +212,21 @@ class Stack(object):
         :return: a dict that can be serialized as YAML to produce a template
         :rtype: dict
         """
+        resources = {}
+        for resource in self.resources.values():
+            if isinstance(resource, Resource):
+                assert resource.name not in resources
+                resources[resource.name] = resource.export()
+            else:
+                # resource is a stack
+                stack_resources = resource.export()['Resources']
+                for k, v in stack_resources.items():
+                    assert k not in resources
+                    resources[k] = v
+
         result = {
             'AWSTemplateFormatVersion': '2010-09-09',
-            'Resources': {v.name: v.export()
-                          for v in list(self.resources.values())}}
+            'Resources': resources}
         if self.description is not None:
             result['Description'] = self.description
         return result
