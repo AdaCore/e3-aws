@@ -21,6 +21,7 @@ class AWSType(Enum):
         'AWS::EC2::SubnetRouteTableAssociation'
     EC2_VOLUME = 'AWS::EC2::Volume'
     EC2_VPC = 'AWS::EC2::VPC'
+    EC2_VPC_ENDPOINT = 'AWS::EC2::VPC_ENDPOINT'
     EC2_VPC_GATEWAY_ATTACHMENT = 'AWS::EC2::VPCGatewayAttachment'
     IAM_ROLE = 'AWS::IAM::Role'
     IAM_POLICY = 'AWS::IAM::Policy'
@@ -68,6 +69,21 @@ class Base64(object):
         self.content = content
 
 
+class Join(object):
+    """Intrinsic function Fn::Join."""
+
+    def __init__(self, content, delimiter=""):
+        """Initialize a Join object.
+
+        :param content: a list
+        :type content: list
+        :param delimiter: a join delimiter
+        :type delimiter: str
+        """
+        self.content = content
+        self.delimiter = delimiter
+
+
 # Declare Yaml representer for intrinsic functions
 
 def getatt_representer(dumper, data):
@@ -83,9 +99,14 @@ def base64_representer(dumper, data):
     return dumper.represent_scalar('!Base64', data.content)
 
 
+def join_representer(dumper, data):
+    return dumper.represent_sequence('!Join', [data.delimiter, data.content])
+
+
 yaml.add_representer(GetAtt, getatt_representer)
 yaml.add_representer(Ref, ref_representer)
 yaml.add_representer(Base64, base64_representer)
+yaml.add_representer(Join, join_representer)
 
 
 class Resource(object):

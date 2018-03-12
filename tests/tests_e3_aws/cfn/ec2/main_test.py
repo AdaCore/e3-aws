@@ -8,8 +8,9 @@ from e3.aws.cfn import Stack
 from e3.aws.cfn.ec2 import (VPC, EphemeralDisk, Instance, InternetGateway,
                             NetworkInterface, Route, RouteTable, Subnet,
                             SubnetRouteTableAssociation, UserData,
-                            VPCGatewayAttachment)
+                            VPCEndpoint, VPCGatewayAttachment)
 from e3.aws.cfn.ec2.security import SecurityGroup
+from e3.aws.cfn.iam import Allow, PolicyDocument
 from e3.aws.ec2.ami import AMI
 
 
@@ -32,6 +33,13 @@ def test_create_network():
     s += SubnetRouteTableAssociation('RTSAssoc',
                                      s['BuildPublicSubnet'],
                                      s['RT'])
+    p = PolicyDocument().append(Allow(to='GetObject',
+                                      on='arn:aws:s3:::abucket/*',
+                                      service='ec2.amazonaws.com'))
+
+    s += VPCEndpoint('S3EndPoint',
+                     's3', s['BuildVPC'], [s['RT']],
+                     policy_document=p)
     assert s.body
 
 
