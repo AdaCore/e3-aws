@@ -2,7 +2,8 @@ from email.mime.multipart import MIMEMultipart
 from email.contentmanager import raw_data_manager
 from email.message import EmailMessage
 
-from e3.aws.cfn import Resource, AWSType, GetAtt, Base64
+from e3.aws.cfn import Resource, AWSType, GetAtt, Base64, Join, Ref
+from e3.aws.cfn.iam import PolicyDocument
 from e3.aws.ec2.ami import AMI
 
 
@@ -295,6 +296,46 @@ class VPC(Resource):
     @property
     def cidrblock(self):
         return self.getatt('CidrBlock')
+
+
+class VPCEndpoint(Resource):
+    """VPC Endpoint to Amazon Service."""
+
+    def __init__(self, name, service, vpc, route_tables, policy_document):
+        """Initialize a VPC endpoint.
+
+        :param name: logical name in the stack of the entity
+        :type name: str
+        :param service: name of the service to connect (s3 or dynamodb)
+        :type service: str
+        :param vpc: VPC in which the endpoint is attached to
+        :type vpc: e3.aws.cfn.ec2.VPC
+        :param route_tables: a list of route table that have access to the
+            endpoint.
+        :type route_tables: list[RouteTable]
+        :param policy_document: policy document attached to the endpoint.
+        :type policy_docyment: e3.aws.cfn.ec2.security.PolicyDocument
+        """
+        super(VPCEndpoint, self).__init__(name, kind=AWSType.EC2_VPC_ENDPOINT)
+        assert service in ('dynamodb', 's3'), 'Invalid service: %s' % service
+        self.service = service
+        assert isinstance(vpc, VPC), 'VPC instance expected'
+        self.vpc = vpc
+        self.route_tables = route_tables
+        for rt in self.route_tables:
+            assert isinstance(rt, RouteTable), 'RouteTable expected'
+        self.policy_document = policy_document
+        assert isinstance(self.policy_document, PolicyDocument)
+
+    @property
+    def properties(self):
+        return {
+            'VpcId': self.vpc.ref,
+            'ServiceName': Join(["com.amazonaws.",
+                                 Ref("AWS::Region"),
+                                 "." + self.service]),
+            'PolicyDocument': self.policy_document.properties,
+            'RouteTableIds': [rt.ref for rt in self.route_tables]}
 
 
 class Subnet(Resource):
