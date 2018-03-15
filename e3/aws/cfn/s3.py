@@ -21,7 +21,7 @@ class Bucket(Resource):
 
     ATTRIBUTES = ('Arn', 'DomainName')
 
-    def __init__(self, name, access_control=None):
+    def __init__(self, name, access_control=None, bucket_name=None):
         """Initialize a S3 bucket.
 
         :param name: logical name of the resource in the stack
@@ -29,6 +29,9 @@ class Bucket(Resource):
         :param acccess_control: A canned access control list (ACL) that grants
             predefined permissions to the bucket. if None default is PRIVATE
         :type access_control: None | AccessControl
+        :param bucket_name: the bucket name in AWS. If set cloud formation will
+            not be able to update settings of the buckets automatically.
+        :type bucket_name: str | None
         """
         super(Bucket, self).__init__(name, kind=AWSType.S3_BUCKET)
         if access_control is None:
@@ -36,6 +39,7 @@ class Bucket(Resource):
         else:
             assert isinstance(access_control, AccessControl)
             self.access_control = access_control
+        self.bucket_name = bucket_name
 
     @property
     def arn(self):
@@ -43,4 +47,7 @@ class Bucket(Resource):
 
     @property
     def properties(self):
-        return {'AccessControl': self.access_control.value}
+        result = {'AccessControl': self.access_control.value}
+        if self.bucket_name is not None:
+            result['BucketName'] = self.bucket_name
+        return result
