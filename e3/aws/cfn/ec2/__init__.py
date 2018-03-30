@@ -5,6 +5,15 @@ from email.message import EmailMessage
 from e3.aws.cfn import Resource, AWSType, GetAtt, Base64, Join, Ref
 from e3.aws.cfn.iam import PolicyDocument
 from e3.aws.ec2.ami import AMI
+from e3.env import Env
+
+
+CFN_INIT_STARTUP_SCRIPT = """#!/bin/sh
+%(cfn_init)s -v --stack %(stack)s \\
+                --region %(region)s \\
+                --resource %(resource)s \\
+                --configsets %(config)s
+"""
 
 
 class BlockDevice(object):
@@ -94,7 +103,7 @@ class NetworkInterface(object):
         :param description: optional description
         :type description: str | None
         """
-        assert isinstance(subnet, Subnet)
+        assert isinstance(subnet, Subnet), 'got %s instead' % subnet
         self.subnet = subnet
         self.public_ip = public_ip
         self.groups = groups
@@ -148,7 +157,10 @@ class UserData(object):
 
         :rtype: dict
         """
-        multi_part = MIMEMultipart()
+        # This is important to keep the boundary static in order to avoid
+        # spurious instance reboots.
+        multi_part = MIMEMultipart(
+            boundary='-_- :( :( /o/ Static User Data Boundary /o/ :) :) -_-')
         for name, kind, part in self.parts:
             mime_part = EmailMessage()
             raw_data_manager.set_content(mime_part,
@@ -218,7 +230,7 @@ class Instance(Resource):
         if isinstance(device, NetworkInterface):
             if device.device_index is None:
                 # Assign automatically a device index
-                index = max(list(self.network_interfaces.keys()) + [0]) + 1
+                index = max(list(self.network_interfaces.keys()) + [-1]) + 1
                 device.device_index = index
             else:
                 # Ensure the device is not already present
@@ -231,6 +243,45 @@ class Instance(Resource):
         else:
             assert False, 'invalid device %s' % device
         return self
+
+    def set_cfn_init(self, stack,
+                     config='init',
+                     cfn_init='/usr/local/bin/cfn-init',
+                     region=None,
+                     resource=None,
+                     metadata=None):
+        """Add CFN init call on first boot of the instance.
+
+        :param stack: name of the stack containing the cfn metadata
+        :type stack: str
+        :param config: name of the configset to be launch (default: init)
+        :type config: str
+        :param cfn_init: location of cfn-init on the instance
+            (default: /usr/local/bin/cfn-init)
+        :type cfn_init: str
+        :param region: AWS region. if not specified use current default region
+        :type region: name | None
+        :param resource: resource in which the metadata will be added. Default
+            is to use current resource
+        :type resource: str | None
+        :param metadata: dict conforming to AWS::CloudFormation::Init
+            specifications
+        :type metadata: dict | None
+        """
+        if region is None:
+            region = Env().aws_env.default_region
+        if resource is None:
+            resource = self.name
+        self.add_user_data(
+            'init.sh',
+            'x-shellscript',
+            CFN_INIT_STARTUP_SCRIPT % {'region': region,
+                                       'stack': stack,
+                                       'resource': resource,
+                                       'cfn_init': cfn_init,
+                                       'config': config})
+        if metadata is not None:
+            self.metadata['AWS::CloudFormation::Init'] = metadata
 
     def add_user_data(self, name, kind, content):
         """Add a user data entry.
@@ -375,6 +426,57 @@ class InternetGateway(Resource):
             name, kind=AWSType.EC2_INTERNET_GATEWAY)
 
 
+class EIP(Resource):
+    """EC2 Elastic IP."""
+
+    ATTRIBUTES = ('AllocationId', )
+
+    def __init__(self, name, gateway_attach):
+        """Initialize Elastic IP address.
+
+        :param name: logical name in stack
+        :type name: str
+        :param gateway_attach: gateway attachment
+        :type gateway_attach: VPCGatewayAttachment
+        """
+        super(EIP, self).__init__(name, kind=AWSType.EC2_EIP)
+        assert isinstance(gateway_attach, VPCGatewayAttachment)
+        self.depends = gateway_attach.name
+
+    @property
+    def allocation_id(self):
+        return GetAtt(self.name, 'AllocationId')
+
+    @property
+    def properties(self):
+        return {'Domain': 'vpc'}
+
+
+class NatGateway(Resource):
+    """EC2 NatGateway."""
+
+    def __init__(self, name, eip, subnet):
+        """Initialize a NAT gateway.
+
+        :param name: logical name in stack
+        :type name: str
+        :param eip: Elastic IP of the gateway
+        :type eip: EIP
+        :param subnet: subnet in which the Gateway is declared. Note that this
+            should be a public subnet
+        :type subnet: Subnet
+        """
+        super(NatGateway, self).__init__(name, kind=AWSType.EC2_NAT_GATEWAY)
+        self.eip = eip
+        assert isinstance(subnet, Subnet)
+        self.subnet = subnet
+
+    @property
+    def properties(self):
+        return {'AllocationId': self.eip.allocation_id,
+                'SubnetId': self.subnet.ref}
+
+
 class VPCGatewayAttachment(Resource):
     """EC2 VPCGatewayAttachment."""
 
@@ -442,13 +544,14 @@ class Route(Resource):
         :param dest_cidr_block: route ipv4 address range
         :type dest_cidr_block: str
         :param gateway: the gateway
-        :type gateway: InternetGateway
+        :type gateway: InternetGateway | NatGateway
         :param gateway_attach: a gateway attachment instance
         :type gateway_attach: VPCGatewayAttachment
         """
         super(Route, self).__init__(name, kind=AWSType.EC2_ROUTE)
         assert isinstance(route_table, RouteTable)
-        assert isinstance(gateway, InternetGateway)
+        assert isinstance(gateway, InternetGateway) or \
+            isinstance(gateway, NatGateway)
         self.route_table = route_table
         self.dest_cidr_block = dest_cidr_block
         self.gateway = gateway
@@ -457,9 +560,13 @@ class Route(Resource):
 
     @property
     def properties(self):
-        return {'RouteTableId': self.route_table.ref,
-                'DestinationCidrBlock': self.dest_cidr_block,
-                'GatewayId': self.gateway.ref}
+        result = {'RouteTableId': self.route_table.ref,
+                  'DestinationCidrBlock': self.dest_cidr_block}
+        if isinstance(self.gateway, InternetGateway):
+            result['GatewayId'] = self.gateway.ref
+        else:
+            result['NatGatewayId'] = self.gateway.ref
+        return result
 
 
 class SubnetRouteTableAssociation(Resource):
