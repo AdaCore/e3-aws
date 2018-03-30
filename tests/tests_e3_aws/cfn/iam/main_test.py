@@ -1,15 +1,17 @@
-from e3.aws.cfn.iam import Allow, Deny, InstanceRole, Policy, PolicyDocument
+import pytest
+from e3.aws.cfn.iam import (Allow, Deny, InstanceRole, Policy,
+                            PolicyDocument, Principal, PrincipalKind)
 from e3.aws.cfn.s3 import Bucket
 
 
 def test_create_statements():
     """Various statement creations."""
-    s1 = Deny(service='myservice',
+    s1 = Deny(apply_to=Principal(PrincipalKind.SERVICE, 'myservice'),
               to='do_something',
               not_on='resource')
     assert s1.properties
 
-    s2 = Allow(service='myservice',
+    s2 = Allow(apply_to=Principal(PrincipalKind.SERVICE, 'myservice'),
                sid='id1',
                to='do_something',
                on='allowed_resource')
@@ -37,3 +39,14 @@ def test_create_instance_profile():
     instance_profile = InstanceRole('InstRole')
     instance_profile.add_policy(Policy('Pol', policy_document))
     assert instance_profile.body
+
+
+def test_principal_star():
+    """Create a list of principal with one principal being '*'."""
+    pl = [Principal(PrincipalKind.SERVICE, 'ec2.amazonaws.com'),
+          Principal(PrincipalKind.EVERYONE)]
+    with pytest.raises(AssertionError):
+        Principal.property_list(pl)
+
+    pl = [Principal(PrincipalKind.EVERYONE)]
+    assert Principal.property_list(pl)
