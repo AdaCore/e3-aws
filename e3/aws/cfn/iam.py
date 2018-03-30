@@ -1,6 +1,59 @@
 import abc
+from enum import Enum
 
 from e3.aws.cfn import AWSType, GetAtt, Resource, Stack
+
+
+class PrincipalKind(Enum):
+    AWS = "AWS"
+    FEDERATED = "Federated"
+    SERVICE = "Service"
+    EVERYONE = "*"
+
+
+class Principal(object):
+    """Represent a principal in an IAM policy."""
+
+    def __init__(self, kind, value=None):
+        """Initialize a Principal.
+
+        :param kind: principal kind
+        :type kind: PrincipalKind
+        :param value: string value for the principal. If kind is set
+            to EVERYONE value should be None, otherwise value should
+            be a string different from '*'
+        :type value: str | None
+        """
+        assert isinstance(kind, PrincipalKind)
+        self.kind = kind
+        assert (kind == PrincipalKind.EVERYONE and value is None) or \
+            (value is not None and value != '*')
+        self.value = value
+
+    @classmethod
+    def property_list(cls, principals):
+        """Serialize a list of principal as a simple object.
+
+        :param principals: list of principals
+        :type principals: list[Principal]
+        :rtype: dict | str
+        """
+        result = {}
+        for principal in principals:
+
+            if principal.kind == PrincipalKind.EVERYONE:
+                # If EVERYONE is present then it should be alone because
+                # it will mask any other principal.
+                assert len(principals) == 1, \
+                    'Principal "*" should be used alone'
+                result = '*'
+                break
+
+            if principal.kind.value not in result:
+                result[principal.kind.value] = []
+            result[principal.kind.value].append(principal.value)
+
+        return result
 
 
 class Statement(object, metaclass=abc.ABCMeta):
@@ -11,7 +64,7 @@ class Statement(object, metaclass=abc.ABCMeta):
                  to=None,
                  on=None,
                  not_on=None,
-                 service=None):
+                 apply_to=None):
         """Initialize a statement.
 
         :param sid: statement id (optional)
@@ -23,15 +76,15 @@ class Statement(object, metaclass=abc.ABCMeta):
         :param not_on: resource or list of resources on which the statement
             does not apply. Note that not_on and on cannot be both set
         :type not_on: list[str] | str | None
-        :param services: service of list of services that can use that
-            statement
-        :type services: list[str] | str | None
+        :param apply_to: list of principals that are targeted by the statement
+        :type apply_to: list[Principals] | Principal | None
         """
         self.resources = []
         self.not_resources = []
         self.actions = []
-        self.principals = {}
+        self.principals = []
         self.sid = sid
+        self.condition = None
 
         if to is not None:
             self.to(to)
@@ -39,8 +92,8 @@ class Statement(object, metaclass=abc.ABCMeta):
             self.on(on)
         if not_on is not None:
             self.not_on(not_on)
-        if service is not None:
-            self.service(service)
+        if apply_to is not None:
+            self.apply_to(apply_to)
 
     @property
     def properties(self):
@@ -58,9 +111,11 @@ class Statement(object, metaclass=abc.ABCMeta):
         if self.not_resources:
             result['NotResource'] = self.not_resources
         if self.principals:
-            result['Principal'] = self.principals
+            result['Principal'] = Principal.property_list(self.principals)
         if self.actions:
             result['Action'] = self.actions
+        if self.condition is not None:
+            result['Condition'] = self.condition
         return result
 
     def to(self, actions):
@@ -105,23 +160,19 @@ class Statement(object, metaclass=abc.ABCMeta):
         self.not_resources += resources
         return self
 
-    def for_service(self, services):
-        """Add service that can use the statement.
+    def apply_to(self, principals):
+        """Add principal that can use the statement.
 
-        :param services: service of list of services
-        :type services: list[str] | str | GetAtt
+        :param principals: principal list
+        :type principals: list[Principal] | Principal
         :return: the modified statement
         :rtype: Statement
         """
-        if isinstance(services, str) or isinstance(services, GetAtt):
-            services = [services]
-        if 'Service' not in self.principals:
-            self.principals['Service'] = []
-        self.principals['Service'] += services
+        if isinstance(principals, Principal):
+            self.principals.append(principals)
+        else:
+            self.principals += principals
         return self
-
-    # Declare an alias
-    service = for_service
 
 
 class Allow(Statement):
@@ -203,8 +254,9 @@ class PolicyDocument(object):
                 'Statement': [s.properties for s in self.statements]}
 
 
-INSTANCE_ASSUME_ROLE = Allow().to(
-    'sts:AssumeRole').for_service('ec2.amazonaws.com')
+INSTANCE_ASSUME_ROLE = Allow(to='sts:AssumeRole',
+                             apply_to=Principal(PrincipalKind.SERVICE,
+                                                'ec2.amazonaws.com'))
 
 
 class Policy(Resource):
