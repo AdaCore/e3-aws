@@ -11,6 +11,14 @@ class GroupSecurityRule(object, metaclass=abc.ABCMeta):
     PROTOCOLS = {
         'ssh': {
             'from': 22, 'to': 22, 'protocol': 'tcp'},
+        'smtps': {
+            'from': 465, 'to': 465, 'protocol': 'tcp'},
+        'https': {
+            'from': 443, 'to': 443, 'protocol': 'tcp'},
+        'http': {
+            'from': 80, 'to': 80, 'protocol': 'tcp'},
+        'pip': {
+            'from': 3128, 'to': 3128, 'protocol': 'tcp'},
         'alltcp': {
             'from': 1, 'to': 65535, 'protocol': 'tcp'}}
 
