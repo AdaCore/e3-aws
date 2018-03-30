@@ -1,4 +1,5 @@
 from e3.aws import client
+from e3.env import Env
 from enum import Enum
 import re
 import yaml
@@ -28,9 +29,12 @@ class AWSType(Enum):
     IAM_ROLE = 'AWS::IAM::Role'
     IAM_POLICY = 'AWS::IAM::Policy'
     IAM_INSTANCE_PROFILE = 'AWS::IAM::InstanceProfile'
+    ROUTE53_HOSTED_ZONE = 'AWS::Route53::HostedZone'
     ROUTE53_RECORDSET = 'AWS::Route53::RecordSet'
     S3_BUCKET = 'AWS::S3::Bucket'
     S3_BUCKET_POLICY = 'AWS::S3::BucketPolicy'
+    SERVICE_DISCOVERY_PRIVATE_DNS_NAMESPACE = \
+        'AWS::ServiceDiscovery::PrivateDnsNamespace'
 
 
 class GetAtt(object):
@@ -133,6 +137,13 @@ class Resource(object):
         self.name = name
         self.kind = kind
         self.depends = None
+
+        # Track region in which the resource is created
+        e = Env()
+        if hasattr(e, 'aws_env'):
+            self.region = Env().aws_env.default_region
+        else:
+            self.region = 'invalid-region'
         self.metadata = {}
 
     def getatt(self, name):

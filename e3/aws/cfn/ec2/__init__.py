@@ -9,10 +9,12 @@ from e3.env import Env
 
 
 CFN_INIT_STARTUP_SCRIPT = """#!/bin/sh
+sed -i 's/scripts-user$/\[scripts-user, always\]/' /etc/cloud/cloud.cfg
 %(cfn_init)s -v --stack %(stack)s \\
                 --region %(region)s \\
                 --resource %(resource)s \\
                 --configsets %(config)s
+
 """
 
 
@@ -216,6 +218,14 @@ class Instance(Resource):
         """
         return GetAtt(self.name, 'PublicIp')
 
+    @property
+    def private_ip(self):
+        """Return a reference to the private Ip.
+
+        :rtype: e3.aws.cfn.GetAtt
+        """
+        return GetAtt(self.name, 'PrivateIp')
+
     def set_instance_profile(self, profile):
         self.instance_profile = profile
 
@@ -342,7 +352,9 @@ class VPC(Resource):
 
     @property
     def properties(self):
-        return {'CidrBlock': self.cidr_block}
+        return {'CidrBlock': self.cidr_block,
+                'EnableDnsHostnames': True,
+                'EnableDnsSupport': True}
 
     @property
     def cidrblock(self):
