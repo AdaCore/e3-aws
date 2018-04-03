@@ -1,4 +1,5 @@
 from e3.aws import client
+from e3.env import Env
 from enum import Enum
 import re
 import yaml
@@ -11,8 +12,10 @@ VALID_STACK_NAME_MAX_LEN = 128
 class AWSType(Enum):
     """Cloud Formation resource types."""
 
+    EC2_EIP = 'AWS::EC2::EIP'
     EC2_INSTANCE = 'AWS::EC2::Instance'
     EC2_INTERNET_GATEWAY = 'AWS::EC2::InternetGateway'
+    EC2_NAT_GATEWAY = 'AWS::EC2::NatGateway'
     EC2_ROUTE = 'AWS::EC2::Route'
     EC2_ROUTE_TABLE = 'AWS::EC2::RouteTable'
     EC2_SECURITY_GROUP = 'AWS::EC2::SecurityGroup'
@@ -21,13 +24,17 @@ class AWSType(Enum):
         'AWS::EC2::SubnetRouteTableAssociation'
     EC2_VOLUME = 'AWS::EC2::Volume'
     EC2_VPC = 'AWS::EC2::VPC'
-    EC2_VPC_ENDPOINT = 'AWS::EC2::VPC_ENDPOINT'
+    EC2_VPC_ENDPOINT = 'AWS::EC2::VPCEndpoint'
     EC2_VPC_GATEWAY_ATTACHMENT = 'AWS::EC2::VPCGatewayAttachment'
     IAM_ROLE = 'AWS::IAM::Role'
     IAM_POLICY = 'AWS::IAM::Policy'
     IAM_INSTANCE_PROFILE = 'AWS::IAM::InstanceProfile'
+    ROUTE53_HOSTED_ZONE = 'AWS::Route53::HostedZone'
     ROUTE53_RECORDSET = 'AWS::Route53::RecordSet'
     S3_BUCKET = 'AWS::S3::Bucket'
+    S3_BUCKET_POLICY = 'AWS::S3::BucketPolicy'
+    SERVICE_DISCOVERY_PRIVATE_DNS_NAMESPACE = \
+        'AWS::ServiceDiscovery::PrivateDnsNamespace'
 
 
 class GetAtt(object):
@@ -131,6 +138,14 @@ class Resource(object):
         self.kind = kind
         self.depends = None
 
+        # Track region in which the resource is created
+        e = Env()
+        if hasattr(e, 'aws_env'):
+            self.region = Env().aws_env.default_region
+        else:
+            self.region = 'invalid-region'
+        self.metadata = {}
+
     def getatt(self, name):
         """Return an attribute reference.
 
@@ -174,6 +189,8 @@ class Resource(object):
                   'Properties': self.properties}
         if self.depends is not None:
             result['DependsOn'] = self.depends
+        if self.metadata:
+            result['Metadata'] = self.metadata
         return result
 
 
@@ -226,6 +243,9 @@ class Stack(object):
         if key not in self.resources:
             raise KeyError
         return self.resources[key]
+
+    def __contains__(self, key):
+        return key in self.resources
 
     def export(self):
         """Export stack as dict.

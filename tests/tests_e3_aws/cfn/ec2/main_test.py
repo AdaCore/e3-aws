@@ -5,12 +5,12 @@ import yaml
 from botocore.stub import ANY
 from e3.aws import AWSEnv, default_region
 from e3.aws.cfn import Stack
-from e3.aws.cfn.ec2 import (VPC, EphemeralDisk, Instance, InternetGateway,
-                            NetworkInterface, Route, RouteTable, Subnet,
-                            SubnetRouteTableAssociation, UserData,
+from e3.aws.cfn.ec2 import (EIP, VPC, EphemeralDisk, Instance, InternetGateway,
+                            NatGateway, NetworkInterface, Route, RouteTable,
+                            Subnet, SubnetRouteTableAssociation, UserData,
                             VPCEndpoint, VPCGatewayAttachment)
 from e3.aws.cfn.ec2.security import SecurityGroup
-from e3.aws.cfn.iam import Allow, PolicyDocument
+from e3.aws.cfn.iam import Allow, PolicyDocument, Principal, PrincipalKind
 from e3.aws.ec2.ami import AMI
 
 
@@ -33,9 +33,10 @@ def test_create_network():
     s += SubnetRouteTableAssociation('RTSAssoc',
                                      s['BuildPublicSubnet'],
                                      s['RT'])
-    p = PolicyDocument().append(Allow(to='GetObject',
-                                      on='arn:aws:s3:::abucket/*',
-                                      service='ec2.amazonaws.com'))
+    p = PolicyDocument().append(
+        Allow(to='GetObject',
+              on='arn:aws:s3:::abucket/*',
+              apply_to=Principal(PrincipalKind.SERVICE, 'ec2.amazonaws.com')))
 
     s += VPCEndpoint('S3EndPoint',
                      's3', s['BuildVPC'], [s['RT']],
@@ -96,3 +97,52 @@ def test_user_data_creation():
         i = Instance('testmachine', AMI('ami-1234'))
         i.add_user_data('url1', 'x-include-url', 'http://dummy')
         assert i.properties
+
+
+def test_cfn_init_set():
+    s = Stack(name='teststack')
+
+    aws_env = AWSEnv(regions=['us-east-1'], stub=True)
+    with default_region('us-east-1'):
+        stub = aws_env.stub('ec2', region='us-east-1')
+        stub.add_response(
+            'describe_images',
+            {'Images': [{'ImageId': 'ami-1234',
+                         'RootDeviceName': '/dev/sda1'}]},
+            {'ImageIds': ANY})
+
+        s += Instance('server', AMI('ami-1234'))
+        s['server'].set_cfn_init(s)
+        assert s.body
+
+
+def test_nat_gateway():
+    """Create a NATGateway."""
+    s = Stack(name='MyStack')
+    s += VPC('BuildVPC', '10.10.0.0/16')
+    s += Subnet('BuildPublicSubnet', s['BuildVPC'], '10.10.10.0/24')
+    s += Subnet('BuildPrivateSubnet', s['BuildVPC'], '10.10.20.0/24')
+    s += InternetGateway('Gate')
+    s += VPCGatewayAttachment('GateAttach',
+                              s['BuildVPC'],
+                              s['Gate'])
+    s += RouteTable('RT', s['BuildVPC'])
+    s += Route('PRoute', s['RT'],
+               '0.0.0.0/0',
+               s['Gate'],
+               s['GateAttach'])
+    s += SubnetRouteTableAssociation('RTSAssoc',
+                                     s['BuildPublicSubnet'],
+                                     s['RT'])
+    s += EIP('NatEip', s['GateAttach'])
+    s += NatGateway('NatGate', s['NatEip'], s['BuildPublicSubnet'])
+
+    s += RouteTable('NATRT', s['BuildVPC'])
+    s += Route('NATRoute', s['NATRT'],
+               '0.0.0.0/0',
+               s['NatGate'],
+               s['GateAttach'])
+    s += SubnetRouteTableAssociation('NatRTSAssoc',
+                                     s['BuildPrivateSubnet'],
+                                     s['NATRT'])
+    assert s.body
