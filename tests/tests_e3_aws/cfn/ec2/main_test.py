@@ -51,7 +51,8 @@ def test_create_instance():
         stub.add_response(
             'describe_images',
             {'Images': [{'ImageId': 'ami-1234',
-                         'RootDeviceName': '/dev/sda1'}]},
+                         'RootDeviceName': '/dev/sda1',
+                         'Tags': []}]},
             {'ImageIds': ANY})
 
         i = Instance('testmachine', AMI('ami-1234'), disk_size=20)
@@ -91,7 +92,8 @@ def test_user_data_creation():
         stub.add_response(
             'describe_images',
             {'Images': [{'ImageId': 'ami-1234',
-                         'RootDeviceName': '/dev/sda1'}]},
+                         'RootDeviceName': '/dev/sda1',
+                         'Tags': []}]},
             {'ImageIds': ANY})
 
         i = Instance('testmachine', AMI('ami-1234'))
@@ -108,7 +110,8 @@ def test_cfn_init_set():
         stub.add_response(
             'describe_images',
             {'Images': [{'ImageId': 'ami-1234',
-                         'RootDeviceName': '/dev/sda1'}]},
+                         'RootDeviceName': '/dev/sda1',
+                         'Tags': []}]},
             {'ImageIds': ANY})
 
         s += Instance('server', AMI('ami-1234'))
