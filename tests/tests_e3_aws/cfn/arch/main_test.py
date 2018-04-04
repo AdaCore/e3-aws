@@ -15,12 +15,14 @@ def test_create_fortress():
         stub.add_response(
             'describe_images',
             {'Images': [{'ImageId': 'ami-1234',
-                         'RootDeviceName': '/dev/sda1'}]},
+                         'RootDeviceName': '/dev/sda1',
+                         'Tags': []}]},
             {'ImageIds': ANY})
         stub.add_response(
             'describe_images',
             {'Images': [{'ImageId': 'ami-1234',
-                         'RootDeviceName': '/dev/sda1'}]},
+                         'RootDeviceName': '/dev/sda1',
+                         'Tags': []}]},
             {'ImageIds': ANY})
         d = PolicyDocument().append(Allow(to='s3:GetObject',
                                           on=['arn:aws:s3:::mybucket',
