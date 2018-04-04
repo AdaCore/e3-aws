@@ -212,6 +212,7 @@ class Fortress(Stack):
 
         # Create the bastion
         self.add(Instance(self.name + 'Bastion', bastion_ami))
+        self[self.name + 'Bastion'].tags['Name'] = 'Bastion (%s)' % self.name
         self.bastion.add(
             NetworkInterface(self.public_subnet.subnet,
                              public_ip=True,
@@ -264,6 +265,7 @@ class Fortress(Stack):
                                  groups=[self[self.name + 'InternalSG']]))
             self[name].set_instance_profile(
                 self[self.name + 'PrivServerInstanceRole'].instance_profile)
+            self[name].tags['Name'] = '%s (%s)' % (name, self.name)
 
     @property
     def vpc(self):

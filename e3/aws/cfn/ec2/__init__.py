@@ -209,6 +209,7 @@ class Instance(Resource):
         self.instance_profile = None
         self.network_interfaces = {}
         self.user_data = None
+        self.tags = {}
 
     @property
     def public_ip(self):
@@ -327,6 +328,10 @@ class Instance(Resource):
                  for ni in self.network_interfaces.values()]
         if self.user_data is not None:
             result['UserData'] = self.user_data.properties
+        if self.tags:
+            result['Tags'] = []
+            for k, v in self.tags.items():
+                result['Tags'].append({'Key': k, 'Value': v})
         return result
 
 
