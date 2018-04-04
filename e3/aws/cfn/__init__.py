@@ -293,8 +293,29 @@ class Stack(object):
                                    TemplateBody=self.body,
                                    Capabilities=['CAPABILITY_IAM'])
 
+    def exists(self):
+        """Check if a given stack exists.
+
+        :return: True if it does, False otherwise
+        """
+        try:
+            self.state()
+            return True
+        except Exception:
+            return False
+
     @client('cloudformation')
-    def create_change_set(self, client, name):
+    def state(self, client):
+        """Return state of the stack on AWS."""
+        return client.describe_stacks(StackName=self.name)
+
+    @client('cloudformation')
+    def validate(self, client):
+        """Validate a template."""
+        return client.validate_template(TemplateBody=self.body)
+
+    @client('cloudformation')
+    def create_change_set(self, name, client):
         """Create a change set.
 
         This creates a difference between the state of the stack on AWS servers
@@ -309,6 +330,32 @@ class Stack(object):
                                         StackName=self.name,
                                         TemplateBody=self.body,
                                         Capabilities=['CAPABILITY_IAM'])
+
+    @client('cloudformation')
+    def describe_change_set(self, name, client):
+        """Describe a change set.
+
+        Retrieve status of a given changeset
+
+        :param client: a botocore client
+        :type client: botocore.client.Client
+        :param name: name of the changeset
+        :type name: str
+        """
+        return client.describe_change_set(ChangeSetName=name,
+                                          StackName=self.name)
+
+    @client('cloudformation')
+    def delete_change_set(self, name, client):
+        """Delete a change set.
+
+        :param client: a botocore client
+        :type client: botocore.client.Client
+        :param name: name of the changeset
+        :type name: str
+        """
+        return client.delete_change_set(ChangeSetName=name,
+                                        StackName=self.name)
 
     @client('cloudformation')
     def delete(self, client):

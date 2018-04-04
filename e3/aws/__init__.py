@@ -6,7 +6,7 @@ import botocore.session
 class AWSEnv(object):
     """Handle AWS session and clients."""
 
-    def __init__(self, regions=None, stub=False):
+    def __init__(self, regions=None, stub=False, profile=None):
         """Initialize an AWS session.
 
         Once intialized AWS environment can be accessed from Env().aws_env
@@ -16,8 +16,11 @@ class AWSEnv(object):
         :type regions: list[str]
         :param stub: if True clients are necessarily stubbed
         :type stub: bool
+        :param profile: profile name
+        :type profile: str | None
         """
-        self.session = botocore.session.get_session()
+        self.session = botocore.session.Session(profile=profile)
+        self.profile = profile
         if regions is None:
             self.regions = [self.session.region_name]
         else:
