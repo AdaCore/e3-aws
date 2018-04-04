@@ -329,9 +329,8 @@ class Instance(Resource):
         if self.user_data is not None:
             result['UserData'] = self.user_data.properties
         if self.tags:
-            result['Tags'] = []
-            for k, v in self.tags.items():
-                result['Tags'].append({'Key': k, 'Value': v})
+            result['Tags'] = [{'Key': k, 'Value': v}
+                              for k, v in self.tags.items()]
         return result
 
 

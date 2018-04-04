@@ -212,7 +212,7 @@ class Fortress(Stack):
 
         # Create the bastion
         self.add(Instance(self.name + 'Bastion', bastion_ami))
-        self[self.name + 'Bastion'].tags['Name'] = 'Bastion (%s)' % self.name
+        self.bastion.tags['Name'] = 'Bastion (%s)' % self.name
         self.bastion.add(
             NetworkInterface(self.public_subnet.subnet,
                              public_ip=True,
