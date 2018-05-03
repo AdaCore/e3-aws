@@ -50,6 +50,10 @@ class AMI(object):
         return self.tags.get('platform', 'unknown')
 
     @property
+    def is_windows(self):
+        return 'windows' in self.data.get('Platform', 'unknown')
+
+    @property
     def timestamp(self):
         return int(self.tags.get('timestamp', '0'))
 

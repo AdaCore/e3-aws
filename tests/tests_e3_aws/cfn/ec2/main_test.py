@@ -8,7 +8,7 @@ from e3.aws.cfn import Stack
 from e3.aws.cfn.ec2 import (EIP, VPC, EphemeralDisk, Instance, InternetGateway,
                             NatGateway, NetworkInterface, Route, RouteTable,
                             Subnet, SubnetRouteTableAssociation, UserData,
-                            VPCEndpoint, VPCGatewayAttachment)
+                             WinUserData, VPCEndpoint, VPCGatewayAttachment)
 from e3.aws.cfn.ec2.security import SecurityGroup
 from e3.aws.cfn.iam import Allow, PolicyDocument, Principal, PrincipalKind
 from e3.aws.ec2.ami import AMI
@@ -98,6 +98,29 @@ def test_user_data_creation():
 
         i = Instance('testmachine', AMI('ami-1234'))
         i.add_user_data('url1', 'x-include-url', 'http://dummy')
+        assert i.properties
+
+
+def test_win_user_data_creation():
+    """Test creation of windows user data."""
+    a = WinUserData()
+    a.add('powershell', 'echo "test powezrshell"')
+    a.add('script', 'echo test script')
+    assert yaml.dump(a.properties)
+
+    aws_env = AWSEnv(regions=['us-east-1'], stub=True)
+    with default_region('us-east-1'):
+        stub = aws_env.stub('ec2', region='us-east-1')
+        stub.add_response(
+            'describe_images',
+            {'Images': [{'ImageId': 'ami-1234-win',
+                         'RootDeviceName': '/dev/sda1',
+                         'Platform': 'windows',
+                         'Tags': []}]},
+            {'ImageIds': ANY})
+
+        i = Instance('testmachine', AMI('ami-1234-win'))
+        i.add_user_data('persist', 'true')
         assert i.properties
 
 
