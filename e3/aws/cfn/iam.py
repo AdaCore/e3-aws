@@ -113,7 +113,7 @@ class Statement(object, metaclass=abc.ABCMeta):
         if self.principals:
             result['Principal'] = Principal.property_list(self.principals)
         if self.actions:
-            result['Action'] = self.actions
+            result['Action'] = list(self.actions)
         if self.condition is not None:
             result['Condition'] = self.condition
         return result

@@ -18,6 +18,10 @@ sed -i 's/scripts-user$/\[scripts-user, always\]/' /etc/cloud/cloud.cfg
 """
 
 
+CFN_INIT_STARTUP_SCRIPT_WIN = "%(cfn_init)s -v --stack %(stack)s --region " + \
+    "%(region)s --resource %(resource)s --configsets %(config)s "
+
+
 class BlockDevice(object):
     """Block device for EC2 instances."""
 
@@ -139,15 +143,15 @@ class UserData(object):
         """Initialize user data."""
         self.parts = []
 
-    def add(self, name, kind, content):
+    def add(self, kind, content, name):
         """Add an entry in the user data.
 
-        :param name: name of the entry (aka filename)
-        :type name: str
         :param kind: MIME subtype (maintype is always text)
         :type kind: str
         :param content: the content associated with that value
         :type content: str
+        :param name: name of the entry (aka filename)
+        :type name: str
         """
         self.parts.append((name, kind, content))
 
@@ -171,6 +175,37 @@ class UserData(object):
                                          filename=name)
             multi_part.attach(mime_part)
         return Base64(multi_part.as_string())
+
+
+class WinUserData(object):
+    """EC2 Windows Instance user data."""
+
+    def __init__(self):
+        """Initialize user data."""
+        self.parts = []
+
+    def add(self, kind, content):
+        """Add an entry in the user data.
+
+        :param kind: script/powershell/persist
+        :type kind: str
+        :param content: the content associated with that value
+        :type content: str
+        """
+        self.parts.append((kind, content))
+
+    @property
+    def properties(self):
+        """Serialize the object as a simple dict.
+
+        Can be used to transform to CloudFormation Yaml format.
+
+        :rtype: dict
+        """
+        props = []
+        for kind, part in self.parts:
+            props.append('<%s>\n%s\n</%s>' % (kind, part, kind))
+        return Base64(Join(props))
 
 
 class Instance(Resource):
@@ -283,30 +318,48 @@ class Instance(Resource):
             region = Env().aws_env.default_region
         if resource is None:
             resource = self.name
-        self.add_user_data(
-            'init.sh',
-            'x-shellscript',
-            CFN_INIT_STARTUP_SCRIPT % {'region': region,
-                                       'stack': stack,
-                                       'resource': resource,
-                                       'cfn_init': cfn_init,
-                                       'config': config})
+        if self.image.is_windows:
+            self.add_user_data(
+                'powershell',
+                CFN_INIT_STARTUP_SCRIPT_WIN % {
+                    'region': region,
+                    'stack': stack,
+                    'resource': resource,
+                    'cfn_init': cfn_init,
+                    'config': config})
+            self.add_user_data('persist', 'true')
+        else:
+            self.add_user_data(
+                'x-shellscript',
+                CFN_INIT_STARTUP_SCRIPT % {'region': region,
+                                           'stack': stack,
+                                           'resource': resource,
+                                           'cfn_init': cfn_init,
+                                           'config': config},
+                'init.sh')
         if metadata is not None:
             self.metadata['AWS::CloudFormation::Init'] = metadata
 
-    def add_user_data(self, name, kind, content):
+    def add_user_data(self, kind, content, name=None):
         """Add a user data entry.
 
-        :param name: name of the entry (aka filename)
-        :type name: str
         :param kind: MIME subtype (maintype is always text)
         :type kind: str
         :param content: the content associated with that value
         :type content: str
+        :param name: name of the entry (aka filename)
+        :type name: str
         """
-        if self.user_data is None:
-            self.user_data = UserData()
-        self.user_data.add(name, kind, content)
+        if self.image.is_windows:
+            assert name is None
+            if self.user_data is None:
+                self.user_data = WinUserData()
+            self.user_data.add(kind, content)
+        else:
+            assert name is not None
+            if self.user_data is None:
+                self.user_data = UserData()
+            self.user_data.add(kind, content, name)
 
     @property
     def properties(self):

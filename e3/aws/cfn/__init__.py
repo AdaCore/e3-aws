@@ -103,7 +103,7 @@ def ref_representer(dumper, data):
 
 
 def base64_representer(dumper, data):
-    return dumper.represent_scalar('!Base64', data.content)
+    return dumper.represent_dict({"Fn::Base64": data.content})
 
 
 def join_representer(dumper, data):
