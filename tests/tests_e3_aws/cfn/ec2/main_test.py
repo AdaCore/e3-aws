@@ -8,7 +8,7 @@ from e3.aws.cfn import Stack
 from e3.aws.cfn.ec2 import (EIP, VPC, EphemeralDisk, Instance, InternetGateway,
                             NatGateway, NetworkInterface, Route, RouteTable,
                             Subnet, SubnetRouteTableAssociation, UserData,
-                             WinUserData, VPCEndpoint, VPCGatewayAttachment)
+                            VPCEndpoint, VPCGatewayAttachment, WinUserData)
 from e3.aws.cfn.ec2.security import SecurityGroup
 from e3.aws.cfn.iam import Allow, PolicyDocument, Principal, PrincipalKind
 from e3.aws.ec2.ami import AMI
