@@ -9,7 +9,7 @@ from e3.env import Env
 
 
 CFN_INIT_STARTUP_SCRIPT = """#!/bin/sh
-sed -i 's/scripts-user$/\[scripts-user, always\]/' /etc/cloud/cloud.cfg
+sed -i 's/scripts-user$/[scripts-user, always]/' /etc/cloud/cloud.cfg
 %(cfn_init)s -v --stack %(stack)s \\
                 --region %(region)s \\
                 --resource %(resource)s \\
