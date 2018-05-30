@@ -319,16 +319,27 @@ class Stack(object):
         return yaml.dump(self.export(), Dumper=CFNYamlDumper)
 
     @client('cloudformation')
-    def create(self, client):
+    def create(self, client, url=None):
         """Create a stack.
 
-        :param region: region in which to create the stack. If None the
-            default region is used.
-        :type region: str | None
+        :param client: a botocore client
+        :type client: botocore.client.Client. This parameter is handled by the
+            decorator
+        param url: url of the template body in S3. When not None this suppose
+            the user has uploaded the template body on S3 first at the given
+            url. Use S3 to refer to the template body rather than using inline
+            version allows to use template of size up to 500Ko instead of
+            50Ko.
+        :type url: str | None
         """
-        return client.create_stack(StackName=self.name,
-                                   TemplateBody=self.body,
-                                   Capabilities=['CAPABILITY_IAM'])
+        if url is None:
+            return client.create_stack(StackName=self.name,
+                                       TemplateBody=self.body,
+                                       Capabilities=['CAPABILITY_IAM'])
+        else:
+            return client.create_stack(StackName=self.name,
+                                       TemplateURL=url,
+                                       Capabilities=['CAPABILITY_IAM'])
 
     def exists(self):
         """Check if a given stack exists.
@@ -347,26 +358,53 @@ class Stack(object):
         return client.describe_stacks(StackName=self.name)
 
     @client('cloudformation')
-    def validate(self, client):
-        """Validate a template."""
-        return client.validate_template(TemplateBody=self.body)
+    def validate(self, client, url=None):
+        """Validate a template.
+
+        :param client: a botocore client
+        :type client: botocore.client.Client. This parameter is handled by the
+            decorator
+        param url: url of the template body in S3. When not None this suppose
+            the user has uploaded the template body on S3 first at the given
+            url. Use S3 to refer to the template body rather than using inline
+            version allows to use template of size up to 500Ko instead of
+            50Ko.
+        :type url: str | None
+        """
+        if url is None:
+            return client.validate_template(TemplateBody=self.body)
+        else:
+            return client.validate_template(TemplateURL=url)
 
     @client('cloudformation')
-    def create_change_set(self, name, client):
+    def create_change_set(self, name, client, url=None):
         """Create a change set.
 
         This creates a difference between the state of the stack on AWS servers
         and the current one generated with e3-aws.
 
-        :param client: a botocore client
+        :param client: a botocore client. This parameter is handled by the
+            decorator
         :type client: botocore.client.Client
         :param name: name of the changeset
         :type name: str
+        :param url: url of the template body in S3. When not None this suppose
+            the user has uploaded the template body on S3 first at the given
+            url. Use S3 to refer to the template body rather than using inline
+            version allows to use template of size up to 500Ko instead of
+            50Ko.
+        :type url: str | None
         """
-        return client.create_change_set(ChangeSetName=name,
-                                        StackName=self.name,
-                                        TemplateBody=self.body,
-                                        Capabilities=['CAPABILITY_IAM'])
+        if url is None:
+            return client.create_change_set(ChangeSetName=name,
+                                            StackName=self.name,
+                                            TemplateBody=self.body,
+                                            Capabilities=['CAPABILITY_IAM'])
+        else:
+            return client.create_change_set(ChangeSetName=name,
+                                            StackName=self.name,
+                                            TemplateURL=url,
+                                            Capabilities=['CAPABILITY_IAM'])
 
     @client('cloudformation')
     def describe_change_set(self, name, client):
