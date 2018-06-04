@@ -44,6 +44,35 @@ class CfnConfig(object):
                                 'group': group,
                                 'content': content}
 
+    def add_s3_file(self,
+                    filename,
+                    url,
+                    authentication,
+                    mode='644',
+                    owner='root',
+                    group='root'):
+        """Add file to a config where file body is on S3.
+
+        :param filename: path on the target system
+        :type filename: str
+        :param url: s3 url to the resource. Should be in the format:
+            https://[bucket].s3.amazonaws.com/[key]
+        :type url: str
+        :param authentication: name of an authentication method to use
+        :type authentication: str
+        :param mode: mode for the file (three digit format like chmod)
+        :type mode: str
+        :param owner: owner (default: root)
+        :type owner: str
+        :param group: group (default: root)
+        :type group: str
+        """
+        self.files[filename] = {'mode': '000' + mode,
+                                'owner': owner,
+                                'group': group,
+                                'source': url,
+                                'authentication': authentication}
+
     def add_command(self, command):
         """Add a command to the config.
 
