@@ -84,15 +84,19 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             self.s3_template_url = 'https://%s.s3.amazonaws.com/%s' % \
                 (self.s3_bucket, self.s3_template_key)
 
-    def execute(self, args=None, known_args_only=False):
+    def execute(self, args=None, known_args_only=False,
+                aws_env=None):
         """Execute application and return exit status.
 
         See parse_args arguments.
         """
         super(CFNMain, self).parse_args(args, known_args_only)
-        self.aws_env = AWSEnv(regions=self.regions,
-                              profile=self.args.profile)
-        self.aws_env.default_region = self.args.region
+        if aws_env is not None:
+            self.aws_env = aws_env
+        else:
+            self.aws_env = AWSEnv(regions=self.regions,
+                                  profile=self.args.profile)
+            self.aws_env.default_region = self.args.region
 
         try:
             if self.args.command == 'push':
