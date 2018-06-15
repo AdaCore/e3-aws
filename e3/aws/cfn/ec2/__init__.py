@@ -18,7 +18,9 @@ sed -i 's/scripts-user$/[scripts-user, always]/' /etc/cloud/cloud.cfg
 """
 
 
-CFN_INIT_STARTUP_SCRIPT_WIN = "%(cfn_init)s -v --stack %(stack)s --region " + \
+CFN_INIT_STARTUP_SCRIPT_WIN = "C:\\ProgramData\\Amazon\\EC2-Windows\\" + \
+    "Launch\\Scripts\\InitializeInstance.ps1 -schedule \n" + \
+    "%(cfn_init)s -v --stack %(stack)s --region " + \
     "%(region)s --resource %(resource)s --configsets %(config)s "
 
 
