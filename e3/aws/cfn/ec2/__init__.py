@@ -60,16 +60,20 @@ class EphemeralDisk(BlockDevice):
 class EBSDisk(BlockDevice):
     """EBS Disk."""
 
-    def __init__(self, device_name, size=20):
+    def __init__(self, device_name, size=20, encrypted=None):
         """Initialize an EBS disk.
 
         :param device_name: name of the device associated with that disk
         :type device_name: str
         :param size: disk size in Go (default: 20Go)
         :type size: int
+        :param encrypted: if True encrypt the device, if None take the default
+            (useful when device is created from a snapshot).
+        :type encrypted: bool | None
         """
         self.device_name = device_name
         self.size = size
+        self.encrypted = encrypted
 
     @property
     def properties(self):
@@ -79,9 +83,12 @@ class EBSDisk(BlockDevice):
 
         :rtype: dict
         """
-        return {"DeviceName": self.device_name,
-                "Ebs": {"VolumeSize": str(self.size),
-                        "VolumeType": "standard"}}
+        result = {"DeviceName": self.device_name,
+                  "Ebs": {"VolumeSize": str(self.size),
+                          "VolumeType": "gp2"}}
+        if self.encrypted is not None:
+            result['Ebs']['Encrypted'] = self.encrypted
+        return result
 
 
 class NetworkInterface(object):

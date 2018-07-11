@@ -5,10 +5,11 @@ import yaml
 from botocore.stub import ANY
 from e3.aws import AWSEnv, default_region
 from e3.aws.cfn import Stack
-from e3.aws.cfn.ec2 import (EIP, VPC, EphemeralDisk, Instance, InternetGateway,
-                            NatGateway, NetworkInterface, Route, RouteTable,
-                            Subnet, SubnetRouteTableAssociation, UserData,
-                            VPCEndpoint, VPCGatewayAttachment, WinUserData)
+from e3.aws.cfn.ec2 import (EIP, VPC, EBSDisk, EphemeralDisk, Instance,
+                            InternetGateway, NatGateway, NetworkInterface,
+                            Route, RouteTable, Subnet,
+                            SubnetRouteTableAssociation, UserData, VPCEndpoint,
+                            VPCGatewayAttachment, WinUserData)
 from e3.aws.cfn.ec2.security import SecurityGroup
 from e3.aws.cfn.iam import Allow, PolicyDocument, Principal, PrincipalKind
 from e3.aws.ec2.ami import AMI
@@ -59,6 +60,9 @@ def test_create_instance():
         assert i.properties
 
         i.add(EphemeralDisk('/dev/sdb', 0))
+        assert i.properties
+
+        i.add(EBSDisk('/dev/sdc', size=20, encrypted=True))
         assert i.properties
 
         vpc = VPC('VPC', '10.10.0.0/16')
