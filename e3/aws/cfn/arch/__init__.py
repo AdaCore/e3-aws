@@ -1,14 +1,27 @@
 from e3.aws.cfn import Stack, Join
+from e3.aws.cfn.arch.security import amazon_security_group
 from e3.aws.cfn.ec2 import (EIP, Instance, InternetGateway, NatGateway,
                             NetworkInterface,
                             Route, RouteTable, Subnet,
                             SubnetRouteTableAssociation, VPC, VPCEndpoint,
                             VPCGatewayAttachment)
 from e3.aws.cfn.ec2.security import (Ipv4EgressRule, Ipv4IngressRule,
-                                     SecurityGroup)
+                                     PrefixListEgressRule, SecurityGroup)
 from e3.aws.cfn.iam import (PolicyDocument, Principal, PrincipalKind,
                             InstanceRole, Allow)
 from e3.aws.cfn.s3 import Bucket
+
+
+# Prefix lists are static name used to select a list of IPs for a given
+# AWS services. Currently Amazon only offer prefix lists for s3 and
+# and dynamodb
+PREFIX_LISTS = {
+    'eu-west-1': {
+        's3': 'pl-6da54004',
+        'dynamodb': 'pl-6fa54006'},
+    'us-east-1': {
+        's3': 'pl-63a5400a',
+        'dynamodb': 'pl-02cd2c6b'}}
 
 
 class SubnetStack(Stack):
@@ -108,6 +121,15 @@ class VPCStack(Stack):
         self.add(VPCGatewayAttachment(self.name + 'GateLink',
                                       self.vpc, self.gateway))
 
+    @property
+    def region(self):
+        """Region in which the stack is allocated.
+
+        :return: a region
+        :rtype: str
+        """
+        return self[self.name].region
+
     def add_subnet(self,
                    name,
                    cidr_block,
@@ -180,9 +202,9 @@ class VPCStack(Stack):
 class Fortress(Stack):
     def __init__(self,
                  name,
-                 allow_ssh_from,
-                 bastion_ami,
                  internal_server_policy,
+                 bastion_ami=None,
+                 allow_ssh_from=None,
                  description=None,
                  vpc_cidr_block='10.10.0.0/16',
                  private_cidr_block='10.10.0.0/17',
@@ -192,6 +214,26 @@ class Fortress(Stack):
         This create a vpc with a public and a private subnet. Servers in the
         private subnet are only accessible through a bastion machine declare
         in the public subnet.
+
+        :param name: stack name
+        :type name: str
+        :param internal_server_policy: policy associated with instance role
+            of private servers
+        :type internal_server_policy: Policy
+        :param bastion_ami: AMI used for the bastion server. If None no bastion
+            is setup
+        :type bastion_ami: AMI | None
+        :param allow_ssh_from: ip ranges from which ssh can be done to the
+            bastion. if bastion_ami is None, parameter is discarded
+        :type allow_ssh_from: str | None
+        :param vpc_cidr_block: ip ranges for the associated vpc
+        :type vpc_cidr_block: str
+        :param private_cidr_block: ip ranges (subset of vpc_cidr_block) used
+            for private subnet
+        :type private_cidr_block: str
+        :param public_cidr_block: ip ranges (subset of vpc_cidr_block) used
+            for public subnet
+        :type public_cidr_block: str
         """
         super(Fortress, self).__init__(name, description)
 
@@ -202,32 +244,51 @@ class Fortress(Stack):
         self.vpc.add_subnet(self.name + 'PrivateNet', private_cidr_block,
                             nat_to=self.name + 'PublicNet')
 
-        # Allow ssh to bastion only from a range of IP address
-        self.add(SecurityGroup(
-            self.name + 'BastionSG',
-            self.vpc.vpc,
-            description='security group for bastion servers',
-            rules=[Ipv4IngressRule('ssh', cidr)
-                   for cidr in allow_ssh_from]))
+        self.add(amazon_security_group(self.name + 'AmazonServices',
+                                       self.vpc.vpc))
 
-        # Create the bastion
-        self.add(Instance(self.name + 'Bastion', bastion_ami))
-        self.bastion.tags['Name'] = 'Bastion (%s)' % self.name
-        self.bastion.add(
-            NetworkInterface(self.public_subnet.subnet,
-                             public_ip=True,
-                             groups=[self[self.name + 'BastionSG']]))
+        if bastion_ami is not None:
+            # Allow ssh to bastion only from a range of IP address
+            self.add(SecurityGroup(
+                self.name + 'BastionSG',
+                self.vpc.vpc,
+                description='security group for bastion servers',
+                rules=[Ipv4IngressRule('ssh', cidr)
+                       for cidr in allow_ssh_from]))
 
-        # Create security group for internal servers
-        self.add(SecurityGroup(
-            self.name + 'InternalSG',
-            self.vpc.vpc,
-            description='Allow everything inside VPC',
-            rules=[Ipv4IngressRule('ssh', self.public_subnet.cidr_block)]))
+            # Create the bastion
+            self.add(Instance(self.name + 'Bastion', bastion_ami))
+            self.bastion.tags['Name'] = 'Bastion (%s)' % self.name
+            self.bastion.add(
+                NetworkInterface(self.public_subnet.subnet,
+                                 public_ip=True,
+                                 groups=[self[self.name + 'BastionSG']]))
+
+            # Create security group for internal servers
+            self.add(SecurityGroup(
+                self.name + 'InternalSG',
+                self.vpc.vpc,
+                description='Allow ssh inside VPC',
+                rules=[Ipv4IngressRule('ssh', self.public_subnet.cidr_block)]))
+        else:
+            # If no bastion is used do not authorize ssh inside the vpc
+            self.add(SecurityGroup(
+                self.name + 'InternalSG',
+                self.vpc.vpc,
+                description='Do not allow ssh inside VPC'))
 
         ir = InstanceRole(self.name + 'PrivServerInstanceRole')
         ir.add_policy(internal_server_policy)
         self.add(ir)
+
+    @property
+    def region(self):
+        """Return the region in which the stack is allocated.
+
+        :return: a region
+        :rtype: str
+        """
+        return self[self.name + 'VPC'].region
 
     def add_network_access(self, protocol, cidr_block='0.0.0.0/0'):
         """Authorize some ooutbound protocols for internal servers.
@@ -240,9 +301,16 @@ class Fortress(Stack):
         self[self.name + 'InternalSG'].add_rule(
             Ipv4EgressRule(protocol, cidr_block))
 
+    def add_s3_endpoint_access(self):
+        self[self.name + 'InternalSG'].add_rule(
+            PrefixListEgressRule(
+                'https',
+                PREFIX_LISTS[self[self.name + 'InternalSG'].region]['s3']))
+
     def add_private_server(self, server_ami, names,
                            instance_type='t2.micro',
-                           disk_size=20):
+                           disk_size=20,
+                           amazon_access=True):
         """Add servers in the private network.
 
         :param server_ami: AMI to use
@@ -254,7 +322,14 @@ class Fortress(Stack):
         :type instance_type: str
         :param disk_size: disk size of the instance in Go
         :type disk_size: int
+        :param amazon_access: if True add a security group that allow access to
+            amazon services. Default is True
+        :type amazon_access: bool
         """
+        groups = [self[self.name + 'InternalSG']]
+        if amazon_access:
+            groups.append(self[self.name + 'AmazonServices'])
+
         for name in names:
             self.add(Instance(name, server_ami,
                               instance_type=instance_type,
@@ -262,7 +337,7 @@ class Fortress(Stack):
             self[name].add(
                 NetworkInterface(self.private_subnet.subnet,
                                  public_ip=False,
-                                 groups=[self[self.name + 'InternalSG']]))
+                                 groups=groups))
             self[name].set_instance_profile(
                 self[self.name + 'PrivServerInstanceRole'].instance_profile)
             self[name].tags['Name'] = '%s (%s)' % (name, self.name)

@@ -97,6 +97,10 @@ class Ipv4EgressRule(EgressRule):
     RULE_TYPE = 'CidrIp'
 
 
+class PrefixListEgressRule(EgressRule):
+    RULE_TYPE = 'DestinationPrefixListId'
+
+
 class Ipv4IngressRule(IngressRule):
     RULE_TYPE = 'CidrIp'
 
