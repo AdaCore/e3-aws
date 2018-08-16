@@ -21,7 +21,7 @@ sed -i 's/scripts-user$/[scripts-user, always]/' /etc/cloud/cloud.cfg
 CFN_INIT_STARTUP_SCRIPT_WIN = "C:\\ProgramData\\Amazon\\EC2-Windows\\" + \
     "Launch\\Scripts\\InitializeInstance.ps1 -schedule \n" + \
     "%(cfn_init)s -v --stack %(stack)s --region " + \
-    "%(region)s --resource %(resource)s --configsets %(config)s "
+    "%(region)s --resource %(resource)s --configsets %(config)s \n\n"
 
 
 class BlockDevice(object):
@@ -304,7 +304,8 @@ class Instance(Resource):
                      cfn_init='/usr/local/bin/cfn-init',
                      region=None,
                      resource=None,
-                     metadata=None):
+                     metadata=None,
+                     init_script=''):
         """Add CFN init call on first boot of the instance.
 
         :param stack: name of the stack containing the cfn metadata
@@ -322,6 +323,9 @@ class Instance(Resource):
         :param metadata: dict conforming to AWS::CloudFormation::Init
             specifications
         :type metadata: dict | None
+        :param init_script: command to launch after cfn-init
+        :type init_script: powershell command for windows and bash command for
+            linuxes
         """
         if region is None:
             region = Env().aws_env.default_region
@@ -335,7 +339,8 @@ class Instance(Resource):
                     'stack': stack,
                     'resource': resource,
                     'cfn_init': cfn_init,
-                    'config': config})
+                    'config': config} +
+                init_script)
             self.add_user_data('persist', 'true')
         else:
             self.add_user_data(
@@ -344,7 +349,8 @@ class Instance(Resource):
                                            'stack': stack,
                                            'resource': resource,
                                            'cfn_init': cfn_init,
-                                           'config': config},
+                                           'config': config} +
+                init_script,
                 'init.sh')
         if metadata is not None:
             self.metadata['AWS::CloudFormation::Init'] = metadata
