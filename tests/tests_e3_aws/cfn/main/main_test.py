@@ -64,7 +64,8 @@ def test_cfn_main_s3():
                                 DEFAULT_S3_ANSWER,
                                 {'Bucket': 'superbucket',
                                  'Body': ANY,
-                                 'Key': ANY})
+                                 'Key': ANY,
+                                 'ServerSideEncryption': 'AES256'})
         with stubber:
             with s3_stubber:
                 m = MyCFNMain(regions=['us-east-1'],
