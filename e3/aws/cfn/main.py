@@ -114,6 +114,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                                          self.s3_data_key, subkey)
                             s3.put_object(Bucket=self.s3_bucket,
                                           Body=fd,
+                                          ServerSideEncryption='AES256',
                                           Key=self.s3_data_key + subkey)
 
                 s = self.create_stack()
@@ -123,6 +124,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                                  self.s3_bucket, self.s3_template_key)
                     s3.put_object(Bucket=self.s3_bucket,
                                   Body=s.body.encode('utf-8'),
+                                  ServerSideEncryption='AES256',
                                   Key=self.s3_template_key)
 
                 logging.info('Validate template for stack %s' % s.name)
