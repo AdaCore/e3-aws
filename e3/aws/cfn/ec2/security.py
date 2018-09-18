@@ -20,7 +20,9 @@ class GroupSecurityRule(object, metaclass=abc.ABCMeta):
         'pip': {
             'from': 3128, 'to': 3128, 'protocol': 'tcp'},
         'alltcp': {
-            'from': 1, 'to': 65535, 'protocol': 'tcp'}}
+            'from': 1, 'to': 65535, 'protocol': 'tcp'},
+        'ntp': {
+            'from': 123, 'to': 123, 'protocol': 'udp'}}
 
     def __init__(self,
                  protocol,
