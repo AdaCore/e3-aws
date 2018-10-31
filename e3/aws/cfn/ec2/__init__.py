@@ -85,7 +85,8 @@ class EBSDisk(BlockDevice):
         """
         result = {"DeviceName": self.device_name,
                   "Ebs": {"VolumeSize": str(self.size),
-                          "VolumeType": "gp2"}}
+                          "VolumeType": "gp2",
+                          "DeleteOnTermination": True}}
         if self.encrypted is not None:
             result['Ebs']['Encrypted'] = self.encrypted
         return result
