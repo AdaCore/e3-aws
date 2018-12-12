@@ -22,7 +22,9 @@ class GroupSecurityRule(object, metaclass=abc.ABCMeta):
         'alltcp': {
             'from': 1, 'to': 65535, 'protocol': 'tcp'},
         'ntp': {
-            'from': 123, 'to': 123, 'protocol': 'udp'}}
+            'from': 123, 'to': 123, 'protocol': 'udp'},
+        'postgresql': {
+            'from': 5432, 'to': 5432, 'protocol': 'tcp'}}
 
     def __init__(self,
                  protocol,
