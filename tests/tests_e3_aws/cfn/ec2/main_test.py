@@ -5,9 +5,9 @@ import yaml
 from botocore.stub import ANY
 from e3.aws import AWSEnv, default_region
 from e3.aws.cfn import Stack
-from e3.aws.cfn.ec2 import (EIP, VPC, EBSDisk, EphemeralDisk, Instance,
-                            InternetGateway, NatGateway, NetworkInterface,
-                            Route, RouteTable, Subnet,
+from e3.aws.cfn.ec2 import (EIP, VPC, EBSDisk, EC2NetworkInterface,
+                            EphemeralDisk, Instance, InternetGateway,
+                            NatGateway, Route, RouteTable, Subnet,
                             SubnetRouteTableAssociation, UserData, VPCEndpoint,
                             VPCGatewayAttachment, WinUserData)
 from e3.aws.cfn.ec2.security import SecurityGroup
@@ -69,14 +69,15 @@ def test_create_instance():
         subnet = Subnet('Subnet', vpc, '10.10.10.0/24')
         subnet = Subnet('Subnet2', vpc, '10.10.20.0/24')
         security_group = SecurityGroup('mysgroup', vpc)
-        i.add(NetworkInterface(subnet, description='first network interface'))
-        i.add(NetworkInterface(subnet,
-                               groups=[security_group],
-                               description='2nd network interface'))
-        i.add(NetworkInterface(subnet,
-                               groups=[security_group],
-                               description='3rd network interface',
-                               device_index=3))
+        i.add(EC2NetworkInterface(subnet,
+                                  description='first network interface'))
+        i.add(EC2NetworkInterface(subnet,
+                                  groups=[security_group],
+                                  description='2nd network interface'))
+        i.add(EC2NetworkInterface(subnet,
+                                  groups=[security_group],
+                                  description='3rd network interface',
+                                  device_index=3))
         assert i.properties
 
         with pytest.raises(AssertionError):

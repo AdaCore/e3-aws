@@ -16,6 +16,7 @@ class AWSType(Enum):
     EC2_INSTANCE = 'AWS::EC2::Instance'
     EC2_INTERNET_GATEWAY = 'AWS::EC2::InternetGateway'
     EC2_NAT_GATEWAY = 'AWS::EC2::NatGateway'
+    EC2_NETWORK_INTERFACE = 'AWS::EC2::NetworkInterface'
     EC2_ROUTE = 'AWS::EC2::Route'
     EC2_ROUTE_TABLE = 'AWS::EC2::RouteTable'
     EC2_SECURITY_GROUP = 'AWS::EC2::SecurityGroup'
