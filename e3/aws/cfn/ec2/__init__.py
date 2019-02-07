@@ -92,16 +92,17 @@ class EBSDisk(BlockDevice):
         return result
 
 
-class NetworkInterface(object):
+class EC2NetworkInterface(object):
     """EC2 Instance network interface."""
 
     def __init__(self,
-                 subnet,
+                 subnet=None,
                  public_ip=False,
                  groups=None,
                  device_index=None,
-                 description=None):
-        """Initialize a NetworkInterface.
+                 description=None,
+                 interface=None):
+        """Initialize a EC2NetworkInterface.
 
         :param subnet: subnet to which the interface is attached
         :type subnet: e3.aws.cfn.ec2.Subnet
@@ -118,11 +119,31 @@ class NetworkInterface(object):
         :type device_index: 0 | None
         :param description: optional description
         :type description: str | None
+        :param interface: an external network interface. If specified subnet,
+            public_ip and groups should be set to None
+        :type interface: NetworkInterface | None
         """
-        assert isinstance(subnet, Subnet), 'got %s instead' % subnet
-        self.subnet = subnet
-        self.public_ip = public_ip
-        self.groups = groups
+        if subnet is not None:
+            assert isinstance(subnet, Subnet), \
+                'unexpected type for subnet: %s' % subnet
+            assert interface is None, \
+                'cannot specify a network interface if subnet is set'
+            self.subnet = subnet
+            self.public_ip = public_ip
+            self.groups = groups
+            self.interface_id = None
+        else:
+            assert isinstance(interface, NetworkInterface), \
+                'if not subnet is provided a valid network interface ' \
+                'should be passed'
+            assert not public_ip, 'cannot associate automatically a public IP'
+            assert groups is None, \
+                'groups should be set in the network interface'
+            self.interface = interface
+            self.subnet = None
+            self.public_ip = False
+            self.groups = None
+
         self.device_index = device_index
         self.description = description
 
@@ -134,9 +155,15 @@ class NetworkInterface(object):
 
         :rtype: dict
         """
-        result = {'AssociatePublicIpAddress': self.public_ip,
-                  'SubnetId': self.subnet.ref,
-                  'DeleteOnTermination': True}
+        result = {}
+
+        if self.subnet:
+            result['AssociatePublicIpAddress'] = self.public_ip
+            result['SubnetId'] = self.subnet.ref
+            result['DeleteOnTermination'] = True
+        else:
+            result['NetworkInterfaceId'] = self.interface.ref
+
         if self.device_index is not None:
             result['DeviceIndex'] = self.device_index
         if self.groups:
@@ -218,6 +245,46 @@ class WinUserData(object):
         return Base64(Join(props))
 
 
+class NetworkInterface(Resource):
+    """External Network Interface."""
+
+    def __init__(self, name, subnet, groups=None, description=None):
+        """Initialize an External Network Interface (ENI).
+
+        :param name: logical name of the instance
+        :type name: str
+        :param subnet: subnet to which the interface is attached
+        :type subnet: e3.aws.cfn.ec2.Subnet
+        :param groups: list of security groups associated with the interface.
+            If no group is specified, AWS will assign a default group.
+        :type groups: list[SecurityGroup] | None
+        :param description: optional description
+        :type description: str | None
+        """
+        super(NetworkInterface, self).__init__(
+            name,
+            kind=AWSType.EC2_NETWORK_INTERFACE)
+        assert isinstance(subnet, Subnet)
+        self.subnet = subnet
+        self.groups = groups
+        self.description = description
+
+    @property
+    def properties(self):
+        """Serialize the object as a simple dict.
+
+        Can be used to transform to CloudFormation Yaml format.
+
+        :rtype: dict
+        """
+        result = {'SubnetId': self.subnet.ref}
+        if self.description is not None:
+            result['Description'] = self.description
+        if self.groups is not None:
+            result['GroupSet'] = [group.ref for group in self.groups]
+        return result
+
+
 class Instance(Resource):
     """EC2 Instance."""
 
@@ -279,11 +346,11 @@ class Instance(Resource):
         """Add a device to the instance.
 
         :param device: can be a disk or a network interface
-        :type device: NetworkInterface | BockDevice
+        :type device: EC2NetworkInterface | BockDevice
         :return: the Instance itself
         :rtype: Instance
         """
-        if isinstance(device, NetworkInterface):
+        if isinstance(device, EC2NetworkInterface):
             if device.device_index is None:
                 # Assign automatically a device index
                 index = max(list(self.network_interfaces.keys()) + [-1]) + 1

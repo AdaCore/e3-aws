@@ -1,6 +1,7 @@
 from e3.aws.cfn import Stack, Join
 from e3.aws.cfn.arch.security import amazon_security_group
-from e3.aws.cfn.ec2 import (EIP, Instance, InternetGateway, NatGateway,
+from e3.aws.cfn.ec2 import (EC2NetworkInterface, EIP, Instance,
+                            InternetGateway, NatGateway,
                             NetworkInterface,
                             Route, RouteTable, Subnet,
                             SubnetRouteTableAssociation, VPC, VPCEndpoint,
@@ -260,9 +261,9 @@ class Fortress(Stack):
             self.add(Instance(self.name + 'Bastion', bastion_ami))
             self.bastion.tags['Name'] = 'Bastion (%s)' % self.name
             self.bastion.add(
-                NetworkInterface(self.public_subnet.subnet,
-                                 public_ip=True,
-                                 groups=[self[self.name + 'BastionSG']]))
+                EC2NetworkInterface(self.public_subnet.subnet,
+                                    public_ip=True,
+                                    groups=[self[self.name + 'BastionSG']]))
 
             # Create security group for internal servers
             self.add(SecurityGroup(
@@ -310,7 +311,8 @@ class Fortress(Stack):
     def add_private_server(self, server_ami, names,
                            instance_type='t2.micro',
                            disk_size=20,
-                           amazon_access=True):
+                           amazon_access=True,
+                           persistent_eni=False):
         """Add servers in the private network.
 
         :param server_ami: AMI to use
@@ -325,6 +327,10 @@ class Fortress(Stack):
         :param amazon_access: if True add a security group that allow access to
             amazon services. Default is True
         :type amazon_access: bool
+        :param persistent_eni: Use a separate network interface (i.e: not
+            embedded inside the EC2 instance). This is useful to preserve for
+            example IP address and MAC address when a server is redeployed.
+        :type persistent_eni: bool
         """
         groups = [self[self.name + 'InternalSG']]
         if amazon_access:
@@ -334,10 +340,20 @@ class Fortress(Stack):
             self.add(Instance(name, server_ami,
                               instance_type=instance_type,
                               disk_size=disk_size))
-            self[name].add(
-                NetworkInterface(self.private_subnet.subnet,
-                                 public_ip=False,
-                                 groups=groups))
+            if not persistent_eni:
+                self[name].add(
+                    EC2NetworkInterface(self.private_subnet.subnet,
+                                        public_ip=False,
+                                        groups=groups))
+            else:
+                network_interface = NetworkInterface(
+                    name + 'ENI',
+                    subnet=self.private_subnet.subnet,
+                    groups=groups)
+                self.add(network_interface)
+                self[name].add(
+                    EC2NetworkInterface(interface=network_interface))
+
             self[name].set_instance_profile(
                 self[self.name + 'PrivServerInstanceRole'].instance_profile)
             self[name].tags['Name'] = '%s (%s)' % (name, self.name)
