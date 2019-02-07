@@ -1,10 +1,19 @@
 import re
+from datetime import datetime
 
+from dateutil.parser import parse as parse_date
+from e3.aws.ec2 import BlockDeviceMapping, EC2Element
 from e3.env import Env
 
 
-class AMI(object):
+class AMI(EC2Element):
     """Represent an AMI."""
+
+    PROPERTIES = {
+        'ImageId': 'id',
+        'OwnerId': 'owner_id',
+        'Public': 'public',
+        'RootDeviceName': 'root_device'}
 
     def __init__(self, ami_id, region=None, data=None):
         """Inialize an AMI description object.
@@ -18,28 +27,27 @@ class AMI(object):
             download AMI description using EC2 api
         :type data: dict | None
         """
-        self.ami_id = ami_id
-        self.region = region
-        if self.region is None:
-            self.region = Env().aws_env.default_region
-
         if data is None:
+            assert ami_id is not None
             aws_env = Env().aws_env
-            self.data = aws_env.client('ec2', self.region).describe_images(
-                ImageIds=[self.ami_id])['Images'][0]
-        else:
-            self.data = data
-
-        # compute tags
-        self.tags = {el['Key']: el['Value'] for el in self.data['Tags']}
+            data = aws_env.client('ec2', region).describe_images(
+                ImageIds=[ami_id])['Images'][0]
+        super(AMI, self).__init__(data, region)
 
     @property
-    def id(self):
-        return self.data['ImageId']
+    def creation_date(self):
+        """Creation date.
+
+        :return: AMI creation date
+        :rtype: datetime.datetime
+        """
+        return parse_date(self.data['CreationDate']).replace(tzinfo=None)
 
     @property
-    def root_device(self):
-        return self.data['RootDeviceName']
+    def age(self):
+        """Return age of the AMI in days."""
+        age = datetime.now() - self.creation_date
+        return int(age.total_seconds() / (3600 * 24))
 
     @property
     def os_version(self):
@@ -56,6 +64,19 @@ class AMI(object):
     @property
     def timestamp(self):
         return int(self.tags.get('timestamp', '0'))
+
+    @property
+    def block_device_mappings(self):
+        return [BlockDeviceMapping(bdm, region=self.region)
+                for bdm in self.data.get('BlockDeviceMappings', [])]
+
+    @property
+    def snapshot_ids(self):
+        result = []
+        for device in self.block_device_mappings:
+            if device.is_ebs:
+                result.append(device.snapshot_id)
+        return result
 
     def __str__(self):
         return '%-12s %-24s: %s' % (self.region,
@@ -84,7 +105,11 @@ class AMI(object):
         return result
 
     @classmethod
-    def find(cls, platform=None, os_version=None, region=None):
+    def find(cls,
+             platform=None,
+             os_version=None,
+             region=None,
+             **kwargs):
         """Find AMIs.
 
         Only AMIs with platform, timestamps and os_version tags are considered.
@@ -96,20 +121,38 @@ class AMI(object):
         :type os_version: str | None
         :param region: region to match. If None all regions are matched
         :type region: str | None
+        :param kwargs: additional filters on tags. parameter name if the tag
+            name and the associated value the regexp
+        :type kwargs: dict
+        :return: a list of AMI
+        :rtype: list[AMI]
         """
         result = {}
-        all_images = AMI.ls(
-            filters=[{'Name': 'tag-key', 'Values': ['platform']},
-                     {'Name': 'tag-key', 'Values': ['timestamp']},
-                     {'Name': 'tag-key', 'Values': ['os_version']}])
+
+        filters = [{'Name': 'tag-key', 'Values': ['platform']},
+                   {'Name': 'tag-key', 'Values': ['timestamp']},
+                   {'Name': 'tag-key', 'Values': ['os_version']}]
+        all_images = AMI.ls(filters=filters)
+
+        tag_filters = dict(kwargs)
+        if platform is not None:
+            tag_filters['platform'] = platform
+        if os_version is not None:
+            tag_filters['os_version'] = os_version
 
         for ami in all_images:
             key = (ami.region, ami.platform, ami.os_version)
-            if ((platform is not None and
-                 not re.match(platform, ami.platform)) or
-                    (os_version is not None and
-                     not re.match(os_version, ami.os_version)) or
-                    (region is not None and not re.match(region, ami.region))):
+
+            if region is not None and not re.match(region, ami.region):
+                continue
+
+            consider_ami = True
+            for tag in tag_filters:
+                if not re.match(tag_filters[tag], ami.tags.get(tag, '')):
+                    consider_ami = False
+                    continue
+
+            if not consider_ami:
                 continue
 
             if key not in result or result[key][0] < ami.timestamp:
@@ -118,7 +161,7 @@ class AMI(object):
         return [el[1] for el in result.values()]
 
     @classmethod
-    def select(cls, platform, os_version, region=None):
+    def select(cls, platform, os_version, region=None, **kwargs):
         """Select one AMI based on platform and os_version.
 
         :param platform: platform name
@@ -134,9 +177,11 @@ class AMI(object):
             region = Env().aws_env.default_region
         result = AMI.find(platform=platform + '$',
                           os_version=os_version + '$',
-                          region=region)
+                          region=region,
+                          **kwargs)
         assert len(result) == 1, \
-            'cannot find AMI %s (%s) in region %s' % (platform,
-                                                      os_version,
-                                                      region)
+            'cannot find AMI %s (%s) in region %s %s' % (platform,
+                                                         os_version,
+                                                         region,
+                                                         kwargs)
         return result[0]

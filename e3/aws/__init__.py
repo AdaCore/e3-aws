@@ -32,6 +32,22 @@ class AWSEnv(object):
         env = Env()
         env.aws_env = self
 
+        self._account_alias = None
+
+    @property
+    def account_alias(self):
+        """Return current account alias."""
+        if self._account_alias is None:
+            client = self.client('iam', region='us-east-1')
+            aliases = client.list_account_aliases()['AccountAliases']
+            if aliases:
+                # Even if the API return a list there currently only one
+                # alias possible
+                self._account_alias = aliases[0]
+            else:
+                self._account_alias = ''
+        return self._account_alias
+
     def stub(self, name, region=None):
         """Return stub for a given client.
 
