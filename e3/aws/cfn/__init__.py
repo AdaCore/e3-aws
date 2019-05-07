@@ -36,6 +36,8 @@ class AWSType(Enum):
     S3_BUCKET_POLICY = 'AWS::S3::BucketPolicy'
     SERVICE_DISCOVERY_PRIVATE_DNS_NAMESPACE = \
         'AWS::ServiceDiscovery::PrivateDnsNamespace'
+    CODE_COMMIT_REPOSITORY = \
+        'AWS::CodeCommit::Repository'
 
 
 class GetAtt(object):
