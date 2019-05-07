@@ -33,14 +33,16 @@ def test_create_stack():
         cfn_client = aws_env.client('cloudformation', region='us-east-1')
 
         stubber = Stubber(cfn_client)
-        stubber.add_response('create_stack', {},
-                             {'Capabilities': ['CAPABILITY_IAM'],
-                              'StackName': 'teststack',
-                              'TemplateBody': ANY})
-        stubber.add_response('create_stack', {},
-                             {'Capabilities': ['CAPABILITY_IAM'],
-                              'StackName': 'teststack',
-                              'TemplateURL': ANY})
+        stubber.add_response(
+            'create_stack', {},
+            {'Capabilities': ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'],
+             'StackName': 'teststack',
+             'TemplateBody': ANY})
+        stubber.add_response(
+            'create_stack', {},
+            {'Capabilities': ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'],
+             'StackName': 'teststack',
+             'TemplateURL': ANY})
         with stubber:
             s.create()
             s.create(url='noprotocol://nothing')
@@ -54,16 +56,18 @@ def test_create_change_set():
         cfn_client = aws_env.client('cloudformation', region='us-east-1')
 
         stubber = Stubber(cfn_client)
-        stubber.add_response('create_change_set', {},
-                             {'Capabilities': ['CAPABILITY_IAM'],
-                              'StackName': 'teststack',
-                              'ChangeSetName': 'name1',
-                              'TemplateBody': ANY})
-        stubber.add_response('create_change_set', {},
-                             {'Capabilities': ['CAPABILITY_IAM'],
-                              'ChangeSetName': 'name2',
-                              'StackName': 'teststack',
-                              'TemplateURL': ANY})
+        stubber.add_response(
+            'create_change_set', {},
+            {'Capabilities': ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'],
+             'StackName': 'teststack',
+             'ChangeSetName': 'name1',
+             'TemplateBody': ANY})
+        stubber.add_response(
+            'create_change_set', {},
+            {'Capabilities': ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'],
+             'ChangeSetName': 'name2',
+             'StackName': 'teststack',
+             'TemplateURL': ANY})
         with stubber:
             s.create_change_set('name1')
             s.create_change_set('name2', url='noprotocol://nothing')

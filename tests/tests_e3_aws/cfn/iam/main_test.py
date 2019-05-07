@@ -1,6 +1,6 @@
 import pytest
-from e3.aws.cfn.iam import (Allow, Deny, InstanceRole, Policy,
-                            PolicyDocument, Principal, PrincipalKind)
+from e3.aws.cfn.iam import (Allow, Deny, Group, InstanceRole, Policy,
+                            PolicyDocument, Principal, PrincipalKind, User)
 from e3.aws.cfn.s3 import Bucket
 
 
@@ -50,3 +50,11 @@ def test_principal_star():
 
     pl = [Principal(PrincipalKind.EVERYONE)]
     assert Principal.property_list(pl)
+
+
+def test_create_user_and_group():
+    """Create a basic group."""
+    mygroup = Group('mygroup')
+    myuser = User('myuser', groups=[mygroup.name])
+    assert myuser.properties['Groups'] == [mygroup.name]
+    assert mygroup.properties['GroupName'] == mygroup.name

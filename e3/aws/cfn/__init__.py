@@ -27,7 +27,9 @@ class AWSType(Enum):
     EC2_VPC = 'AWS::EC2::VPC'
     EC2_VPC_ENDPOINT = 'AWS::EC2::VPCEndpoint'
     EC2_VPC_GATEWAY_ATTACHMENT = 'AWS::EC2::VPCGatewayAttachment'
+    IAM_GROUP = 'AWS::IAM::Group'
     IAM_ROLE = 'AWS::IAM::Role'
+    IAM_USER = 'AWS::IAM::User'
     IAM_POLICY = 'AWS::IAM::Policy'
     IAM_INSTANCE_PROFILE = 'AWS::IAM::InstanceProfile'
     ROUTE53_HOSTED_ZONE = 'AWS::Route53::HostedZone'
@@ -338,13 +340,15 @@ class Stack(object):
         :type url: str | None
         """
         if url is None:
-            return client.create_stack(StackName=self.name,
-                                       TemplateBody=self.body,
-                                       Capabilities=['CAPABILITY_IAM'])
+            return client.create_stack(
+                StackName=self.name,
+                TemplateBody=self.body,
+                Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'])
         else:
-            return client.create_stack(StackName=self.name,
-                                       TemplateURL=url,
-                                       Capabilities=['CAPABILITY_IAM'])
+            return client.create_stack(
+                StackName=self.name,
+                TemplateURL=url,
+                Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'])
 
     def exists(self):
         """Check if a given stack exists.
@@ -401,15 +405,17 @@ class Stack(object):
         :type url: str | None
         """
         if url is None:
-            return client.create_change_set(ChangeSetName=name,
-                                            StackName=self.name,
-                                            TemplateBody=self.body,
-                                            Capabilities=['CAPABILITY_IAM'])
+            return client.create_change_set(
+                ChangeSetName=name,
+                StackName=self.name,
+                TemplateBody=self.body,
+                Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'])
         else:
-            return client.create_change_set(ChangeSetName=name,
-                                            StackName=self.name,
-                                            TemplateURL=url,
-                                            Capabilities=['CAPABILITY_IAM'])
+            return client.create_change_set(
+                ChangeSetName=name,
+                StackName=self.name,
+                TemplateURL=url,
+                Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'])
 
     @client('cloudformation')
     def describe_change_set(self, name, client):

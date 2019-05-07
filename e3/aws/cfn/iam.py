@@ -276,7 +276,7 @@ class Policy(Resource):
         :type policy_document: PolicyDocument
         :param roles: list of roles to apply the policy to
         :type roles: list[str] | None
-        :param groups: list of groupss to apply the policy to
+        :param groups: list of groups to apply the policy to
         :type groups: list[str] | None
         :param users: list of users to apply the policy to
         :type users: list[str] | None
@@ -381,6 +381,111 @@ class Role(Resource):
         return {'AssumeRolePolicyDocument': self.assume_role_policy.properties,
                 'Path': self.path,
                 'Policies': [p.properties for p in self.policies]}
+
+
+class Group(Resource):
+    """IAM Group."""
+
+    ATTRIBUTES = ("Arn", )
+
+    def __init__(self, name, managed_policy_arns=None, path='/'):
+        """Initialize IAM Group.
+
+        :param name: group name
+        :type name: str
+        :param managed_policy_arns: A list of Amazon Resource Names (ARNs) of
+            the IAM managed policies that you want to attach to the user.
+        :type managed_policy_arns: list[str] | None
+        :param path: the path associated with this role (default: /)
+        :type path: str
+        """
+        super(Group, self).__init__(name, kind=AWSType.IAM_GROUP)
+        self.path = path
+        self.policies = []
+        self.managed_policy_arns = managed_policy_arns or []
+
+    def add(self, policy):
+        """Add a policy.
+
+        :param policy: a policy
+        :type policy: Policy
+        :return: the object itself
+        :rtype: Role
+        """
+        assert isinstance(policy, Policy)
+        self.policies.append(policy)
+        return self
+
+    @property
+    def properties(self):
+        """Serialize the object as a simple dict.
+
+        Can be used to transform to CloudFormation Yaml format.
+
+        :rtype: dict
+        """
+        return {'ManagedPolicyArns': self.managed_policy_arns,
+                'GroupName': self.name,
+                'Path': self.path,
+                'Policies': [p.properties for p in self.policies]}
+
+
+class User(Resource):
+    """IAM User."""
+
+    ATTRIBUTES = ("Arn", )
+
+    def __init__(self, name, groups=None, managed_policy_arns=None, path='/',
+                 permissions_boundary=None):
+        """Initialize IAM User.
+
+        :param name: user name
+        :type name: str
+        :type groups: list[str] | None
+        :param managed_policy_arns: A list of Amazon Resource Names (ARNs) of
+            the IAM managed policies that you want to attach to the user.
+        :type managed_policy_arns: list[str] | None
+        :param path: the path associated with this role (default: /)
+        :type path: str
+        :param permissions_boundary: The ARN of the policy that is used to set
+            the permissions boundary for the user.
+        :type permissions_boundary: str | None
+        """
+        super(User, self).__init__(name, kind=AWSType.IAM_USER)
+        self.groups = groups or []
+        self.path = path
+        self.policies = []
+        self.managed_policy_arns = managed_policy_arns or []
+        self.permissions_boundary = permissions_boundary
+
+    def add(self, policy):
+        """Add a policy.
+
+        :param policy: a policy
+        :type policy: Policy
+        :return: the object itself
+        :rtype: Role
+        """
+        assert isinstance(policy, Policy)
+        self.policies.append(policy)
+        return self
+
+    @property
+    def properties(self):
+        """Serialize the object as a simple dict.
+
+        Can be used to transform to CloudFormation Yaml format.
+
+        :rtype: dict
+        """
+        props = {'ManagedPolicyArns': self.managed_policy_arns or [],
+                 'UserName': self.name,
+                 'Groups': self.groups,
+                 'Path': self.path,
+                 'Policies': [p.properties for p in self.policies]}
+        if self.permissions_boundary is not None:
+            props['PermissionsBoundary'] = self.permissions_boundary
+        return props
 
 
 class InstanceRole(Stack):
