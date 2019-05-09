@@ -14,7 +14,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
     """Main to handle CloudFormation stack from command line."""
 
     def __init__(self, regions,
-                 force_profile=None,
+                 default_profile='default',
                  data_dir=None,
                  s3_bucket=None,
                  s3_key=''):
@@ -22,9 +22,8 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         :param regions: list of regions on which we can operate
         :type regions: list[str]
-        :param force_profile: if None then add ability to select a credential
-            profile to use. Otherwise profile is set
-        :type force_profile: str | None
+        :param default_profile: default AWS profile to use to create the stack
+        :type default_region: str
         :param data_dir: directory containing files used by cfn-init
         :type data_dir: str | None
         :param s3_bucket: if defined S3 will be used as a proxy for resources.
@@ -40,8 +39,8 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         super(CFNMain, self).__init__(platform_args=False)
         self.argument_parser.add_argument(
             '--profile',
-            help='choose AWS profile',
-            default='default')
+            help='choose AWS profile, default is {}'.format(default_profile),
+            default=default_profile)
 
         if len(regions) > 1:
             self.argument_parser.add_argument(
