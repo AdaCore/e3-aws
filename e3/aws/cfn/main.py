@@ -52,7 +52,9 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         subs = self.argument_parser.add_subparsers(
             title='commands',
-            description='available commands')
+            description='available commands',
+            dest='command')
+        subs.required = True
 
         create_args = subs.add_parser('push', help='push a stack')
         create_args.add_argument(
@@ -61,6 +63,9 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             default=False,
             help='if used then wait for stack creation completion')
         create_args.set_defaults(command='push')
+
+        show_args = subs.add_parser('show', help='show the changeset content')
+        show_args.set_defaults(command='show')
 
         self.regions = regions
 
@@ -157,8 +162,9 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                             print(result)
                             time.sleep(10.0)
                             state = s.state()
-            else:
-                return 1
+            elif self.args.command == 'show':
+                s = self.create_stack()
+                print(s.body)
             return 0
         except botocore.exceptions.ClientError as e:
             logging.error(str(e))
