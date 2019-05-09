@@ -36,6 +36,8 @@ class AWSType(Enum):
     S3_BUCKET_POLICY = 'AWS::S3::BucketPolicy'
     SERVICE_DISCOVERY_PRIVATE_DNS_NAMESPACE = \
         'AWS::ServiceDiscovery::PrivateDnsNamespace'
+    CODE_COMMIT_REPOSITORY = \
+        'AWS::CodeCommit::Repository'
 
 
 class GetAtt(object):
@@ -124,7 +126,8 @@ class CFNYamlDumper(yaml.Dumper):
                  explicit_start=None,
                  explicit_end=None,
                  version=None,
-                 tags=None):
+                 tags=None,
+                 sort_keys=True):
         """Yaml dumper for cloud formation templates.
 
         See yaml.Dumper documentation.
@@ -142,7 +145,8 @@ class CFNYamlDumper(yaml.Dumper):
             explicit_start=explicit_start,
             explicit_end=explicit_end,
             version=version,
-            tags=tags)
+            tags=tags,
+            sort_keys=sort_keys)
 
         self.add_representer(GetAtt, getatt_representer)
         self.add_representer(Ref, ref_representer)
