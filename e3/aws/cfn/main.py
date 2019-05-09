@@ -67,6 +67,10 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         show_args = subs.add_parser('show', help='show the changeset content')
         show_args.set_defaults(command='show')
 
+        protect_args = subs.add_parser(
+            'protect', help='protect the stack against deletion')
+        protect_args.set_defaults(command='protect')
+
         self.regions = regions
 
         self.data_dir = data_dir
@@ -165,6 +169,17 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             elif self.args.command == 'show':
                 s = self.create_stack()
                 print(s.body)
+            elif self.args.command == 'protect':
+                s = self.create_stack()
+
+                # Enable termination protection
+                result = s.enable_termination_protection()
+
+                if self.stack_policy_body is not None:
+                    s.set_stack_policy(self.stack_policy_body)
+                else:
+                    print("No stack policy to set")
+
             return 0
         except botocore.exceptions.ClientError as e:
             logging.error(str(e))
@@ -177,3 +192,13 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         :return: Stack on which the application will operate
         :rtype: Stack
         """
+        pass
+
+    @property
+    def stack_policy_body(self):
+        """Stack Policy that can be set by calling the command ``protect``.
+
+        :return: the inline stack policy
+        :rtype: str
+        """
+        return None
