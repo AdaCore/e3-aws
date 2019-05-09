@@ -27,7 +27,7 @@ def test_cfn_main():
                              {'TemplateBody': ANY})
         stubber.add_response(
             'create_stack', {},
-            {'Capabilities': ['CAPABILITY_IAM'],
+            {'Capabilities': ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'],
              'StackName': 'teststack',
              'TemplateBody': ANY})
         stubber.add_response('describe_stacks', {},
@@ -52,7 +52,7 @@ def test_cfn_main_s3():
                              {'TemplateURL': ANY})
         stubber.add_response(
             'create_stack', {},
-            {'Capabilities': ['CAPABILITY_IAM'],
+            {'Capabilities': ['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'],
              'StackName': 'teststack',
              'TemplateURL': ANY})
         stubber.add_response('describe_stacks', {},
