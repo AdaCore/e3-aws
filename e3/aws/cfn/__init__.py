@@ -326,6 +326,17 @@ class Stack(object):
         return yaml.dump(self.export(), Dumper=CFNYamlDumper)
 
     @client('cloudformation')
+    def describe(self, client):
+        """Describe a stack.
+
+        :return: the stack metadata
+        :rtype: dict
+        """
+        aws_result = client.describe_stacks(
+            StackName=self.name)['Stacks'][0]
+        return aws_result
+
+    @client('cloudformation')
     def create(self, client, url=None):
         """Create a stack.
 
@@ -485,3 +496,36 @@ class Stack(object):
             if 'PROGRESS' in res['ResourceStatus'] or not in_progress_only:
                 result[res['LogicalResourceId']] = res['ResourceStatus']
         return result
+
+    @client('cloudformation')
+    def enable_termination_protection(self, client):
+        """Enable termination protection for a stack."""
+        aws_result = self.describe()
+        if aws_result['EnableTerminationProtection']:
+            print("Stack termination protection is already enabled")
+            return
+
+        aws_result = client.update_termination_protection(
+            EnableTerminationProtection=True,
+            StackName=self.name)
+        assert 'StackId' in aws_result
+        print("Stack termination protection enabled")
+
+    @client('cloudformation')
+    def set_stack_policy(self, stack_policy_body, client):
+        """Set a stack policy.
+
+        :param stack_policy_body: stack policy body to apply
+        :type stack_policy_body: str
+        """
+        aws_result = client.get_stack_policy(
+            StackName=self.name)
+
+        if stack_policy_body != aws_result['StackPolicyBody']:
+            print("Stack policy has been modified")
+
+            client.set_stack_policy(
+                StackName=self.name,
+                StackPolicyBody=stack_policy_body)
+        else:
+            print("Stack policy already up-to-date")

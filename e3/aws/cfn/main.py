@@ -14,7 +14,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
     """Main to handle CloudFormation stack from command line."""
 
     def __init__(self, regions,
-                 force_profile=None,
+                 default_profile='default',
                  data_dir=None,
                  s3_bucket=None,
                  s3_key=''):
@@ -22,9 +22,8 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         :param regions: list of regions on which we can operate
         :type regions: list[str]
-        :param force_profile: if None then add ability to select a credential
-            profile to use. Otherwise profile is set
-        :type force_profile: str | None
+        :param default_profile: default AWS profile to use to create the stack
+        :type default_region: str
         :param data_dir: directory containing files used by cfn-init
         :type data_dir: str | None
         :param s3_bucket: if defined S3 will be used as a proxy for resources.
@@ -40,8 +39,8 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         super(CFNMain, self).__init__(platform_args=False)
         self.argument_parser.add_argument(
             '--profile',
-            help='choose AWS profile',
-            default='default')
+            help='choose AWS profile, default is {}'.format(default_profile),
+            default=default_profile)
 
         if len(regions) > 1:
             self.argument_parser.add_argument(
@@ -53,7 +52,9 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         subs = self.argument_parser.add_subparsers(
             title='commands',
-            description='available commands')
+            description='available commands',
+            dest='command')
+        subs.required = True
 
         create_args = subs.add_parser('push', help='push a stack')
         create_args.add_argument(
@@ -62,6 +63,13 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             default=False,
             help='if used then wait for stack creation completion')
         create_args.set_defaults(command='push')
+
+        show_args = subs.add_parser('show', help='show the changeset content')
+        show_args.set_defaults(command='show')
+
+        protect_args = subs.add_parser(
+            'protect', help='protect the stack against deletion')
+        protect_args.set_defaults(command='protect')
 
         self.regions = regions
 
@@ -158,8 +166,20 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                             print(result)
                             time.sleep(10.0)
                             state = s.state()
-            else:
-                return 1
+            elif self.args.command == 'show':
+                s = self.create_stack()
+                print(s.body)
+            elif self.args.command == 'protect':
+                s = self.create_stack()
+
+                # Enable termination protection
+                result = s.enable_termination_protection()
+
+                if self.stack_policy_body is not None:
+                    s.set_stack_policy(self.stack_policy_body)
+                else:
+                    print("No stack policy to set")
+
             return 0
         except botocore.exceptions.ClientError as e:
             logging.error(str(e))
@@ -172,3 +192,13 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         :return: Stack on which the application will operate
         :rtype: Stack
         """
+        pass
+
+    @property
+    def stack_policy_body(self):
+        """Stack Policy that can be set by calling the command ``protect``.
+
+        :return: the inline stack policy
+        :rtype: str
+        """
+        return None
