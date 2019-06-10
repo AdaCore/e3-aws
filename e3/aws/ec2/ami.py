@@ -2,8 +2,8 @@ import re
 from datetime import datetime
 
 from dateutil.parser import parse as parse_date
+from e3.aws import session
 from e3.aws.ec2 import BlockDeviceMapping, EC2Element
-from e3.env import Env
 
 
 class AMI(EC2Element):
@@ -15,7 +15,8 @@ class AMI(EC2Element):
         'Public': 'public',
         'RootDeviceName': 'root_device'}
 
-    def __init__(self, ami_id, region=None, data=None):
+    @session()
+    def __init__(self, ami_id, region=None, data=None, session=None):
         """Inialize an AMI description object.
 
         :param ami_id: the id of the AMI
@@ -29,8 +30,7 @@ class AMI(EC2Element):
         """
         if data is None:
             assert ami_id is not None
-            aws_env = Env().aws_env
-            data = aws_env.client('ec2', region).describe_images(
+            data = session.client('ec2', region).describe_images(
                 ImageIds=[ami_id])['Images'][0]
         super(AMI, self).__init__(data, region)
 
@@ -84,7 +84,8 @@ class AMI(EC2Element):
                                     self.data.get('Description', ''))
 
     @classmethod
-    def ls(cls, filters=None):
+    @session()
+    def ls(cls, filters=None, session=None):
         """List user AMIs.
 
         :param filters: same as Filters parameters of describe_images
@@ -93,22 +94,24 @@ class AMI(EC2Element):
         :return a list of images
         :rtype: list[AMI]
         """
-        aws_env = Env().aws_env
         if filters is None:
             filters = []
         result = []
-        for r in aws_env.regions:
-            c = aws_env.client('ec2', r)
+        for r in session.regions:
+            c = session.client('ec2', r)
             region_result = c.describe_images(Owners=['self'], Filters=filters)
             for ami in region_result['Images']:
-                result.append(AMI(ami['ImageId'], r, data=ami))
+                result.append(
+                    AMI(ami['ImageId'], r, data=ami, session=session))
         return result
 
     @classmethod
+    @session()
     def find(cls,
              platform=None,
              os_version=None,
              region=None,
+             session=None,
              **kwargs):
         """Find AMIs.
 
@@ -132,7 +135,7 @@ class AMI(EC2Element):
         filters = [{'Name': 'tag-key', 'Values': ['platform']},
                    {'Name': 'tag-key', 'Values': ['timestamp']},
                    {'Name': 'tag-key', 'Values': ['os_version']}]
-        all_images = AMI.ls(filters=filters)
+        all_images = AMI.ls(filters=filters, session=session)
 
         tag_filters = dict(kwargs)
         if platform is not None:
@@ -161,7 +164,8 @@ class AMI(EC2Element):
         return [el[1] for el in result.values()]
 
     @classmethod
-    def select(cls, platform, os_version, region=None, **kwargs):
+    @session()
+    def select(cls, platform, os_version, region=None, session=None, **kwargs):
         """Select one AMI based on platform and os_version.
 
         :param platform: platform name
@@ -174,10 +178,11 @@ class AMI(EC2Element):
         :rtype: AMI
         """
         if region is None:
-            region = Env().aws_env.default_region
+            region = session.default_region
         result = AMI.find(platform=platform + '$',
                           os_version=os_version + '$',
                           region=region,
+                          session=session,
                           **kwargs)
         assert len(result) == 1, \
             'cannot find AMI %s (%s) in region %s %s' % (platform,

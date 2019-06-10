@@ -1,4 +1,4 @@
-from e3.env import Env
+from e3.aws import session
 from dateutil.parser import parse as parse_date
 
 
@@ -49,7 +49,8 @@ class SecurityGroup(EC2Element):
     PROPERTIES = {'GroupName': 'group_name',
                   'GroupId': 'group_id'}
 
-    def __init__(self, group_id=None, region=None, data=None):
+    @session()
+    def __init__(self, group_id=None, region=None, data=None, session=None):
         """Initialize a security group.
 
         :param group_id: group id. Used to retrieve group data
@@ -63,18 +64,18 @@ class SecurityGroup(EC2Element):
         """
         if data is None:
             assert region is not None and group_id is not None
-            aws_env = Env().aws_env
-            data = aws_env.client(
+            data = session.client(
                 'ec2', region).describe_security_groups(
                     GroupIds=[group_id])['SecurityGroups'][0]
         super(SecurityGroup, self).__init__(data, region)
 
     @classmethod
-    def ls(cls, filters=None):
+    @session()
+    def ls(cls, filters=None, session=None):
         """List user security groups.
 
         Note that this API is cross region. All regions used when creating
-        the aws_env are used.
+        the session are used.
 
         :param filters: same as Filters parameters of describe_security_groups
             (see botocore)
@@ -82,12 +83,11 @@ class SecurityGroup(EC2Element):
         :return a list of images
         :rtype: list[SecurityGroup]
         """
-        aws_env = Env().aws_env
         if filters is None:
             filters = []
         result = []
-        for r in aws_env.regions:
-            c = aws_env.client('ec2', r)
+        for r in session.regions:
+            c = session.client('ec2', r)
             region_result = c.describe_security_groups(Filters=filters)
             for sg in region_result['SecurityGroups']:
                 result.append(SecurityGroup(sg['GroupId'], r, data=sg))
@@ -99,7 +99,8 @@ class Instance(EC2Element):
 
     PROPERTIES = {'InstanceId': 'instance_id'}
 
-    def __init__(self, instance_id=None, region=None, data=None):
+    @session()
+    def __init__(self, instance_id=None, region=None, data=None, session=None):
         """Initialize an EC2 instance description.
 
         :param instance_id: instance id. Used to retrieve instance data
@@ -113,8 +114,7 @@ class Instance(EC2Element):
         """
         if data is None:
             assert instance_id is not None and region is not None
-            aws_env = Env().aws_env
-            data = aws_env.client('ec2', region).describe_instances(
+            data = session.client('ec2', region).describe_instances(
                 InstanceIds=[instance_id])['Reservations']['Instances'][0]
 
         super(Instance, self).__init__(data, region)
@@ -162,7 +162,8 @@ class Instance(EC2Element):
                 for bdm in self.data['BlockDeviceMappings']]
 
     @classmethod
-    def ls(cls, filters=None):
+    @session()
+    def ls(cls, filters=None, session=None):
         """List user AMIs.
 
         :param filters: same as Filters parameters of describe_instances
@@ -171,12 +172,11 @@ class Instance(EC2Element):
         :return a list of instances
         :rtype: list[Instance]
         """
-        aws_env = Env().aws_env
         if filters is None:
             filters = []
         result = []
-        for r in aws_env.regions:
-            c = aws_env.client('ec2', r)
+        for r in session.regions:
+            c = session.client('ec2', r)
             region_result = c.describe_instances(Filters=filters)
             for reservation in region_result['Reservations']:
                 if 'Instances' not in reservation:
@@ -184,7 +184,8 @@ class Instance(EC2Element):
                 for instance in reservation['Instances']:
                     result.append(Instance(instance['InstanceId'],
                                            r,
-                                           data=instance))
+                                           data=instance,
+                                           session=session))
         return result
 
 
@@ -286,7 +287,8 @@ class Volume(EC2Element):
         'VolumeType': 'volume_type',
         'Encrypted': 'encrypted'}
 
-    def __init__(self, volume_id=None, region=None, data=None):
+    @session()
+    def __init__(self, volume_id=None, region=None, data=None, session=None):
         """Initialize an EC2 volume description.
 
         :param volume_id: volume id. Used to retrieve volume data
@@ -300,8 +302,7 @@ class Volume(EC2Element):
         """
         if data is None:
             assert volume_id is not None and region is not None
-            aws_env = Env().aws_env
-            data = aws_env.client('ec2', region).describe_volumes(
+            data = session.client('ec2', region).describe_volumes(
                 InstanceIds=[volume_id])['Volumes'][0]
 
         super(Volume, self).__init__(data, region)
@@ -325,13 +326,14 @@ class Volume(EC2Element):
         """
         return parse_date(self.data['CreateTime'])
 
+    @session()
     def delete(self):
         """Delete a volume."""
-        aws_env = Env().aws_env
-        aws_env.client('ec2', self.region).delete_volume(
+        session.client('ec2', self.region).delete_volume(
             VolumeId=self.volume_id)
 
     @classmethod
+    @session()
     def ls(cls, filters=None):
         """List user AMIs.
 
@@ -341,12 +343,11 @@ class Volume(EC2Element):
         :return a list of volumes
         :rtype: list[Volume]
         """
-        aws_env = Env().aws_env
         if filters is None:
             filters = []
         result = []
-        for r in aws_env.regions:
-            c = aws_env.client('ec2', r)
+        for r in session.regions:
+            c = session.client('ec2', r)
             region_result = c.describe_volumes(Filters=filters)
             for volume in region_result.get('Volumes', []):
                 result.append(Volume(volume['VolumeId'], r, data=volume))
@@ -358,7 +359,8 @@ class Snapshot(EC2Element):
         'Encrypted': 'encrypted',
         'SnapshotId': 'snapshot_id'}
 
-    def __init__(self, snapshot_id=None, region=None, data=None):
+    @session()
+    def __init__(self, snapshot_id=None, region=None, data=None, session=None):
         """Initialize an EC2 snapshot description.
 
         :param snapshot_id: snapshot id. Used to retrieve snapshot data
@@ -372,20 +374,20 @@ class Snapshot(EC2Element):
         """
         if data is None:
             assert snapshot_id is not None and region is not None
-            aws_env = Env().aws_env
-            data = aws_env.client('ec2', region).describe_snapshots(
+            data = session.client('ec2', region).describe_snapshots(
                 SnapshotIds=[snapshot_id])['Snapshots'][0]
 
         super(Snapshot, self).__init__(data, region)
 
-    def delete(self):
+    @session()
+    def delete(self, session=None):
         """Delete a snapshot."""
-        aws_env = Env().aws_env
-        aws_env.client('ec2', self.region).delete_snapshot(
+        session.client('ec2', self.region).delete_snapshot(
             SnapshotId=self.snapshot_id)
 
     @classmethod
-    def ls(cls, filters=None):
+    @session()
+    def ls(cls, filters=None, session=None):
         """List snapshots.
 
         :param filters: same as Filters parameters of describe_snapshots
@@ -394,12 +396,11 @@ class Snapshot(EC2Element):
         :return a list of snaptshots
         :rtype: list[Snapshot]
         """
-        aws_env = Env().aws_env
         if filters is None:
             filters = []
         result = []
-        for r in aws_env.regions:
-            c = aws_env.client('ec2', r)
+        for r in session.regions:
+            c = session.client('ec2', r)
             region_result = c.describe_snapshots(
                 OwnerIds=['self'], Filters=filters)
             for snapshot in region_result.get('Snapshots', []):

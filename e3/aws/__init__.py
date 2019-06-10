@@ -3,10 +3,11 @@ from e3.env import Env
 import botocore.session
 
 
-class AWSEnv(object):
+class Session(object):
     """Handle AWS session and clients."""
 
-    def __init__(self, regions=None, stub=False, profile=None):
+    def __init__(self, regions=None, stub=False, profile=None,
+                 credentials=None):
         """Initialize an AWS session.
 
         Once intialized AWS environment can be accessed from Env().aws_env
@@ -18,8 +19,20 @@ class AWSEnv(object):
         :type stub: bool
         :param profile: profile name
         :type profile: str | None
+        :param credentials: AWS credentials dictionary containing the
+            following keys: AccessKeyId, SecretAccessKey, SessionToken
+            as returnedy by ``assume_role``
+        :type credentials: dict[str]
         """
-        self.session = botocore.session.Session(profile=profile)
+        if profile is not None or credentials is None:
+            self.session = botocore.session.Session(profile=profile)
+        else:
+            self.session = botocore.session.Session()
+            self.session.set_credentials(
+                access_key=credentials['AccessKeyId'],
+                secret_key=credentials['SecretAccessKey'],
+                token=credentials['SessionToken'])
+
         self.profile = profile
         if regions is None:
             self.regions = [self.session.region_name]
@@ -29,10 +42,27 @@ class AWSEnv(object):
         self.force_stub = stub
         self.clients = {}
         self.stubbers = {}
-        env = Env()
-        env.aws_env = self
 
         self._account_alias = None
+
+    def assume_role(self, role_arn, role_session_name):
+        """Return a session with ``role_arn`` credentials.
+
+        :param role_arn: ARN of the role to assume
+        :type role_arn: str
+        :param role_session_name: a name to associate with the created
+            session
+        :type role_session_name: str
+
+        :return: a Session instance
+        :rtype: Session
+        """
+        client = self.client('sts', region=self.regions[0])
+        response = client.assume_role(
+            RoleArn=role_arn,
+            RoleSessionName=role_session_name)
+        credentials = response['Credentials']
+        return Session(regions=self.regions, credentials=credentials)
 
     @property
     def account_alias(self):
@@ -103,6 +133,27 @@ class AWSEnv(object):
         return self.clients[name][region]
 
 
+class AWSEnv(Session):
+    """Handle AWS session and clients."""
+
+    def __init__(self, regions=None, stub=False, profile=None):
+        """Initialize an AWS session.
+
+        Once intialized AWS environment can be accessed from Env().aws_env
+
+        :param regions: list of regions to work on. The first region is
+            considered as the default region.
+        :type regions: list[str]
+        :param stub: if True clients are necessarily stubbed
+        :type stub: bool
+        :param profile: profile name
+        :type profile: str | None
+        """
+        super().__init__(regions=regions, stub=stub, profile=profile)
+        env = Env()
+        env.aws_env = self
+
+
 class default_region(object):
     """Context manager used to set a default region."""
 
@@ -145,5 +196,25 @@ def client(name):
                 region = aws_env.default_region
             client = aws_env.client(name, region=region)
             return func(*args, client=client, **kwargs)
+        return wrapper
+    return decorator
+
+
+def session():
+    """Decorate a function to handle automatically AWS session retrieval.
+
+    The function in input should take a mandatory argument called session.
+
+    :param name: session name
+    :type name: str
+    """
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            if 'session' in kwargs:
+                session = kwargs.get('session')
+                del kwargs['session']
+            else:
+                session = Env().aws_env
+            return func(*args, session=session, **kwargs)
         return wrapper
     return decorator
