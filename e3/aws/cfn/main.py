@@ -64,6 +64,12 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             help='if used then wait for stack creation completion')
         create_args.set_defaults(command='push')
 
+        update_args = subs.add_parser('update', help='update a stack')
+        update_args.add_argument(
+            '--changeset',
+            help='Execute a given changeset')
+        update_args.set_defaults(command='update')
+
         show_args = subs.add_parser('show', help='show the changeset content')
         show_args.set_defaults(command='show')
 
@@ -107,7 +113,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             self.aws_env.default_region = self.args.region
 
         try:
-            if self.args.command == 'push':
+            if self.args.command in ('push', 'update'):
                 if self.data_dir is not None and self.s3_data_key is not None:
                     s3 = self.aws_env.client('s3')
 
@@ -137,6 +143,11 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
                 logging.info('Validate template for stack %s' % s.name)
                 s.validate(url=self.s3_template_url)
+
+                if self.args.command == 'update' and \
+                        self.args.changeset:
+                    return s.execute_change_set(
+                        changeset_name=self.args.changeset, wait=True)
 
                 if s.exists():
                     changeset_name = 'changeset%s' % int(time.time())

@@ -448,6 +448,27 @@ class Stack(object):
         return client.estimate_template_cost(TemplateBody=self.body)
 
     @client('cloudformation')
+    def execute_change_set(self, client, changeset_name, wait=False):
+        """Execute a changeset.
+
+        :param client: a botocore client
+        :type client: botocore.client.BaseClient
+        :param changeset_name: name of the changeset to apply
+        :type changeset_name: str
+        :param wait: whether to wait for the completion of the command
+        :type wait: bool
+        """
+        client.execute_change_set(
+            ChangeSetName=changeset_name,
+            StackName=self.name)
+
+        if wait:
+            waiter = client.get_waiter('stack_update_complete')
+            print('... waiting for stack update')
+            waiter.wait(StackName=self.name)
+            print('done')
+
+    @client('cloudformation')
     def resource_status(self, client, in_progress_only=True):
         """Return status of each resources of the stack.
 
