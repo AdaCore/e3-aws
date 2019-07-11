@@ -116,39 +116,12 @@ def join_representer(dumper, data):
 
 
 class CFNYamlDumper(yaml.Dumper):
-    def __init__(self, stream,
-                 default_style=None,
-                 default_flow_style=None,
-                 canonical=None,
-                 indent=None,
-                 width=None,
-                 allow_unicode=None,
-                 line_break=None,
-                 encoding=None,
-                 explicit_start=None,
-                 explicit_end=None,
-                 version=None,
-                 tags=None,
-                 sort_keys=True):
+    def __init__(self, *args, **kwargs):
         """Yaml dumper for cloud formation templates.
 
         See yaml.Dumper documentation.
         """
-        super(CFNYamlDumper, self).__init__(
-            stream=stream,
-            default_style=default_style,
-            default_flow_style=default_flow_style,
-            canonical=canonical,
-            indent=indent,
-            width=width,
-            allow_unicode=allow_unicode,
-            line_break=line_break,
-            encoding=encoding,
-            explicit_start=explicit_start,
-            explicit_end=explicit_end,
-            version=version,
-            tags=tags,
-            sort_keys=sort_keys)
+        super(CFNYamlDumper, self).__init__(*args, **kwargs)
 
         self.add_representer(GetAtt, getatt_representer)
         self.add_representer(Ref, ref_representer)
