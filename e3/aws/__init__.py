@@ -1,3 +1,5 @@
+import argparse
+from uuid import uuid4
 from botocore.stub import Stubber
 from e3.env import Env
 import botocore.session
@@ -57,12 +59,27 @@ class Session(object):
         :return: a Session instance
         :rtype: Session
         """
+        credentials = self.assume_role_get_credentials(
+            role_arn, role_session_name)
+        return Session(regions=self.regions, credentials=credentials)
+
+    def assume_role_get_credentials(self, role_arn, role_session_name):
+        """Return credentials for ``role_arn``.
+
+        :param role_arn: ARN of the role to assume
+        :type role_arn: str
+        :param role_session_name: a name to associate with the created
+            session
+        :type role_session_name: str
+
+        :return: credentials dictionary
+        :rtype: dict
+        """
         client = self.client('sts', region=self.regions[0])
         response = client.assume_role(
             RoleArn=role_arn,
             RoleSessionName=role_session_name)
-        credentials = response['Credentials']
-        return Session(regions=self.regions, credentials=credentials)
+        return response['Credentials']
 
     @property
     def account_alias(self):
@@ -218,3 +235,22 @@ def session():
             return func(*args, session=session, **kwargs)
         return wrapper
     return decorator
+
+
+def assume_role_main():
+    """Generate shell commands to set credentials for a role."""
+    argument_parser = argparse.ArgumentParser()
+    argument_parser.add_argument("role_arn")
+    args = argument_parser.parse_args()
+
+    key_to_envvar = {
+        'AccessKeyId': 'AWS_ACCESS_KEY_ID',
+        'SecretAccessKey': 'AWS_SECRET_ACCESS_KEY',
+        'SessionToken': 'AWS_SESSION_TOKEN'}
+
+    s = Session(regions=['eu-west-1'])
+    for k, v in s.assume_role_get_credentials(
+        args.role_arn,
+            str(uuid4()).replace('-', '')).items():
+        if k in key_to_envvar:
+            print('export {}={}'.format(key_to_envvar[k], v))
