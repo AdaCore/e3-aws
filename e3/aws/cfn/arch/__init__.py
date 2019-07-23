@@ -1,5 +1,5 @@
 from e3.aws.cfn import Stack, Join
-from e3.aws.cfn.arch.security import amazon_security_group
+from e3.aws.cfn.arch.security import amazon_security_groups
 from e3.aws.cfn.ec2 import (EC2NetworkInterface, EIP, Instance,
                             InternetGateway, NatGateway,
                             NetworkInterface,
@@ -245,8 +245,12 @@ class Fortress(Stack):
         self.vpc.add_subnet(self.name + 'PrivateNet', private_cidr_block,
                             nat_to=self.name + 'PublicNet')
 
-        self.add(amazon_security_group(self.name + 'AmazonServices',
-                                       self.vpc.vpc))
+        self.amazon_groups = amazon_security_groups(
+            self.name + 'AmazonServices',
+            self.vpc.vpc)
+
+        for sg in self.amazon_groups.values():
+            self.add(sg)
 
         if bastion_ami is not None:
             # Allow ssh to bastion only from a range of IP address
@@ -334,7 +338,8 @@ class Fortress(Stack):
         """
         groups = [self[self.name + 'InternalSG']]
         if amazon_access:
-            groups.append(self[self.name + 'AmazonServices'])
+            for group in self.amazon_groups.values():
+                groups.append(group)
 
         for name in names:
             self.add(Instance(name, server_ami,
