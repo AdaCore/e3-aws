@@ -5,7 +5,8 @@ import time
 
 import botocore.exceptions
 import yaml
-from e3.aws import AWSEnv
+from e3.aws import AWSEnv, Session
+from e3.env import Env
 from e3.fs import find
 from e3.main import Main
 
@@ -17,7 +18,8 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                  default_profile='default',
                  data_dir=None,
                  s3_bucket=None,
-                 s3_key=''):
+                 s3_key='',
+                 assume_role=None):
         """Initialize main.
 
         :param regions: list of regions on which we can operate
@@ -35,6 +37,9 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             will be stored under a subkey of s3_key. If not defined the root
             of the bucket is used.
         :type: str
+        :param assume_role: tuple containing the two values that are passed
+            to Session.assume_role()
+        :type assume_role: str
         """
         super(CFNMain, self).__init__(platform_args=False)
         self.argument_parser.add_argument(
@@ -85,6 +90,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         self.s3_data_url = None
         self.s3_template_key = None
         self.s3_template_url = None
+        self.assume_role = assume_role
 
         self.timestamp = str(int(time.time()))
 
@@ -108,8 +114,18 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         if aws_env is not None:
             self.aws_env = aws_env
         else:
-            self.aws_env = AWSEnv(regions=self.regions,
-                                  profile=self.args.profile)
+
+            if self.assume_role:
+                main_session = Session(regions=self.regions,
+                                       profile=self.args.profile)
+                self.aws_env = main_session.assume_role(
+                    self.assume_role[0],
+                    self.assume_role[1])
+                # ??? needed since we still use a global variable for AWSEnv
+                Env().aws_env = self.aws_env
+            else:
+                self.aws_env = AWSEnv(regions=self.regions,
+                                      profile=self.args.profile)
             self.aws_env.default_region = self.args.region
 
         try:
