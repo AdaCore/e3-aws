@@ -314,7 +314,7 @@ class Fortress(Stack):
 
     def add_private_server(self, server_ami, names,
                            instance_type='t2.micro',
-                           disk_size=20,
+                           disk_size=None,
                            amazon_access=True,
                            persistent_eni=False):
         """Add servers in the private network.
@@ -326,8 +326,9 @@ class Fortress(Stack):
         :type names: list[str]
         :param instance_type: instance type (default: t2.micro)
         :type instance_type: str
-        :param disk_size: disk size of the instance in Go
-        :type disk_size: int
+        :param disk_size: disk size of the instance in Go or None to reuse the
+            AMI snapshot size
+        :type disk_size: int | None
         :param amazon_access: if True add a security group that allow access to
             amazon services. Default is True
         :type amazon_access: bool
