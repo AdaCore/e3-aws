@@ -60,13 +60,14 @@ class EphemeralDisk(BlockDevice):
 class EBSDisk(BlockDevice):
     """EBS Disk."""
 
-    def __init__(self, device_name, size=20, encrypted=None):
+    def __init__(self, device_name, size=None, encrypted=None):
         """Initialize an EBS disk.
 
         :param device_name: name of the device associated with that disk
         :type device_name: str
-        :param size: disk size in Go (default: 20Go)
-        :type size: int
+        :param size: disk size in Go (default: 20Go). None can be used to
+            use the same size as the original AMI
+        :type size: int | None
         :param encrypted: if True encrypt the device, if None take the default
             (useful when device is created from a snapshot).
         :type encrypted: bool | None
@@ -84,9 +85,11 @@ class EBSDisk(BlockDevice):
         :rtype: dict
         """
         result = {"DeviceName": self.device_name,
-                  "Ebs": {"VolumeSize": str(self.size),
-                          "VolumeType": "gp2",
+                  "Ebs": {"VolumeType": "gp2",
                           "DeleteOnTermination": True}}
+        if self.size is not None:
+            result['Ebs']['VolumeSize'] = str(self.size)
+
         if self.encrypted is not None:
             result['Ebs']['Encrypted'] = self.encrypted
         return result
