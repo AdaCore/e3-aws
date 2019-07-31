@@ -164,7 +164,9 @@ class Instance(EC2Element):
     @classmethod
     @session()
     def ls(cls, filters=None, session=None):
-        """List user AMIs.
+        """List user instances.
+
+        Note that instances in "terminated" mode are ignored.
 
         :param filters: same as Filters parameters of describe_instances
             (see botocore)
@@ -181,10 +183,13 @@ class Instance(EC2Element):
             for reservation in region_result['Reservations']:
                 if 'Instances' not in reservation:
                     continue
-                for instance in reservation['Instances']:
-                    result.append(Instance(instance['InstanceId'],
+                for instance_data in reservation['Instances']:
+                    if instance_data['State']['Name'] == 'terminated':
+                        # Ignore instance that are going to disappear soon
+                        continue
+                    result.append(Instance(instance_data['InstanceId'],
                                            r,
-                                           data=instance,
+                                           data=instance_data,
                                            session=session))
         return result
 
