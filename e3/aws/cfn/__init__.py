@@ -15,6 +15,7 @@ class AWSType(Enum):
     EC2_EIP = 'AWS::EC2::EIP'
     EC2_INSTANCE = 'AWS::EC2::Instance'
     EC2_INTERNET_GATEWAY = 'AWS::EC2::InternetGateway'
+    EC2_LAUNCH_TEMPLATE = 'AWS::EC2::LaunchTemplate'
     EC2_NAT_GATEWAY = 'AWS::EC2::NatGateway'
     EC2_NETWORK_INTERFACE = 'AWS::EC2::NetworkInterface'
     EC2_ROUTE = 'AWS::EC2::Route'
@@ -96,6 +97,24 @@ class Join(object):
         self.delimiter = delimiter
 
 
+class Sub(object):
+    """Intrinsic function Fn::Sub."""
+
+    def __init__(self, content, variables=None):
+        """Initialize a Sub object.
+
+        :param content: a string
+        :type content: str
+        :param variables: a dict asssociating a key to a value
+        :type variables: dict(str, str)
+        """
+        self.content = content
+        if variables:
+            self.variables = dict(variables)
+        else:
+            self.variables = None
+
+
 # Declare Yaml representer for intrinsic functions
 
 def getatt_representer(dumper, data):
@@ -109,6 +128,14 @@ def ref_representer(dumper, data):
 
 def base64_representer(dumper, data):
     return dumper.represent_dict({"Fn::Base64": data.content})
+
+
+def sub_representer(dumper, data):
+    if data.variables:
+        return dumper.represent_sequence(
+            "!Sub", [data.content, data.variables])
+    else:
+        return dumper.represent_scalar('!Sub', data.content)
 
 
 def join_representer(dumper, data):
@@ -127,6 +154,7 @@ class CFNYamlDumper(yaml.Dumper):
         self.add_representer(Ref, ref_representer)
         self.add_representer(Base64, base64_representer)
         self.add_representer(Join, join_representer)
+        self.add_representer(Sub, sub_representer)
 
     def ignore_aliases(self, data):
         """Ignore aliases."""
