@@ -158,7 +158,12 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                                   Key=self.s3_template_key)
 
                 logging.info('Validate template for stack %s' % s.name)
-                s.validate(url=self.s3_template_url)
+                try:
+                    s.validate(url=self.s3_template_url)
+                except Exception:
+                    logging.error("Invalid cloud formation template")
+                    logging.error(s.body)
+                    raise
 
                 if self.args.command == 'update' and \
                         self.args.changeset:
