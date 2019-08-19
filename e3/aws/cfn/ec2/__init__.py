@@ -1,27 +1,26 @@
+import abc
 from email.mime.multipart import MIMEMultipart
 from email.contentmanager import raw_data_manager
 from email.message import EmailMessage
 
-from e3.aws.cfn import Resource, AWSType, GetAtt, Base64, Join, Ref
+from e3.aws.cfn import Resource, AWSType, GetAtt, Base64, Join, Ref, Sub
 from e3.aws.cfn.iam import PolicyDocument
 from e3.aws.ec2.ami import AMI
-from e3.env import Env
 
 
 CFN_INIT_STARTUP_SCRIPT = """#!/bin/sh
 sed -i 's/scripts-user$/[scripts-user, always]/' /etc/cloud/cloud.cfg
-%(cfn_init)s -v --stack %(stack)s \\
-                --region %(region)s \\
-                --resource %(resource)s \\
-                --configsets %(config)s
-
-"""
+${Cfninit} -v --stack ${AWS::StackName} \\
+                --region ${AWS::Region} \\
+                --resource ${Resource} \\
+                --configsets ${Config} ${CfninitOptions}\n\n"""
 
 
 CFN_INIT_STARTUP_SCRIPT_WIN = "C:\\ProgramData\\Amazon\\EC2-Windows\\" + \
     "Launch\\Scripts\\InitializeInstance.ps1 -schedule \n" + \
-    "%(cfn_init)s -v --stack %(stack)s --region " + \
-    "%(region)s --resource %(resource)s --configsets %(config)s \n\n"
+    "${Cfninit} -v --stack ${AWS::StackName} --region " + \
+    "${AWS::Region} --resource ${Resource} --configsets ${Config} " + \
+    "${CfninitOptions}\n\n"
 
 
 class BlockDevice(object):
@@ -182,8 +181,9 @@ class UserData(object):
     def __init__(self):
         """Initialize user data."""
         self.parts = []
+        self.variables = {}
 
-    def add(self, kind, content, name):
+    def add(self, kind, content, name, variables=None):
         """Add an entry in the user data.
 
         :param kind: MIME subtype (maintype is always text)
@@ -193,6 +193,8 @@ class UserData(object):
         :param name: name of the entry (aka filename)
         :type name: str
         """
+        if variables is not None:
+            self.variables.update(variables)
         self.parts.append((name, kind, content))
 
     @property
@@ -214,7 +216,7 @@ class UserData(object):
                                          subtype=kind,
                                          filename=name)
             multi_part.attach(mime_part)
-        return Base64(multi_part.as_string())
+        return Base64(Sub(multi_part.as_string(), self.variables))
 
 
 class WinUserData(object):
@@ -223,8 +225,9 @@ class WinUserData(object):
     def __init__(self):
         """Initialize user data."""
         self.parts = []
+        self.variables = {}
 
-    def add(self, kind, content):
+    def add(self, kind, content, variables=None):
         """Add an entry in the user data.
 
         :param kind: script/powershell/persist
@@ -232,6 +235,8 @@ class WinUserData(object):
         :param content: the content associated with that value
         :type content: str
         """
+        if variables is not None:
+            self.variables.update(variables)
         self.parts.append((kind, content))
 
     @property
@@ -245,7 +250,7 @@ class WinUserData(object):
         props = []
         for kind, part in self.parts:
             props.append('<%s>\n%s\n</%s>' % (kind, part, kind))
-        return Base64(Join(props))
+        return Base64(Sub(Join(props), self.variables))
 
 
 class NetworkInterface(Resource):
@@ -288,59 +293,7 @@ class NetworkInterface(Resource):
         return result
 
 
-class Instance(Resource):
-    """EC2 Instance."""
-
-    ATTRIBUTES = ('AvailabilityZone',
-                  'PrivateDnsName',
-                  'PublicDnsName',
-                  'PrivateIp',
-                  'PublicIp')
-
-    def __init__(self, name, image,
-                 instance_type='t2.micro',
-                 disk_size=None):
-        """Initialize an EC2 instance.
-
-        :param name: logical name of the instance
-        :type name: str
-        :param image: AMI to use
-        :type image_id: e3.aws.ec2.ami.AMI
-        :param instance_type: kind of instance (default t2.micro)
-        :type instance_type: str
-        :param disk_size: size of disk. If None the disk size will be
-            the original AMI one. Note that this affect only the root
-            device of the AMI
-        :type disk_size: int | None
-        """
-        super(Instance, self).__init__(name, kind=AWSType.EC2_INSTANCE)
-        assert isinstance(image, AMI)
-        self.image = image
-        self.instance_type = instance_type
-        self.block_devices = []
-        if disk_size is not None:
-            self.add(EBSDisk(device_name=self.image.root_device,
-                             size=disk_size))
-        self.instance_profile = None
-        self.network_interfaces = {}
-        self.user_data = None
-        self.tags = {}
-
-    @property
-    def public_ip(self):
-        """Return a reference to the public Ip.
-
-        :rtype: e3.aws.cfn.GetAtt
-        """
-        return GetAtt(self.name, 'PublicIp')
-
-    @property
-    def private_ip(self):
-        """Return a reference to the private Ip.
-
-        :rtype: e3.aws.cfn.GetAtt
-        """
-        return GetAtt(self.name, 'PrivateIp')
+class TemplateOrInstance(Resource, metaclass=abc.ABCMeta):
 
     def set_instance_profile(self, profile):
         self.instance_profile = profile
@@ -370,63 +323,7 @@ class Instance(Resource):
             assert False, 'invalid device %s' % device
         return self
 
-    def set_cfn_init(self, stack,
-                     config='init',
-                     cfn_init='/usr/local/bin/cfn-init',
-                     region=None,
-                     resource=None,
-                     metadata=None,
-                     init_script=''):
-        """Add CFN init call on first boot of the instance.
-
-        :param stack: name of the stack containing the cfn metadata
-        :type stack: str
-        :param config: name of the configset to be launch (default: init)
-        :type config: str
-        :param cfn_init: location of cfn-init on the instance
-            (default: /usr/local/bin/cfn-init)
-        :type cfn_init: str
-        :param region: AWS region. if not specified use current default region
-        :type region: name | None
-        :param resource: resource in which the metadata will be added. Default
-            is to use current resource
-        :type resource: str | None
-        :param metadata: dict conforming to AWS::CloudFormation::Init
-            specifications
-        :type metadata: dict | None
-        :param init_script: command to launch after cfn-init
-        :type init_script: powershell command for windows and bash command for
-            linuxes
-        """
-        if region is None:
-            region = Env().aws_env.default_region
-        if resource is None:
-            resource = self.name
-        if self.image.is_windows:
-            self.add_user_data(
-                'powershell',
-                CFN_INIT_STARTUP_SCRIPT_WIN % {
-                    'region': region,
-                    'stack': stack,
-                    'resource': resource,
-                    'cfn_init': cfn_init,
-                    'config': config} +
-                init_script)
-            self.add_user_data('persist', 'true')
-        else:
-            self.add_user_data(
-                'x-shellscript',
-                CFN_INIT_STARTUP_SCRIPT % {'region': region,
-                                           'stack': stack,
-                                           'resource': resource,
-                                           'cfn_init': cfn_init,
-                                           'config': config} +
-                init_script,
-                'init.sh')
-        if metadata is not None:
-            self.metadata['AWS::CloudFormation::Init'] = metadata
-
-    def add_user_data(self, kind, content, name=None):
+    def add_user_data(self, kind, content, name=None, variables=None):
         """Add a user data entry.
 
         :param kind: MIME subtype (maintype is always text)
@@ -440,12 +337,235 @@ class Instance(Resource):
             assert name is None
             if self.user_data is None:
                 self.user_data = WinUserData()
-            self.user_data.add(kind, content)
+            self.user_data.add(kind, content,
+                               variables=variables)
         else:
             assert name is not None
             if self.user_data is None:
                 self.user_data = UserData()
-            self.user_data.add(kind, content, name)
+            self.user_data.add(kind, content, name,
+                               variables=variables)
+
+    def set_cfn_init(self,
+                     config='init',
+                     cfn_init='/usr/local/bin/cfn-init',
+                     resource=None,
+                     metadata=None,
+                     init_script='',
+                     use_instance_role=False):
+        """Add CFN init call on first boot of the instance.
+
+        :param config: name of the configset to be launch (default: init)
+        :type config: str
+        :param cfn_init: location of cfn-init on the instance
+            (default: /usr/local/bin/cfn-init)
+        :type cfn_init: str
+        :param resource: resource in which the metadata will be added. Default
+            is to use current resource
+        :type resource: str | None
+        :param metadata: dict conforming to AWS::CloudFormation::Init
+            specifications
+        :type metadata: dict | None
+        :param init_script: command to launch after cfn-init
+        :type init_script: powershell command for windows and bash command for
+            linuxes
+        """
+        if resource is None:
+            resource = self.name
+
+        if use_instance_role:
+            cfn_init_options = Join([' --role ', self.instance_profile.ref])
+        else:
+            cfn_init_options = ''
+
+        if self.image.is_windows:
+            self.add_user_data(
+                'powershell',
+                CFN_INIT_STARTUP_SCRIPT_WIN + init_script,
+                variables={'Cfninit': cfn_init,
+                           'Config': config,
+                           'Resource': resource,
+                           'CfninitOptions': cfn_init_options})
+            self.add_user_data('persist', 'true')
+        else:
+            self.add_user_data(
+                'x-shellscript',
+                CFN_INIT_STARTUP_SCRIPT + init_script,
+                'init.sh',
+                variables={'Cfninit': cfn_init,
+                           'Config': config,
+                           'Resource': resource,
+                           'CfninitOptions': cfn_init_options})
+
+        if metadata is not None:
+            self.metadata['AWS::CloudFormation::Init'] = metadata
+
+
+class LaunchTemplate(TemplateOrInstance):
+    """EC2 Launch template."""
+
+    def __init__(self, name, image,
+                 instance_type='t2.micro',
+                 disk_size=None,
+                 terminate_on_shutdown=False,
+                 template_name=None,
+                 copy_ami_tags=True):
+        """Initialize an EC2 launch template.
+
+        :param name: logical name of the instance
+        :type name: str
+        :param image: AMI to use
+        :type image_id: e3.aws.ec2.ami.AMI
+        :param instance_type: kind of instance (default t2.micro)
+        :type instance_type: str
+        :param disk_size: size of disk. If None the disk size will be
+            the original AMI one. Note that this affect only the root
+            device of the AMI
+        :type disk_size: int | None
+        :param terminate_on_shutdown: if True the instance is terminated on
+            shutdown
+        :type terminate_on_shutdown: bool
+        :param template_name: if not None set the template name. If None
+            logical resource id will be used for the template name
+        :type template_name: str | None
+        :param copy_ami_tags: if True AMI tags will be copied into the template
+            tags
+        :type copy_ami_tags: bool
+        """
+        super(LaunchTemplate, self).__init__(
+            name, kind=AWSType.EC2_LAUNCH_TEMPLATE)
+        assert isinstance(image, AMI)
+        self.image = image
+        self.instance_type = instance_type
+        self.block_devices = []
+        if disk_size is not None:
+            self.add(EBSDisk(device_name=self.image.root_device,
+                             size=disk_size))
+        self.instance_profile = None
+        self.network_interfaces = {}
+        self.user_data = None
+        self.tags = {}
+        self.terminate_on_shutdown = terminate_on_shutdown
+        if template_name is None:
+            self.template_name = self.name
+        else:
+            self.template_name = template_name
+        self.copy_ami_tags = copy_ami_tags
+
+    @property
+    def properties(self):
+        """Serialize the object as a simple dict.
+
+        Can be used to transform to CloudFormation Yaml format.
+
+        :rtype: dict
+        """
+        td = {'ImageId': self.image.id,
+              'InstanceType': self.instance_type,
+              'BlockDeviceMappings':
+              [bd.properties for bd in self.block_devices]}
+
+        if self.instance_profile is not None:
+            td['IamInstanceProfile'] = {'Name': self.instance_profile.ref}
+
+        if self.network_interfaces:
+            td['NetworkInterfaces'] = []
+            for ni in self.network_interfaces.values():
+                # We need to tweak a bit the result for the network
+                # interface as API is not coherent between Instances and
+                # Templates. Basically the key GroupSet should be replaced
+                # by Groups
+                prop = ni.properties
+                if 'GroupSet' in prop:
+                    prop['Groups'] = prop['GroupSet']
+                    del prop['GroupSet']
+                td['NetworkInterfaces'].append(prop)
+
+        if self.user_data is not None:
+            td['UserData'] = self.user_data.properties
+
+        if self.tags:
+            merged_tags = {}
+            if self.copy_ami_tags:
+                merged_tags.update(self.image.tags)
+            merged_tags.update(self.tags)
+
+            tags = [{'Key': k, 'Value': v}
+                    for k, v in merged_tags.items()]
+
+            td['TagSpecifications'] = [{"ResourceType": "instance",
+                                        "Tags": tags}]
+
+        if self.terminate_on_shutdown:
+            td['InstanceInitiatedShutdownBehavior'] = 'terminate'
+
+        return {"LaunchTemplateData": td,
+                "LaunchTemplateName": self.template_name}
+
+
+class Instance(TemplateOrInstance):
+    """EC2 Instance."""
+
+    ATTRIBUTES = ('AvailabilityZone',
+                  'PrivateDnsName',
+                  'PublicDnsName',
+                  'PrivateIp',
+                  'PublicIp')
+
+    def __init__(self, name, image,
+                 instance_type='t2.micro',
+                 disk_size=None,
+                 terminate_on_shutdown=False,
+                 copy_ami_tags=False):
+        """Initialize an EC2 instance.
+
+        :param name: logical name of the instance
+        :type name: str
+        :param image: AMI to use
+        :type image_id: e3.aws.ec2.ami.AMI
+        :param instance_type: kind of instance (default t2.micro)
+        :type instance_type: str
+        :param disk_size: size of disk. If None the disk size will be
+            the original AMI one. Note that this affect only the root
+            device of the AMI
+        :type disk_size: int | None
+        :param terminate_on_shutdown: if True the instance is terminated on
+            shutdown
+        :type terminate_on_shutdown: bool
+        :param copy_ami_tags: if True AMI tags will be copied into the template
+            tags
+        :type copy_ami_tags: bool
+        """
+        super(Instance, self).__init__(name, kind=AWSType.EC2_INSTANCE)
+        assert isinstance(image, AMI)
+        self.image = image
+        self.instance_type = instance_type
+        self.block_devices = []
+        if disk_size is not None:
+            self.add(EBSDisk(device_name=self.image.root_device,
+                             size=disk_size))
+        self.instance_profile = None
+        self.network_interfaces = {}
+        self.user_data = None
+        self.tags = {}
+        self.copy_ami_tags = copy_ami_tags
+        self.terminate_on_shutdown = terminate_on_shutdown
+
+    @property
+    def public_ip(self):
+        """Return a reference to the public Ip.
+
+        :rtype: e3.aws.cfn.GetAtt
+        """
+        return GetAtt(self.name, 'PublicIp')
+
+    @property
+    def private_ip(self):
+        """Return a reference to the private Ip.
+
+        :rtype: e3.aws.cfn.GetAtt
+        """
+        return GetAtt(self.name, 'PrivateIp')
 
     @property
     def properties(self):
@@ -459,17 +579,30 @@ class Instance(Resource):
                   'InstanceType': self.instance_type,
                   'BlockDeviceMappings': [bd.properties
                                           for bd in self.block_devices]}
+
         if self.instance_profile is not None:
             result['IamInstanceProfile'] = self.instance_profile.ref
+
         if self.network_interfaces:
             result['NetworkInterfaces'] = \
                 [ni.properties
                  for ni in self.network_interfaces.values()]
+
         if self.user_data is not None:
             result['UserData'] = self.user_data.properties
+
         if self.tags:
-            result['Tags'] = [{'Key': k, 'Value': v}
-                              for k, v in self.tags.items()]
+            merged_tags = {}
+            if self.copy_ami_tags:
+                merged_tags.update(self.image.tags)
+            merged_tags.update(self.tags)
+
+            result['Tags'] = [
+                {'Key': k, 'Value': v} for k, v in merged_tags.items()]
+
+        if self.terminate_on_shutdown:
+            result['InstanceInitiatedShutdownBehavior'] = 'terminate'
+
         return result
 
 

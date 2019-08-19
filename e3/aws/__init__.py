@@ -63,7 +63,8 @@ class Session(object):
             role_arn, role_session_name)
         return Session(regions=self.regions, credentials=credentials)
 
-    def assume_role_get_credentials(self, role_arn, role_session_name):
+    def assume_role_get_credentials(self, role_arn, role_session_name,
+                                    session_duration=None):
         """Return credentials for ``role_arn``.
 
         :param role_arn: ARN of the role to assume
@@ -71,14 +72,19 @@ class Session(object):
         :param role_session_name: a name to associate with the created
             session
         :type role_session_name: str
-
+        :param session_duration: session duration in seconds or None for
+            default
+        :type session_duration: int | None
         :return: credentials dictionary
         :rtype: dict
         """
         client = self.client('sts', region=self.regions[0])
-        response = client.assume_role(
-            RoleArn=role_arn,
-            RoleSessionName=role_session_name)
+        arguments = {'RoleArn': role_arn,
+                     'RoleSessionName': role_session_name}
+        if session_duration is not None:
+            arguments['DurationSeconds'] = session_duration
+
+        response = client.assume_role(**arguments)
         return response['Credentials']
 
     @property
@@ -240,6 +246,7 @@ def session():
 def assume_role_main():
     """Generate shell commands to set credentials for a role."""
     argument_parser = argparse.ArgumentParser()
+    argument_parser.add_argument("--session-duration")
     argument_parser.add_argument("role_arn")
     args = argument_parser.parse_args()
 
@@ -249,8 +256,13 @@ def assume_role_main():
         'SessionToken': 'AWS_SESSION_TOKEN'}
 
     s = Session(regions=['eu-west-1'])
+    session_duration = args.session_duration
+    if session_duration is not None:
+        session_duration = int(session_duration)
+
     for k, v in s.assume_role_get_credentials(
-        args.role_arn,
-            str(uuid4()).replace('-', '')).items():
+            args.role_arn,
+            str(uuid4()).replace('-', ''),
+            session_duration=session_duration).items():
         if k in key_to_envvar:
             print('export {}={}'.format(key_to_envvar[k], v))

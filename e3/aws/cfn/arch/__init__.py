@@ -1,7 +1,7 @@
 from e3.aws.cfn import Stack, Join
 from e3.aws.cfn.arch.security import amazon_security_groups
 from e3.aws.cfn.ec2 import (EC2NetworkInterface, EIP, Instance,
-                            InternetGateway, NatGateway,
+                            InternetGateway, LaunchTemplate, NatGateway,
                             NetworkInterface,
                             Route, RouteTable, Subnet,
                             SubnetRouteTableAssociation, VPC, VPCEndpoint,
@@ -316,7 +316,9 @@ class Fortress(Stack):
                            instance_type='t2.micro',
                            disk_size=None,
                            amazon_access=True,
-                           persistent_eni=False):
+                           persistent_eni=False,
+                           is_template=False,
+                           template_name=None):
         """Add servers in the private network.
 
         :param server_ami: AMI to use
@@ -336,6 +338,8 @@ class Fortress(Stack):
             embedded inside the EC2 instance). This is useful to preserve for
             example IP address and MAC address when a server is redeployed.
         :type persistent_eni: bool
+        :param is_template: create a template rather than an instance
+        :type is_template: bool
         """
         groups = [self[self.name + 'InternalSG']]
         if amazon_access:
@@ -343,9 +347,17 @@ class Fortress(Stack):
                 groups.append(group)
 
         for name in names:
-            self.add(Instance(name, server_ami,
-                              instance_type=instance_type,
-                              disk_size=disk_size))
+            if not is_template:
+                self.add(Instance(name, server_ami,
+                                  instance_type=instance_type,
+                                  disk_size=disk_size))
+            else:
+                self.add(LaunchTemplate(
+                    name, server_ami,
+                    instance_type=instance_type,
+                    disk_size=disk_size,
+                    template_name=template_name))
+
             if not persistent_eni:
                 self[name].add(
                     EC2NetworkInterface(self.private_subnet.subnet,

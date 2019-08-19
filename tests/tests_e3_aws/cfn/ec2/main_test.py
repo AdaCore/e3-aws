@@ -143,7 +143,7 @@ def test_cfn_init_set():
             {'ImageIds': ANY})
 
         s += Instance('server', AMI('ami-1234'))
-        s['server'].set_cfn_init(s)
+        s['server'].set_cfn_init()
         assert s.body
 
 
