@@ -247,10 +247,10 @@ class WinUserData(object):
 
         :rtype: dict
         """
-        props = []
+        props = ''
         for kind, part in self.parts:
-            props.append('<%s>\n%s\n</%s>' % (kind, part, kind))
-        return Base64(Sub(Join(props), self.variables))
+            props += '<%s>\n%s\n</%s>' % (kind, part, kind)
+        return Base64(Sub(props, self.variables))
 
 
 class NetworkInterface(Resource):
@@ -374,7 +374,7 @@ class TemplateOrInstance(Resource, metaclass=abc.ABCMeta):
             resource = self.name
 
         if use_instance_role:
-            cfn_init_options = Join([' --role ', self.instance_profile.ref])
+            cfn_init_options = Join([' --role ', self.instance_profile.role])
         else:
             cfn_init_options = ''
 
