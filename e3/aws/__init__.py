@@ -266,3 +266,23 @@ def assume_role_main():
             session_duration=session_duration).items():
         if k in key_to_envvar:
             print('export {}={}'.format(key_to_envvar[k], v))
+
+
+def iterate(fun, key, **kwargs):
+    """Create an iterator other paginate botocore function.
+
+    :param fun: the function to call
+    :type fun: fun
+    :param key: the key in the returned data containing the elements
+    :type key: str
+    :param kwargs: parameters passed to the function
+    :type kwargs: dict
+    """
+    result = fun(**kwargs)
+    for data in result.get(key, []):
+        yield data
+
+    while result.get('NextToken'):
+        result = fun(NextToken=result['NextToken'], **kwargs)
+        for data in result.get(key, []):
+            yield data
