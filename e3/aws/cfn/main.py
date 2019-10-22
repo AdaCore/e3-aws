@@ -4,7 +4,6 @@ import os
 import time
 
 import botocore.exceptions
-import yaml
 from e3.aws import AWSEnv, Session
 from e3.env import Env
 from e3.fs import find
@@ -186,7 +185,15 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                         s.delete_change_set(changeset_name)
                         return 1
                     else:
-                        print(yaml.safe_dump(result['Changes']))
+                        for el in result['Changes']:
+                            if 'ResourceChange' not in el:
+                                continue
+                            logging.info(
+                                "%-8s %-32s: (replacement:%s)",
+                                el['ResourceChange'].get('Action'),
+                                el['ResourceChange'].get('LogicalResourceId'),
+                                el['ResourceChange'].get('Replacement', 'n/a'))
+
                         return 0
                 else:
                     logging.info('Create new stack')
