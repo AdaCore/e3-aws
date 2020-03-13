@@ -5,42 +5,41 @@ import re
 import yaml
 
 
-VALID_STACK_NAME = re.compile('^[a-zA-Z][a-zA-Z0-9-]*$')
+VALID_STACK_NAME = re.compile("^[a-zA-Z][a-zA-Z0-9-]*$")
 VALID_STACK_NAME_MAX_LEN = 128
 
 
 class AWSType(Enum):
     """Cloud Formation resource types."""
 
-    EC2_EIP = 'AWS::EC2::EIP'
-    EC2_INSTANCE = 'AWS::EC2::Instance'
-    EC2_INTERNET_GATEWAY = 'AWS::EC2::InternetGateway'
-    EC2_LAUNCH_TEMPLATE = 'AWS::EC2::LaunchTemplate'
-    EC2_NAT_GATEWAY = 'AWS::EC2::NatGateway'
-    EC2_NETWORK_INTERFACE = 'AWS::EC2::NetworkInterface'
-    EC2_ROUTE = 'AWS::EC2::Route'
-    EC2_ROUTE_TABLE = 'AWS::EC2::RouteTable'
-    EC2_SECURITY_GROUP = 'AWS::EC2::SecurityGroup'
-    EC2_SUBNET = 'AWS::EC2::Subnet'
-    EC2_SUBNET_ROUTE_TABLE_ASSOCIATION = \
-        'AWS::EC2::SubnetRouteTableAssociation'
-    EC2_VOLUME = 'AWS::EC2::Volume'
-    EC2_VPC = 'AWS::EC2::VPC'
-    EC2_VPC_ENDPOINT = 'AWS::EC2::VPCEndpoint'
-    EC2_VPC_GATEWAY_ATTACHMENT = 'AWS::EC2::VPCGatewayAttachment'
-    IAM_GROUP = 'AWS::IAM::Group'
-    IAM_ROLE = 'AWS::IAM::Role'
-    IAM_USER = 'AWS::IAM::User'
-    IAM_POLICY = 'AWS::IAM::Policy'
-    IAM_INSTANCE_PROFILE = 'AWS::IAM::InstanceProfile'
-    ROUTE53_HOSTED_ZONE = 'AWS::Route53::HostedZone'
-    ROUTE53_RECORDSET = 'AWS::Route53::RecordSet'
-    S3_BUCKET = 'AWS::S3::Bucket'
-    S3_BUCKET_POLICY = 'AWS::S3::BucketPolicy'
-    SERVICE_DISCOVERY_PRIVATE_DNS_NAMESPACE = \
-        'AWS::ServiceDiscovery::PrivateDnsNamespace'
-    CODE_COMMIT_REPOSITORY = \
-        'AWS::CodeCommit::Repository'
+    EC2_EIP = "AWS::EC2::EIP"
+    EC2_INSTANCE = "AWS::EC2::Instance"
+    EC2_INTERNET_GATEWAY = "AWS::EC2::InternetGateway"
+    EC2_LAUNCH_TEMPLATE = "AWS::EC2::LaunchTemplate"
+    EC2_NAT_GATEWAY = "AWS::EC2::NatGateway"
+    EC2_NETWORK_INTERFACE = "AWS::EC2::NetworkInterface"
+    EC2_ROUTE = "AWS::EC2::Route"
+    EC2_ROUTE_TABLE = "AWS::EC2::RouteTable"
+    EC2_SECURITY_GROUP = "AWS::EC2::SecurityGroup"
+    EC2_SUBNET = "AWS::EC2::Subnet"
+    EC2_SUBNET_ROUTE_TABLE_ASSOCIATION = "AWS::EC2::SubnetRouteTableAssociation"
+    EC2_VOLUME = "AWS::EC2::Volume"
+    EC2_VPC = "AWS::EC2::VPC"
+    EC2_VPC_ENDPOINT = "AWS::EC2::VPCEndpoint"
+    EC2_VPC_GATEWAY_ATTACHMENT = "AWS::EC2::VPCGatewayAttachment"
+    IAM_GROUP = "AWS::IAM::Group"
+    IAM_ROLE = "AWS::IAM::Role"
+    IAM_USER = "AWS::IAM::User"
+    IAM_POLICY = "AWS::IAM::Policy"
+    IAM_INSTANCE_PROFILE = "AWS::IAM::InstanceProfile"
+    ROUTE53_HOSTED_ZONE = "AWS::Route53::HostedZone"
+    ROUTE53_RECORDSET = "AWS::Route53::RecordSet"
+    S3_BUCKET = "AWS::S3::Bucket"
+    S3_BUCKET_POLICY = "AWS::S3::BucketPolicy"
+    SERVICE_DISCOVERY_PRIVATE_DNS_NAMESPACE = (
+        "AWS::ServiceDiscovery::PrivateDnsNamespace"
+    )
+    CODE_COMMIT_REPOSITORY = "AWS::CodeCommit::Repository"
 
 
 class GetAtt(object):
@@ -117,13 +116,13 @@ class Sub(object):
 
 # Declare Yaml representer for intrinsic functions
 
+
 def getatt_representer(dumper, data):
-    return dumper.represent_scalar(
-        '!GetAtt', '%s.%s' % (data.name, data.attribute))
+    return dumper.represent_scalar("!GetAtt", "%s.%s" % (data.name, data.attribute))
 
 
 def ref_representer(dumper, data):
-    return dumper.represent_scalar('!Ref', data.name)
+    return dumper.represent_scalar("!Ref", data.name)
 
 
 def base64_representer(dumper, data):
@@ -132,14 +131,13 @@ def base64_representer(dumper, data):
 
 def sub_representer(dumper, data):
     if data.variables:
-        return dumper.represent_sequence(
-            "!Sub", [data.content, data.variables])
+        return dumper.represent_sequence("!Sub", [data.content, data.variables])
     else:
-        return dumper.represent_scalar('!Sub', data.content)
+        return dumper.represent_scalar("!Sub", data.content)
 
 
 def join_representer(dumper, data):
-    return dumper.represent_sequence('!Join', [data.delimiter, data.content])
+    return dumper.represent_sequence("!Join", [data.delimiter, data.content])
 
 
 class CFNYamlDumper(yaml.Dumper):
@@ -175,20 +173,20 @@ class Resource(object):
         :param kind: resource kind
         :type kind: e3.aws.cfn.types.AWSType
         """
-        assert isinstance(kind, AWSType), \
-            'resource kind should be an AWSType: found %s' % kind
-        assert name.isalnum(), \
-            'resource name should be alphanumeric: found %s' % name
+        assert isinstance(kind, AWSType), (
+            "resource kind should be an AWSType: found %s" % kind
+        )
+        assert name.isalnum(), "resource name should be alphanumeric: found %s" % name
         self.name = name
         self.kind = kind
         self.depends = None
 
         # Track region in which the resource is created
         e = Env()
-        if hasattr(e, 'aws_env'):
+        if hasattr(e, "aws_env"):
             self.region = Env().aws_env.default_region
         else:
-            self.region = 'invalid-region'
+            self.region = "invalid-region"
         self.metadata = {}
 
     def getatt(self, name):
@@ -201,7 +199,7 @@ class Resource(object):
         :rtype: e3.aws.cfn.types.GetAtt
 
         """
-        assert name in self.ATTRIBUTES, 'invalid attribute %s' % name
+        assert name in self.ATTRIBUTES, "invalid attribute %s" % name
         return GetAtt(self.name, name)
 
     @property
@@ -230,12 +228,11 @@ class Resource(object):
             fragment
         :rtype: dict
         """
-        result = {'Type': self.kind.value,
-                  'Properties': self.properties}
+        result = {"Type": self.kind.value, "Properties": self.properties}
         if self.depends is not None:
-            result['DependsOn'] = self.depends
+            result["DependsOn"] = self.depends
         if self.metadata:
-            result['Metadata'] = self.metadata
+            result["Metadata"] = self.metadata
         return result
 
 
@@ -250,9 +247,9 @@ class Stack(object):
         :param description: a description of the stack
         :type description: str | None
         """
-        assert re.match(VALID_STACK_NAME, name) and \
-            len(name) <= VALID_STACK_NAME_MAX_LEN, \
-            'invalid stack name: %s' % name
+        assert (
+            re.match(VALID_STACK_NAME, name) and len(name) <= VALID_STACK_NAME_MAX_LEN
+        ), ("invalid stack name: %s" % name)
         self.resources = {}
         self.name = name
         self.description = description
@@ -266,10 +263,12 @@ class Stack(object):
         :return: the current stack
         :rtype: Stack
         """
-        assert isinstance(element, Resource) or isinstance(element, Stack), \
+        assert isinstance(element, Resource) or isinstance(element, Stack), (
             "a resource or a stack is expected. got %s" % element
-        assert element.name not in self.resources, \
-            'resource already exist: %s' % element.name
+        )
+        assert element.name not in self.resources, (
+            "resource already exist: %s" % element.name
+        )
         self.resources[element.name] = element
         return self
 
@@ -305,16 +304,14 @@ class Stack(object):
                 resources[resource.name] = resource.export()
             else:
                 # resource is a stack
-                stack_resources = resource.export()['Resources']
+                stack_resources = resource.export()["Resources"]
                 for k, v in stack_resources.items():
                     assert k not in resources
                     resources[k] = v
 
-        result = {
-            'AWSTemplateFormatVersion': '2010-09-09',
-            'Resources': resources}
+        result = {"AWSTemplateFormatVersion": "2010-09-09", "Resources": resources}
         if self.description is not None:
-            result['Description'] = self.description
+            result["Description"] = self.description
         return result
 
     @property
@@ -326,18 +323,17 @@ class Stack(object):
         """
         return yaml.dump(self.export(), Dumper=CFNYamlDumper)
 
-    @client('cloudformation')
+    @client("cloudformation")
     def describe(self, client):
         """Describe a stack.
 
         :return: the stack metadata
         :rtype: dict
         """
-        aws_result = client.describe_stacks(
-            StackName=self.name)['Stacks'][0]
+        aws_result = client.describe_stacks(StackName=self.name)["Stacks"][0]
         return aws_result
 
-    @client('cloudformation')
+    @client("cloudformation")
     def create(self, client, url=None):
         """Create a stack.
 
@@ -355,12 +351,14 @@ class Stack(object):
             return client.create_stack(
                 StackName=self.name,
                 TemplateBody=self.body,
-                Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'])
+                Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+            )
         else:
             return client.create_stack(
                 StackName=self.name,
                 TemplateURL=url,
-                Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'])
+                Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+            )
 
     def exists(self):
         """Check if a given stack exists.
@@ -373,12 +371,12 @@ class Stack(object):
         except Exception:
             return False
 
-    @client('cloudformation')
+    @client("cloudformation")
     def state(self, client):
         """Return state of the stack on AWS."""
         return client.describe_stacks(StackName=self.name)
 
-    @client('cloudformation')
+    @client("cloudformation")
     def validate(self, client, url=None):
         """Validate a template.
 
@@ -397,7 +395,7 @@ class Stack(object):
         else:
             return client.validate_template(TemplateURL=url)
 
-    @client('cloudformation')
+    @client("cloudformation")
     def create_change_set(self, name, client, url=None):
         """Create a change set.
 
@@ -421,15 +419,17 @@ class Stack(object):
                 ChangeSetName=name,
                 StackName=self.name,
                 TemplateBody=self.body,
-                Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'])
+                Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+            )
         else:
             return client.create_change_set(
                 ChangeSetName=name,
                 StackName=self.name,
                 TemplateURL=url,
-                Capabilities=['CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM'])
+                Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+            )
 
-    @client('cloudformation')
+    @client("cloudformation")
     def describe_change_set(self, name, client):
         """Describe a change set.
 
@@ -440,10 +440,9 @@ class Stack(object):
         :param name: name of the changeset
         :type name: str
         """
-        return client.describe_change_set(ChangeSetName=name,
-                                          StackName=self.name)
+        return client.describe_change_set(ChangeSetName=name, StackName=self.name)
 
-    @client('cloudformation')
+    @client("cloudformation")
     def delete_change_set(self, name, client):
         """Delete a change set.
 
@@ -452,10 +451,9 @@ class Stack(object):
         :param name: name of the changeset
         :type name: str
         """
-        return client.delete_change_set(ChangeSetName=name,
-                                        StackName=self.name)
+        return client.delete_change_set(ChangeSetName=name, StackName=self.name)
 
-    @client('cloudformation')
+    @client("cloudformation")
     def delete(self, client):
         """Delete a stack.
 
@@ -466,7 +464,7 @@ class Stack(object):
         """
         return client.delete_stack(StackName=self.name)
 
-    @client('cloudformation')
+    @client("cloudformation")
     def cost(self, client):
         """Compute cost of the stack (estimation).
 
@@ -475,7 +473,7 @@ class Stack(object):
         """
         return client.estimate_template_cost(TemplateBody=self.body)
 
-    @client('cloudformation')
+    @client("cloudformation")
     def execute_change_set(self, client, changeset_name, wait=False):
         """Execute a changeset.
 
@@ -486,17 +484,15 @@ class Stack(object):
         :param wait: whether to wait for the completion of the command
         :type wait: bool
         """
-        client.execute_change_set(
-            ChangeSetName=changeset_name,
-            StackName=self.name)
+        client.execute_change_set(ChangeSetName=changeset_name, StackName=self.name)
 
         if wait:
-            waiter = client.get_waiter('stack_update_complete')
-            print('... waiting for stack update')
+            waiter = client.get_waiter("stack_update_complete")
+            print("... waiting for stack update")
             waiter.wait(StackName=self.name)
-            print('done')
+            print("done")
 
-    @client('cloudformation')
+    @client("cloudformation")
     def resource_status(self, client, in_progress_only=True):
         """Return status of each resources of the stack.
 
@@ -512,42 +508,41 @@ class Stack(object):
         :rtype: dict
         """
         aws_result = client.describe_stack_resources(StackName=self.name)
-        assert 'StackResources' in aws_result
+        assert "StackResources" in aws_result
         result = {}
-        for res in aws_result['StackResources']:
-            if 'PROGRESS' in res['ResourceStatus'] or not in_progress_only:
-                result[res['LogicalResourceId']] = res['ResourceStatus']
+        for res in aws_result["StackResources"]:
+            if "PROGRESS" in res["ResourceStatus"] or not in_progress_only:
+                result[res["LogicalResourceId"]] = res["ResourceStatus"]
         return result
 
-    @client('cloudformation')
+    @client("cloudformation")
     def enable_termination_protection(self, client):
         """Enable termination protection for a stack."""
         aws_result = self.describe()
-        if aws_result['EnableTerminationProtection']:
+        if aws_result["EnableTerminationProtection"]:
             print("Stack termination protection is already enabled")
             return
 
         aws_result = client.update_termination_protection(
-            EnableTerminationProtection=True,
-            StackName=self.name)
-        assert 'StackId' in aws_result
+            EnableTerminationProtection=True, StackName=self.name
+        )
+        assert "StackId" in aws_result
         print("Stack termination protection enabled")
 
-    @client('cloudformation')
+    @client("cloudformation")
     def set_stack_policy(self, stack_policy_body, client):
         """Set a stack policy.
 
         :param stack_policy_body: stack policy body to apply
         :type stack_policy_body: str
         """
-        aws_result = client.get_stack_policy(
-            StackName=self.name)
+        aws_result = client.get_stack_policy(StackName=self.name)
 
-        if stack_policy_body != aws_result['StackPolicyBody']:
+        if stack_policy_body != aws_result["StackPolicyBody"]:
             print("Stack policy has been modified")
 
             client.set_stack_policy(
-                StackName=self.name,
-                StackPolicyBody=stack_policy_body)
+                StackName=self.name, StackPolicyBody=stack_policy_body
+            )
         else:
             print("Stack policy already up-to-date")

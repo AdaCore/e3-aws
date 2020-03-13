@@ -8,8 +8,7 @@ import botocore.session
 class Session(object):
     """Handle AWS session and clients."""
 
-    def __init__(self, regions=None, stub=False, profile=None,
-                 credentials=None):
+    def __init__(self, regions=None, stub=False, profile=None, credentials=None):
         """Initialize an AWS session.
 
         Once intialized AWS environment can be accessed from Env().aws_env
@@ -31,9 +30,10 @@ class Session(object):
         else:
             self.session = botocore.session.Session()
             self.session.set_credentials(
-                access_key=credentials['AccessKeyId'],
-                secret_key=credentials['SecretAccessKey'],
-                token=credentials['SessionToken'])
+                access_key=credentials["AccessKeyId"],
+                secret_key=credentials["SecretAccessKey"],
+                token=credentials["SessionToken"],
+            )
 
         self.profile = profile
         if regions is None:
@@ -59,12 +59,12 @@ class Session(object):
         :return: a Session instance
         :rtype: Session
         """
-        credentials = self.assume_role_get_credentials(
-            role_arn, role_session_name)
+        credentials = self.assume_role_get_credentials(role_arn, role_session_name)
         return Session(regions=self.regions, credentials=credentials)
 
-    def assume_role_get_credentials(self, role_arn, role_session_name,
-                                    session_duration=None):
+    def assume_role_get_credentials(
+        self, role_arn, role_session_name, session_duration=None
+    ):
         """Return credentials for ``role_arn``.
 
         :param role_arn: ARN of the role to assume
@@ -78,27 +78,26 @@ class Session(object):
         :return: credentials dictionary
         :rtype: dict
         """
-        client = self.client('sts', region=self.regions[0])
-        arguments = {'RoleArn': role_arn,
-                     'RoleSessionName': role_session_name}
+        client = self.client("sts", region=self.regions[0])
+        arguments = {"RoleArn": role_arn, "RoleSessionName": role_session_name}
         if session_duration is not None:
-            arguments['DurationSeconds'] = session_duration
+            arguments["DurationSeconds"] = session_duration
 
         response = client.assume_role(**arguments)
-        return response['Credentials']
+        return response["Credentials"]
 
     @property
     def account_alias(self):
         """Return current account alias."""
         if self._account_alias is None:
-            client = self.client('iam', region='us-east-1')
-            aliases = client.list_account_aliases()['AccountAliases']
+            client = self.client("iam", region="us-east-1")
+            aliases = client.list_account_aliases()["AccountAliases"]
             if aliases:
                 # Even if the API return a list there currently only one
                 # alias possible
                 self._account_alias = aliases[0]
             else:
-                self._account_alias = ''
+                self._account_alias = ""
         return self._account_alias
 
     def stub(self, name, region=None):
@@ -139,18 +138,18 @@ class Session(object):
         if region is None:
             region = self.default_region
 
-        assert region is not None, 'no region or default_region set'
+        assert region is not None, "no region or default_region set"
 
         if name not in self.clients:
             self.clients[name] = {}
             self.stubbers[name] = {}
 
         if region not in self.clients[name]:
-            self.clients[name][region] = \
-                self.session.create_client(name, region_name=region)
+            self.clients[name][region] = self.session.create_client(
+                name, region_name=region
+            )
             if self.force_stub:
-                self.stubbers[name][region] = \
-                    Stubber(self.clients[name][region])
+                self.stubbers[name][region] = Stubber(self.clients[name][region])
                 self.stubbers[name][region].activate()
 
         return self.clients[name][region]
@@ -209,17 +208,20 @@ def client(name):
     :param name: client name
     :type name: str
     """
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             aws_env = Env().aws_env
-            if 'region' in kwargs:
-                region = kwargs['region']
-                del kwargs['region']
+            if "region" in kwargs:
+                region = kwargs["region"]
+                del kwargs["region"]
             else:
                 region = aws_env.default_region
             client = aws_env.client(name, region=region)
             return func(*args, client=client, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -231,15 +233,18 @@ def session():
     :param name: session name
     :type name: str
     """
+
     def decorator(func):
         def wrapper(*args, **kwargs):
-            if 'session' in kwargs:
-                session = kwargs.get('session')
-                del kwargs['session']
+            if "session" in kwargs:
+                session = kwargs.get("session")
+                del kwargs["session"]
             else:
                 session = Env().aws_env
             return func(*args, session=session, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -251,21 +256,21 @@ def assume_role_main():
     args = argument_parser.parse_args()
 
     key_to_envvar = {
-        'AccessKeyId': 'AWS_ACCESS_KEY_ID',
-        'SecretAccessKey': 'AWS_SECRET_ACCESS_KEY',
-        'SessionToken': 'AWS_SESSION_TOKEN'}
+        "AccessKeyId": "AWS_ACCESS_KEY_ID",
+        "SecretAccessKey": "AWS_SECRET_ACCESS_KEY",
+        "SessionToken": "AWS_SESSION_TOKEN",
+    }
 
-    s = Session(regions=['eu-west-1'])
+    s = Session(regions=["eu-west-1"])
     session_duration = args.session_duration
     if session_duration is not None:
         session_duration = int(session_duration)
 
     for k, v in s.assume_role_get_credentials(
-            args.role_arn,
-            str(uuid4()).replace('-', ''),
-            session_duration=session_duration).items():
+        args.role_arn, str(uuid4()).replace("-", ""), session_duration=session_duration
+    ).items():
         if k in key_to_envvar:
-            print('export {}={}'.format(key_to_envvar[k], v))
+            print("export {}={}".format(key_to_envvar[k], v))
 
 
 def iterate(fun, key, **kwargs):
@@ -282,7 +287,7 @@ def iterate(fun, key, **kwargs):
     for data in result.get(key, []):
         yield data
 
-    while result.get('NextToken'):
-        result = fun(NextToken=result['NextToken'], **kwargs)
+    while result.get("NextToken"):
+        result = fun(NextToken=result["NextToken"], **kwargs)
         for data in result.get(key, []):
             yield data

@@ -7,14 +7,14 @@ from e3.aws.cfn.iam import PolicyDocument
 class AccessControl(Enum):
     """Canned ACLs for buckets."""
 
-    AUTHENTICATED_READ = 'AuthenticatedRead'
-    AWS_EXEC_READ = 'AwsExecRead'
-    BUCKET_OWNER_READ = 'BucketOwnerRead'
-    BUCKET_OWNER_FULL_CONTROL = 'BucketOwnerFullControl'
-    LOG_DELIVERY_WRITE = 'LogDeliveryWrite'
-    PRIVATE = 'Private'
-    PUBLIC_READ = 'PublicRead'
-    PUBLIC_WRITE = 'PublicReadWrite'
+    AUTHENTICATED_READ = "AuthenticatedRead"
+    AWS_EXEC_READ = "AwsExecRead"
+    BUCKET_OWNER_READ = "BucketOwnerRead"
+    BUCKET_OWNER_FULL_CONTROL = "BucketOwnerFullControl"
+    LOG_DELIVERY_WRITE = "LogDeliveryWrite"
+    PRIVATE = "Private"
+    PUBLIC_READ = "PublicRead"
+    PUBLIC_WRITE = "PublicReadWrite"
 
 
 class BucketPolicy(Resource):
@@ -44,21 +44,20 @@ class BucketPolicy(Resource):
 
         :rtype: dict
         """
-        result = {'PolicyDocument': self.policy_document.properties}
+        result = {"PolicyDocument": self.policy_document.properties}
         if isinstance(self.bucket, Bucket):
-            result['Bucket'] = self.bucket.ref
+            result["Bucket"] = self.bucket.ref
         else:
-            result['Bucket'] = self.bucket
+            result["Bucket"] = self.bucket
         return result
 
 
 class Bucket(Resource):
     """S3 Bucket."""
 
-    ATTRIBUTES = ('Arn', 'DomainName')
+    ATTRIBUTES = ("Arn", "DomainName")
 
-    def __init__(self, name, access_control=None,
-                 bucket_name=None, versioning=False):
+    def __init__(self, name, access_control=None, bucket_name=None, versioning=False):
         """Initialize a S3 bucket.
 
         :param name: logical name of the resource in the stack
@@ -81,7 +80,7 @@ class Bucket(Resource):
 
     @property
     def arn(self):
-        return self.getatt('Arn')
+        return self.getatt("Arn")
 
     @property
     def properties(self):
@@ -91,15 +90,18 @@ class Bucket(Resource):
 
         :rtype: dict
         """
-        result = {'AccessControl': self.access_control.value,
-                  "BucketEncryption": {
-                      "ServerSideEncryptionConfiguration": [
-                          {"ServerSideEncryptionByDefault": {
-                              "SSEAlgorithm": "aws:kms"}}]}}
+        result = {
+            "AccessControl": self.access_control.value,
+            "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                    {"ServerSideEncryptionByDefault": {"SSEAlgorithm": "aws:kms"}}
+                ]
+            },
+        }
         if self.bucket_name is not None:
-            result['BucketName'] = self.bucket_name
+            result["BucketName"] = self.bucket_name
         if self.versioning:
-            result['VersioningConfiguration'] = {'Status': 'Enabled'}
+            result["VersioningConfiguration"] = {"Status": "Enabled"}
         else:
-            result['VersioningConfiguration'] = {'Status': 'Suspended'}
+            result["VersioningConfiguration"] = {"Status": "Suspended"}
         return result

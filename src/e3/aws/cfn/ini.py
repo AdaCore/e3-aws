@@ -1,4 +1,3 @@
-
 class CfnConfig(object):
     """A cfn-ini config."""
 
@@ -7,13 +6,9 @@ class CfnConfig(object):
         self.files = {}
         self.commands = []
 
-    def add_file(self,
-                 filename,
-                 mode='644',
-                 owner='root',
-                 group='root',
-                 content=None,
-                 path=None):
+    def add_file(
+        self, filename, mode="644", owner="root", group="root", content=None, path=None
+    ):
         """Add a file to a config.
 
         Either content or path should be set but not both.
@@ -31,26 +26,22 @@ class CfnConfig(object):
         :param path: path to file containing the content
         :type path: str | None
         """
-        assert content is None or path is None, \
-            'cannot set both path and content'
+        assert content is None or path is None, "cannot set both path and content"
         if path is not None:
-            with open(path, 'r') as fd:
+            with open(path, "r") as fd:
                 content = fd.read()
-        assert content is not None, \
-            'no content for file'
+        assert content is not None, "no content for file"
 
-        self.files[filename] = {'mode': '000' + mode,
-                                'owner': owner,
-                                'group': group,
-                                'content': content}
+        self.files[filename] = {
+            "mode": "000" + mode,
+            "owner": owner,
+            "group": group,
+            "content": content,
+        }
 
-    def add_s3_file(self,
-                    filename,
-                    url,
-                    authentication,
-                    mode='644',
-                    owner='root',
-                    group='root'):
+    def add_s3_file(
+        self, filename, url, authentication, mode="644", owner="root", group="root"
+    ):
         """Add file to a config where file body is on S3.
 
         :param filename: path on the target system
@@ -67,11 +58,13 @@ class CfnConfig(object):
         :param group: group (default: root)
         :type group: str
         """
-        self.files[filename] = {'mode': '000' + mode,
-                                'owner': owner,
-                                'group': group,
-                                'source': url,
-                                'authentication': authentication}
+        self.files[filename] = {
+            "mode": "000" + mode,
+            "owner": owner,
+            "group": group,
+            "source": url,
+            "authentication": authentication,
+        }
 
     def add_command(self, command):
         """Add a command to the config.
@@ -91,13 +84,13 @@ class CfnConfig(object):
 
         :rtype: dict
         """
-        result = {'files': self.files, 'commands': {}}
+        result = {"files": self.files, "commands": {}}
         for index, command in enumerate(self.commands):
             # Command name define the order in which they are executed.
             # Alphanumeric order thus the need for leading zeros when
             # generating the command names based on integers.
-            result['commands']['%04d' % index] = {}
-            result['commands']['%04d' % index]['command'] = command
+            result["commands"]["%04d" % index] = {}
+            result["commands"]["%04d" % index]["command"] = command
         return result
 
 
@@ -130,7 +123,7 @@ class CfnIni(object):
         :type config: CfnConfig
         """
         assert isinstance(config, CfnConfig)
-        assert name != 'configSets', 'configSets is not a valid config name'
+        assert name != "configSets", "configSets is not a valid config name"
         self.configs[name] = config
 
     @property
@@ -143,7 +136,7 @@ class CfnIni(object):
         """
         result = {}
         if self.config_sets:
-            result['configSets'] = self.config_sets
+            result["configSets"] = self.config_sets
         for name, config in self.configs.items():
             result[name] = config.properties
         return result
