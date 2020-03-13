@@ -9,29 +9,19 @@ class GroupSecurityRule(object, metaclass=abc.ABCMeta):
 
     RULE_TYPE = None
     PROTOCOLS = {
-        'ssh': {
-            'from': 22, 'to': 22, 'protocol': 'tcp'},
-        'smtps': {
-            'from': 465, 'to': 465, 'protocol': 'tcp'},
-        'https': {
-            'from': 443, 'to': 443, 'protocol': 'tcp'},
-        'http': {
-            'from': 80, 'to': 80, 'protocol': 'tcp'},
-        'pip': {
-            'from': 3128, 'to': 3128, 'protocol': 'tcp'},
-        'alltcp': {
-            'from': 1, 'to': 65535, 'protocol': 'tcp'},
-        'ntp': {
-            'from': 123, 'to': 123, 'protocol': 'udp'},
-        'postgresql': {
-            'from': 5432, 'to': 5432, 'protocol': 'tcp'}}
+        "ssh": {"from": 22, "to": 22, "protocol": "tcp"},
+        "smtps": {"from": 465, "to": 465, "protocol": "tcp"},
+        "https": {"from": 443, "to": 443, "protocol": "tcp"},
+        "http": {"from": 80, "to": 80, "protocol": "tcp"},
+        "pip": {"from": 3128, "to": 3128, "protocol": "tcp"},
+        "alltcp": {"from": 1, "to": 65535, "protocol": "tcp"},
+        "ntp": {"from": 123, "to": 123, "protocol": "udp"},
+        "postgresql": {"from": 5432, "to": 5432, "protocol": "tcp"},
+    }
 
-    def __init__(self,
-                 protocol,
-                 target,
-                 from_port=None,
-                 to_port=None,
-                 description=None):
+    def __init__(
+        self, protocol, target, from_port=None, to_port=None, description=None
+    ):
         """Initialize a security rule.
 
         :param protocol: either an ip protocol name or int (see AWS
@@ -54,10 +44,10 @@ class GroupSecurityRule(object, metaclass=abc.ABCMeta):
         if protocol in self.PROTOCOLS:
             # Handle common protocols
             p = self.PROTOCOLS[protocol]
-            self.ip_protocol = p['protocol']
-            self.from_port = p.get('from', None)
-            self.to_port = p.get('to', None)
-            self.description = p.get('description', None)
+            self.ip_protocol = p["protocol"]
+            self.from_port = p.get("from", None)
+            self.to_port = p.get("to", None)
+            self.description = p.get("description", None)
         else:
             self.ip_protocol = protocol
             self.from_port = None
@@ -78,14 +68,13 @@ class GroupSecurityRule(object, metaclass=abc.ABCMeta):
 
     @property
     def properties(self):
-        result = {self.RULE_TYPE: self.target,
-                  'IpProtocol': self.ip_protocol}
+        result = {self.RULE_TYPE: self.target, "IpProtocol": self.ip_protocol}
         if self.from_port is not None:
-            result['FromPort'] = self.from_port
+            result["FromPort"] = self.from_port
         if self.to_port is not None:
-            result['ToPort'] = self.to_port
+            result["ToPort"] = self.to_port
         if self.description is not None:
-            result['Description'] = self.description
+            result["Description"] = self.description
         return result
 
 
@@ -98,15 +87,15 @@ class IngressRule(GroupSecurityRule, metaclass=abc.ABCMeta):
 
 
 class Ipv4EgressRule(EgressRule):
-    RULE_TYPE = 'CidrIp'
+    RULE_TYPE = "CidrIp"
 
 
 class PrefixListEgressRule(EgressRule):
-    RULE_TYPE = 'DestinationPrefixListId'
+    RULE_TYPE = "DestinationPrefixListId"
 
 
 class Ipv4IngressRule(IngressRule):
-    RULE_TYPE = 'CidrIp'
+    RULE_TYPE = "CidrIp"
 
 
 class SecurityGroup(Resource):
@@ -124,8 +113,7 @@ class SecurityGroup(Resource):
         :param description: an optional description
         :type description: str | None
         """
-        super(SecurityGroup, self).__init__(
-            name, kind=AWSType.EC2_SECURITY_GROUP)
+        super(SecurityGroup, self).__init__(name, kind=AWSType.EC2_SECURITY_GROUP)
         assert isinstance(vpc, VPC)
         self.vpc = vpc
         self.description = description
@@ -150,13 +138,12 @@ class SecurityGroup(Resource):
 
     @property
     def properties(self):
-        result = {'VpcId': self.vpc.ref}
+        result = {"VpcId": self.vpc.ref}
 
         if self.egress:
-            result['SecurityGroupEgress'] = [r.properties for r in self.egress]
+            result["SecurityGroupEgress"] = [r.properties for r in self.egress]
         if self.ingress:
-            result['SecurityGroupIngress'] = \
-                [r.properties for r in self.ingress]
+            result["SecurityGroupIngress"] = [r.properties for r in self.ingress]
         if self.description is not None:
-            result['GroupDescription'] = self.description
+            result["GroupDescription"] = self.description
         return result

@@ -10,10 +10,11 @@ class AMI(EC2Element):
     """Represent an AMI."""
 
     PROPERTIES = {
-        'ImageId': 'id',
-        'OwnerId': 'owner_id',
-        'Public': 'public',
-        'RootDeviceName': 'root_device'}
+        "ImageId": "id",
+        "OwnerId": "owner_id",
+        "Public": "public",
+        "RootDeviceName": "root_device",
+    }
 
     @session()
     def __init__(self, ami_id, region=None, data=None, session=None):
@@ -30,8 +31,9 @@ class AMI(EC2Element):
         """
         if data is None:
             assert ami_id is not None
-            data = session.client('ec2', region).describe_images(
-                ImageIds=[ami_id])['Images'][0]
+            data = session.client("ec2", region).describe_images(ImageIds=[ami_id])[
+                "Images"
+            ][0]
         super(AMI, self).__init__(data, region)
 
     @property
@@ -41,7 +43,7 @@ class AMI(EC2Element):
         :return: AMI creation date
         :rtype: datetime.datetime
         """
-        return parse_date(self.data['CreationDate']).replace(tzinfo=None)
+        return parse_date(self.data["CreationDate"]).replace(tzinfo=None)
 
     @property
     def age(self):
@@ -51,24 +53,26 @@ class AMI(EC2Element):
 
     @property
     def os_version(self):
-        return self.tags.get('os_version', 'unknown')
+        return self.tags.get("os_version", "unknown")
 
     @property
     def platform(self):
-        return self.tags.get('platform', 'unknown')
+        return self.tags.get("platform", "unknown")
 
     @property
     def is_windows(self):
-        return 'windows' in self.data.get('Platform', 'unknown')
+        return "windows" in self.data.get("Platform", "unknown")
 
     @property
     def timestamp(self):
-        return int(self.tags.get('timestamp', '0'))
+        return int(self.tags.get("timestamp", "0"))
 
     @property
     def block_device_mappings(self):
-        return [BlockDeviceMapping(bdm, region=self.region)
-                for bdm in self.data.get('BlockDeviceMappings', [])]
+        return [
+            BlockDeviceMapping(bdm, region=self.region)
+            for bdm in self.data.get("BlockDeviceMappings", [])
+        ]
 
     @property
     def snapshot_ids(self):
@@ -79,9 +83,11 @@ class AMI(EC2Element):
         return result
 
     def __str__(self):
-        return '%-12s %-24s: %s' % (self.region,
-                                    self.data['ImageId'],
-                                    self.data.get('Description', ''))
+        return "%-12s %-24s: %s" % (
+            self.region,
+            self.data["ImageId"],
+            self.data.get("Description", ""),
+        )
 
     @classmethod
     @session()
@@ -98,21 +104,15 @@ class AMI(EC2Element):
             filters = []
         result = []
         for r in session.regions:
-            c = session.client('ec2', r)
-            region_result = c.describe_images(Owners=['self'], Filters=filters)
-            for ami in region_result['Images']:
-                result.append(
-                    AMI(ami['ImageId'], r, data=ami, session=session))
+            c = session.client("ec2", r)
+            region_result = c.describe_images(Owners=["self"], Filters=filters)
+            for ami in region_result["Images"]:
+                result.append(AMI(ami["ImageId"], r, data=ami, session=session))
         return result
 
     @classmethod
     @session()
-    def find(cls,
-             platform=None,
-             os_version=None,
-             region=None,
-             session=None,
-             **kwargs):
+    def find(cls, platform=None, os_version=None, region=None, session=None, **kwargs):
         """Find AMIs.
 
         Only AMIs with platform, timestamps and os_version tags are considered.
@@ -132,16 +132,18 @@ class AMI(EC2Element):
         """
         result = {}
 
-        filters = [{'Name': 'tag-key', 'Values': ['platform']},
-                   {'Name': 'tag-key', 'Values': ['timestamp']},
-                   {'Name': 'tag-key', 'Values': ['os_version']}]
+        filters = [
+            {"Name": "tag-key", "Values": ["platform"]},
+            {"Name": "tag-key", "Values": ["timestamp"]},
+            {"Name": "tag-key", "Values": ["os_version"]},
+        ]
         all_images = AMI.ls(filters=filters, session=session)
 
         tag_filters = dict(kwargs)
         if platform is not None:
-            tag_filters['platform'] = platform
+            tag_filters["platform"] = platform
         if os_version is not None:
-            tag_filters['os_version'] = os_version
+            tag_filters["os_version"] = os_version
 
         for ami in all_images:
             key = (ami.region, ami.platform, ami.os_version)
@@ -151,7 +153,7 @@ class AMI(EC2Element):
 
             consider_ami = True
             for tag in tag_filters:
-                if not re.match(tag_filters[tag], ami.tags.get(tag, '')):
+                if not re.match(tag_filters[tag], ami.tags.get(tag, "")):
                     consider_ami = False
                     continue
 
@@ -179,14 +181,17 @@ class AMI(EC2Element):
         """
         if region is None:
             region = session.default_region
-        result = AMI.find(platform=platform + '$',
-                          os_version=os_version + '$',
-                          region=region,
-                          session=session,
-                          **kwargs)
-        assert len(result) == 1, \
-            'cannot find AMI %s (%s) in region %s %s' % (platform,
-                                                         os_version,
-                                                         region,
-                                                         kwargs)
+        result = AMI.find(
+            platform=platform + "$",
+            os_version=os_version + "$",
+            region=region,
+            session=session,
+            **kwargs
+        )
+        assert len(result) == 1, "cannot find AMI %s (%s) in region %s %s" % (
+            platform,
+            os_version,
+            region,
+            kwargs,
+        )
         return result[0]

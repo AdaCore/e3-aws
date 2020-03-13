@@ -16,8 +16,8 @@ class PrivateDnsNamespace(Resource):
         :type description: str | None
         """
         super(PrivateDnsNamespace, self).__init__(
-            name,
-            kind=AWSType.SERVICE_DISCOVERY_PRIVATE_DNS_NAMESPACE)
+            name, kind=AWSType.SERVICE_DISCOVERY_PRIVATE_DNS_NAMESPACE
+        )
         self.domain = domain
         assert isinstance(vpc, VPC)
         self.vpc = vpc
@@ -31,8 +31,7 @@ class PrivateDnsNamespace(Resource):
 
         :rtype: dict
         """
-        result = {'Vpc': self.vpc.ref,
-                  'Name': self.domain}
+        result = {"Vpc": self.vpc.ref, "Name": self.domain}
         if self.description:
-            result['Description'] = self.description
+            result["Description"] = self.description
         return result

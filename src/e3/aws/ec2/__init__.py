@@ -20,18 +20,19 @@ class EC2Element(object):
         self.region = region
 
         # Compute tags
-        if 'Tags' in self.data:
-            self.tags = {el['Key']: el['Value'] for el in self.data['Tags']}
+        if "Tags" in self.data:
+            self.tags = {el["Key"]: el["Value"] for el in self.data["Tags"]}
         else:
             self.tags = {}
 
         # Map botocore attributes declared in PROPERTIES into Python
         # properties.
         for key, name in self.PROPERTIES.items():
-            setattr(self.__class__,
-                    name,
-                    property(
-                        lambda s, default_key=key: s.data.get(default_key)))
+            setattr(
+                self.__class__,
+                name,
+                property(lambda s, default_key=key: s.data.get(default_key)),
+            )
 
     @property
     def logical_id(self):
@@ -40,14 +41,13 @@ class EC2Element(object):
         :return: the id or None (if the element is not part of a stack)
         :rtype: str | None
         """
-        return self.tags.get('aws:cloudformation:logical-id')
+        return self.tags.get("aws:cloudformation:logical-id")
 
 
 class SecurityGroup(EC2Element):
     """Security Group description."""
 
-    PROPERTIES = {'GroupName': 'group_name',
-                  'GroupId': 'group_id'}
+    PROPERTIES = {"GroupName": "group_name", "GroupId": "group_id"}
 
     @session()
     def __init__(self, group_id=None, region=None, data=None, session=None):
@@ -64,9 +64,9 @@ class SecurityGroup(EC2Element):
         """
         if data is None:
             assert region is not None and group_id is not None
-            data = session.client(
-                'ec2', region).describe_security_groups(
-                    GroupIds=[group_id])['SecurityGroups'][0]
+            data = session.client("ec2", region).describe_security_groups(
+                GroupIds=[group_id]
+            )["SecurityGroups"][0]
         super(SecurityGroup, self).__init__(data, region)
 
     @classmethod
@@ -87,17 +87,17 @@ class SecurityGroup(EC2Element):
             filters = []
         result = []
         for r in session.regions:
-            c = session.client('ec2', r)
+            c = session.client("ec2", r)
             region_result = c.describe_security_groups(Filters=filters)
-            for sg in region_result['SecurityGroups']:
-                result.append(SecurityGroup(sg['GroupId'], r, data=sg))
+            for sg in region_result["SecurityGroups"]:
+                result.append(SecurityGroup(sg["GroupId"], r, data=sg))
         return result
 
 
 class Instance(EC2Element):
     """EC2 Instance."""
 
-    PROPERTIES = {'InstanceId': 'instance_id'}
+    PROPERTIES = {"InstanceId": "instance_id"}
 
     @session()
     def __init__(self, instance_id=None, region=None, data=None, session=None):
@@ -114,8 +114,9 @@ class Instance(EC2Element):
         """
         if data is None:
             assert instance_id is not None and region is not None
-            data = session.client('ec2', region).describe_instances(
-                InstanceIds=[instance_id])['Reservations']['Instances'][0]
+            data = session.client("ec2", region).describe_instances(
+                InstanceIds=[instance_id]
+            )["Reservations"]["Instances"][0]
 
         super(Instance, self).__init__(data, region)
 
@@ -126,8 +127,10 @@ class Instance(EC2Element):
         :return: a list of security groups
         :rtype: list[SecurityGroup]
         """
-        return [SecurityGroup(el['GroupId'], region=self.region)
-                for el in self.data['SecurityGroups']]
+        return [
+            SecurityGroup(el["GroupId"], region=self.region)
+            for el in self.data["SecurityGroups"]
+        ]
 
     @property
     def network_interfaces(self):
@@ -136,8 +139,10 @@ class Instance(EC2Element):
         :return: a list of network interface
         :rtype: list[NetworkInterface]
         """
-        return [NetworkInterface(ni, region=self.region)
-                for ni in self.data.get('NetworkInterfaces', [])]
+        return [
+            NetworkInterface(ni, region=self.region)
+            for ni in self.data.get("NetworkInterfaces", [])
+        ]
 
     @property
     def has_public_ip(self):
@@ -158,8 +163,10 @@ class Instance(EC2Element):
         :return: the list of mappings
         :rtype: list[BlockDeviceMapping]
         """
-        return [BlockDeviceMapping(bdm, region=self.region)
-                for bdm in self.data['BlockDeviceMappings']]
+        return [
+            BlockDeviceMapping(bdm, region=self.region)
+            for bdm in self.data["BlockDeviceMappings"]
+        ]
 
     @classmethod
     @session()
@@ -178,27 +185,30 @@ class Instance(EC2Element):
             filters = []
         result = []
         for r in session.regions:
-            c = session.client('ec2', r)
+            c = session.client("ec2", r)
             region_result = c.describe_instances(Filters=filters)
-            for reservation in region_result['Reservations']:
-                if 'Instances' not in reservation:
+            for reservation in region_result["Reservations"]:
+                if "Instances" not in reservation:
                     continue
-                for instance_data in reservation['Instances']:
-                    if instance_data['State']['Name'] == 'terminated':
+                for instance_data in reservation["Instances"]:
+                    if instance_data["State"]["Name"] == "terminated":
                         # Ignore instance that are going to disappear soon
                         continue
-                    result.append(Instance(instance_data['InstanceId'],
-                                           r,
-                                           data=instance_data,
-                                           session=session))
+                    result.append(
+                        Instance(
+                            instance_data["InstanceId"],
+                            r,
+                            data=instance_data,
+                            session=session,
+                        )
+                    )
         return result
 
 
 class BlockDeviceMapping(EC2Element):
     """Block Device Mappping."""
 
-    PROPERTIES = {
-        'DeviceName': 'device_name'}
+    PROPERTIES = {"DeviceName": "device_name"}
 
     @property
     def is_ebs(self):
@@ -207,7 +217,7 @@ class BlockDeviceMapping(EC2Element):
         :return: True if this is an EBS, False otherwise
         :rtype: bool
         """
-        return 'Ebs' in self.data
+        return "Ebs" in self.data
 
     @property
     def encrypted(self):
@@ -216,7 +226,7 @@ class BlockDeviceMapping(EC2Element):
         :return: True if encrypted, false otherwise
         :rtype: bool
         """
-        return 'Ebs' in self.data and self.data['Ebs'].get('Encrypted', False)
+        return "Ebs" in self.data and self.data["Ebs"].get("Encrypted", False)
 
     @property
     def snapshot_id(self):
@@ -226,7 +236,7 @@ class BlockDeviceMapping(EC2Element):
         :rtype: str | None
         """
         if self.is_ebs:
-            return self.data['Ebs'].get('SnapshotId')
+            return self.data["Ebs"].get("SnapshotId")
         else:
             return None
 
@@ -235,11 +245,12 @@ class VolumeAttachment(EC2Element):
     """Volume Attachment."""
 
     PROPERTIES = {
-        'InstanceId': 'instance_id',
-        'Device': 'device',
-        'State': 'state',
-        'VolumeId': 'volume_id',
-        'DeleteOnTermination': 'delete_on_termination'}
+        "InstanceId": "instance_id",
+        "Device": "device",
+        "State": "state",
+        "VolumeId": "volume_id",
+        "DeleteOnTermination": "delete_on_termination",
+    }
 
     def __init__(self, data, region):
         """Initialize Volume Attachment description."""
@@ -254,7 +265,7 @@ class VolumeAttachment(EC2Element):
         :return: attach time
         :rtype: datetime.datetime
         """
-        return parse_date(self.data['AttachTime'])
+        return parse_date(self.data["AttachTime"])
 
     @property
     def instance(self):
@@ -264,8 +275,7 @@ class VolumeAttachment(EC2Element):
         :rtype: Instance
         """
         if self._instance_cache is None:
-            self._instance_cache = Instance(self.instance_id,
-                                            region=self.region)
+            self._instance_cache = Instance(self.instance_id, region=self.region)
         return self._instance_cache
 
     @property
@@ -284,13 +294,14 @@ class Volume(EC2Element):
     """EC2 Volume."""
 
     PROPERTIES = {
-        'VolumeId': 'volume_id',
-        'AvailabilityZone': 'availability_zone',
-        'Size': 'size',
-        'SnapshotId': 'snapshot_id',
-        'State': 'state',
-        'VolumeType': 'volume_type',
-        'Encrypted': 'encrypted'}
+        "VolumeId": "volume_id",
+        "AvailabilityZone": "availability_zone",
+        "Size": "size",
+        "SnapshotId": "snapshot_id",
+        "State": "state",
+        "VolumeType": "volume_type",
+        "Encrypted": "encrypted",
+    }
 
     @session()
     def __init__(self, volume_id=None, region=None, data=None, session=None):
@@ -307,8 +318,9 @@ class Volume(EC2Element):
         """
         if data is None:
             assert volume_id is not None and region is not None
-            data = session.client('ec2', region).describe_volumes(
-                InstanceIds=[volume_id])['Volumes'][0]
+            data = session.client("ec2", region).describe_volumes(
+                InstanceIds=[volume_id]
+            )["Volumes"][0]
 
         super(Volume, self).__init__(data, region)
 
@@ -319,8 +331,7 @@ class Volume(EC2Element):
         :return: a list of attachments
         :rtype: list[VolumeAttachment]
         """
-        return [VolumeAttachment(va, self.region)
-                for va in self.data['Attachments']]
+        return [VolumeAttachment(va, self.region) for va in self.data["Attachments"]]
 
     @property
     def create_time(self):
@@ -329,13 +340,12 @@ class Volume(EC2Element):
         :return: time at which volume was created
         :rtype: datetime.datetime
         """
-        return parse_date(self.data['CreateTime'])
+        return parse_date(self.data["CreateTime"])
 
     @session()
     def delete(self):
         """Delete a volume."""
-        session.client('ec2', self.region).delete_volume(
-            VolumeId=self.volume_id)
+        session.client("ec2", self.region).delete_volume(VolumeId=self.volume_id)
 
     @classmethod
     @session()
@@ -352,17 +362,15 @@ class Volume(EC2Element):
             filters = []
         result = []
         for r in session.regions:
-            c = session.client('ec2', r)
+            c = session.client("ec2", r)
             region_result = c.describe_volumes(Filters=filters)
-            for volume in region_result.get('Volumes', []):
-                result.append(Volume(volume['VolumeId'], r, data=volume))
+            for volume in region_result.get("Volumes", []):
+                result.append(Volume(volume["VolumeId"], r, data=volume))
         return result
 
 
 class Snapshot(EC2Element):
-    PROPERTIES = {
-        'Encrypted': 'encrypted',
-        'SnapshotId': 'snapshot_id'}
+    PROPERTIES = {"Encrypted": "encrypted", "SnapshotId": "snapshot_id"}
 
     @session()
     def __init__(self, snapshot_id=None, region=None, data=None, session=None):
@@ -379,16 +387,16 @@ class Snapshot(EC2Element):
         """
         if data is None:
             assert snapshot_id is not None and region is not None
-            data = session.client('ec2', region).describe_snapshots(
-                SnapshotIds=[snapshot_id])['Snapshots'][0]
+            data = session.client("ec2", region).describe_snapshots(
+                SnapshotIds=[snapshot_id]
+            )["Snapshots"][0]
 
         super(Snapshot, self).__init__(data, region)
 
     @session()
     def delete(self, session=None):
         """Delete a snapshot."""
-        session.client('ec2', self.region).delete_snapshot(
-            SnapshotId=self.snapshot_id)
+        session.client("ec2", self.region).delete_snapshot(SnapshotId=self.snapshot_id)
 
     @classmethod
     @session()
@@ -405,13 +413,10 @@ class Snapshot(EC2Element):
             filters = []
         result = []
         for r in session.regions:
-            c = session.client('ec2', r)
-            region_result = c.describe_snapshots(
-                OwnerIds=['self'], Filters=filters)
-            for snapshot in region_result.get('Snapshots', []):
-                result.append(Snapshot(snapshot['SnapshotId'],
-                                       r,
-                                       data=snapshot))
+            c = session.client("ec2", r)
+            region_result = c.describe_snapshots(OwnerIds=["self"], Filters=filters)
+            for snapshot in region_result.get("Snapshots", []):
+                result.append(Snapshot(snapshot["SnapshotId"], r, data=snapshot))
         return result
 
 
@@ -424,7 +429,7 @@ class NetworkInterface(EC2Element):
         :return: return public ip or None
         :rtype: str | None
         """
-        if 'Association' in self.data:
-            return self.data['Association'].get('PublicIp')
+        if "Association" in self.data:
+            return self.data["Association"].get("PublicIp")
         else:
             return None

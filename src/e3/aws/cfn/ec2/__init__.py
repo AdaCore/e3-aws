@@ -16,11 +16,13 @@ ${Cfninit} -v --stack ${AWS::StackName} \\
                 --configsets ${Config} ${CfninitOptions}\n\n"""
 
 
-CFN_INIT_STARTUP_SCRIPT_WIN = "C:\\ProgramData\\Amazon\\EC2-Windows\\" + \
-    "Launch\\Scripts\\InitializeInstance.ps1 -schedule \n" + \
-    "${Cfninit} -v --stack ${AWS::StackName} --region " + \
-    "${AWS::Region} --resource ${Resource} --configsets ${Config} " + \
-    "${CfninitOptions}\n\n"
+CFN_INIT_STARTUP_SCRIPT_WIN = (
+    "C:\\ProgramData\\Amazon\\EC2-Windows\\"
+    + "Launch\\Scripts\\InitializeInstance.ps1 -schedule \n"
+    + "${Cfninit} -v --stack ${AWS::StackName} --region "
+    + "${AWS::Region} --resource ${Resource} --configsets ${Config} "
+    + "${CfninitOptions}\n\n"
+)
 
 
 class BlockDevice(object):
@@ -52,8 +54,7 @@ class EphemeralDisk(BlockDevice):
 
         :rtype: dict
         """
-        return {"DeviceName": self.device_name,
-                "VirtualName": "ephemeral%s" % self.id}
+        return {"DeviceName": self.device_name, "VirtualName": "ephemeral%s" % self.id}
 
 
 class EBSDisk(BlockDevice):
@@ -83,27 +84,30 @@ class EBSDisk(BlockDevice):
 
         :rtype: dict
         """
-        result = {"DeviceName": self.device_name,
-                  "Ebs": {"VolumeType": "gp2",
-                          "DeleteOnTermination": True}}
+        result = {
+            "DeviceName": self.device_name,
+            "Ebs": {"VolumeType": "gp2", "DeleteOnTermination": True},
+        }
         if self.size is not None:
-            result['Ebs']['VolumeSize'] = str(self.size)
+            result["Ebs"]["VolumeSize"] = str(self.size)
 
         if self.encrypted is not None:
-            result['Ebs']['Encrypted'] = self.encrypted
+            result["Ebs"]["Encrypted"] = self.encrypted
         return result
 
 
 class EC2NetworkInterface(object):
     """EC2 Instance network interface."""
 
-    def __init__(self,
-                 subnet=None,
-                 public_ip=False,
-                 groups=None,
-                 device_index=None,
-                 description=None,
-                 interface=None):
+    def __init__(
+        self,
+        subnet=None,
+        public_ip=False,
+        groups=None,
+        device_index=None,
+        description=None,
+        interface=None,
+    ):
         """Initialize a EC2NetworkInterface.
 
         :param subnet: subnet to which the interface is attached
@@ -126,21 +130,21 @@ class EC2NetworkInterface(object):
         :type interface: NetworkInterface | None
         """
         if subnet is not None:
-            assert isinstance(subnet, Subnet), \
-                'unexpected type for subnet: %s' % subnet
-            assert interface is None, \
-                'cannot specify a network interface if subnet is set'
+            assert isinstance(subnet, Subnet), "unexpected type for subnet: %s" % subnet
+            assert (
+                interface is None
+            ), "cannot specify a network interface if subnet is set"
             self.subnet = subnet
             self.public_ip = public_ip
             self.groups = groups
             self.interface_id = None
         else:
-            assert isinstance(interface, NetworkInterface), \
-                'if not subnet is provided a valid network interface ' \
-                'should be passed'
-            assert not public_ip, 'cannot associate automatically a public IP'
-            assert groups is None, \
-                'groups should be set in the network interface'
+            assert isinstance(interface, NetworkInterface), (
+                "if not subnet is provided a valid network interface "
+                "should be passed"
+            )
+            assert not public_ip, "cannot associate automatically a public IP"
+            assert groups is None, "groups should be set in the network interface"
             self.interface = interface
             self.subnet = None
             self.public_ip = False
@@ -160,18 +164,18 @@ class EC2NetworkInterface(object):
         result = {}
 
         if self.subnet:
-            result['AssociatePublicIpAddress'] = self.public_ip
-            result['SubnetId'] = self.subnet.ref
-            result['DeleteOnTermination'] = True
+            result["AssociatePublicIpAddress"] = self.public_ip
+            result["SubnetId"] = self.subnet.ref
+            result["DeleteOnTermination"] = True
         else:
-            result['NetworkInterfaceId'] = self.interface.ref
+            result["NetworkInterfaceId"] = self.interface.ref
 
         if self.device_index is not None:
-            result['DeviceIndex'] = self.device_index
+            result["DeviceIndex"] = self.device_index
         if self.groups:
-            result['GroupSet'] = [group.ref for group in self.groups]
+            result["GroupSet"] = [group.ref for group in self.groups]
         if self.description is not None:
-            result['Description'] = self.description
+            result["Description"] = self.description
         return result
 
 
@@ -208,13 +212,11 @@ class UserData(object):
         # This is important to keep the boundary static in order to avoid
         # spurious instance reboots.
         multi_part = MIMEMultipart(
-            boundary='-_- :( :( /o/ Static User Data Boundary /o/ :) :) -_-')
+            boundary="-_- :( :( /o/ Static User Data Boundary /o/ :) :) -_-"
+        )
         for name, kind, part in self.parts:
             mime_part = EmailMessage()
-            raw_data_manager.set_content(mime_part,
-                                         part,
-                                         subtype=kind,
-                                         filename=name)
+            raw_data_manager.set_content(mime_part, part, subtype=kind, filename=name)
             multi_part.attach(mime_part)
         return Base64(Sub(multi_part.as_string(), self.variables))
 
@@ -247,9 +249,9 @@ class WinUserData(object):
 
         :rtype: dict
         """
-        props = ''
+        props = ""
         for kind, part in self.parts:
-            props += '<%s>\n%s\n</%s>' % (kind, part, kind)
+            props += "<%s>\n%s\n</%s>" % (kind, part, kind)
         return Base64(Sub(props, self.variables))
 
 
@@ -269,9 +271,7 @@ class NetworkInterface(Resource):
         :param description: optional description
         :type description: str | None
         """
-        super(NetworkInterface, self).__init__(
-            name,
-            kind=AWSType.EC2_NETWORK_INTERFACE)
+        super(NetworkInterface, self).__init__(name, kind=AWSType.EC2_NETWORK_INTERFACE)
         assert isinstance(subnet, Subnet)
         self.subnet = subnet
         self.groups = groups
@@ -285,16 +285,15 @@ class NetworkInterface(Resource):
 
         :rtype: dict
         """
-        result = {'SubnetId': self.subnet.ref}
+        result = {"SubnetId": self.subnet.ref}
         if self.description is not None:
-            result['Description'] = self.description
+            result["Description"] = self.description
         if self.groups is not None:
-            result['GroupSet'] = [group.ref for group in self.groups]
+            result["GroupSet"] = [group.ref for group in self.groups]
         return result
 
 
 class TemplateOrInstance(Resource, metaclass=abc.ABCMeta):
-
     def set_instance_profile(self, profile):
         self.instance_profile = profile
 
@@ -320,7 +319,7 @@ class TemplateOrInstance(Resource, metaclass=abc.ABCMeta):
         elif isinstance(device, BlockDevice):
             self.block_devices.append(device)
         else:
-            assert False, 'invalid device %s' % device
+            assert False, "invalid device %s" % device
         return self
 
     def add_user_data(self, kind, content, name=None, variables=None):
@@ -337,22 +336,22 @@ class TemplateOrInstance(Resource, metaclass=abc.ABCMeta):
             assert name is None
             if self.user_data is None:
                 self.user_data = WinUserData()
-            self.user_data.add(kind, content,
-                               variables=variables)
+            self.user_data.add(kind, content, variables=variables)
         else:
             assert name is not None
             if self.user_data is None:
                 self.user_data = UserData()
-            self.user_data.add(kind, content, name,
-                               variables=variables)
+            self.user_data.add(kind, content, name, variables=variables)
 
-    def set_cfn_init(self,
-                     config='init',
-                     cfn_init='/usr/local/bin/cfn-init',
-                     resource=None,
-                     metadata=None,
-                     init_script='',
-                     use_instance_role=False):
+    def set_cfn_init(
+        self,
+        config="init",
+        cfn_init="/usr/local/bin/cfn-init",
+        resource=None,
+        metadata=None,
+        init_script="",
+        use_instance_role=False,
+    ):
         """Add CFN init call on first boot of the instance.
 
         :param config: name of the configset to be launch (default: init)
@@ -374,42 +373,52 @@ class TemplateOrInstance(Resource, metaclass=abc.ABCMeta):
             resource = self.name
 
         if use_instance_role:
-            cfn_init_options = Join([' --role ', self.instance_profile.role])
+            cfn_init_options = Join([" --role ", self.instance_profile.role])
         else:
-            cfn_init_options = ''
+            cfn_init_options = ""
 
         if self.image.is_windows:
             self.add_user_data(
-                'powershell',
+                "powershell",
                 CFN_INIT_STARTUP_SCRIPT_WIN + init_script,
-                variables={'Cfninit': cfn_init,
-                           'Config': config,
-                           'Resource': resource,
-                           'CfninitOptions': cfn_init_options})
-            self.add_user_data('persist', 'true')
+                variables={
+                    "Cfninit": cfn_init,
+                    "Config": config,
+                    "Resource": resource,
+                    "CfninitOptions": cfn_init_options,
+                },
+            )
+            self.add_user_data("persist", "true")
         else:
             self.add_user_data(
-                'x-shellscript',
+                "x-shellscript",
                 CFN_INIT_STARTUP_SCRIPT + init_script,
-                'init.sh',
-                variables={'Cfninit': cfn_init,
-                           'Config': config,
-                           'Resource': resource,
-                           'CfninitOptions': cfn_init_options})
+                "init.sh",
+                variables={
+                    "Cfninit": cfn_init,
+                    "Config": config,
+                    "Resource": resource,
+                    "CfninitOptions": cfn_init_options,
+                },
+            )
 
         if metadata is not None:
-            self.metadata['AWS::CloudFormation::Init'] = metadata
+            self.metadata["AWS::CloudFormation::Init"] = metadata
 
 
 class LaunchTemplate(TemplateOrInstance):
     """EC2 Launch template."""
 
-    def __init__(self, name, image,
-                 instance_type='t2.micro',
-                 disk_size=None,
-                 terminate_on_shutdown=False,
-                 template_name=None,
-                 copy_ami_tags=True):
+    def __init__(
+        self,
+        name,
+        image,
+        instance_type="t2.micro",
+        disk_size=None,
+        terminate_on_shutdown=False,
+        template_name=None,
+        copy_ami_tags=True,
+    ):
         """Initialize an EC2 launch template.
 
         :param name: logical name of the instance
@@ -432,15 +441,13 @@ class LaunchTemplate(TemplateOrInstance):
             tags
         :type copy_ami_tags: bool
         """
-        super(LaunchTemplate, self).__init__(
-            name, kind=AWSType.EC2_LAUNCH_TEMPLATE)
+        super(LaunchTemplate, self).__init__(name, kind=AWSType.EC2_LAUNCH_TEMPLATE)
         assert isinstance(image, AMI)
         self.image = image
         self.instance_type = instance_type
         self.block_devices = []
         if disk_size is not None:
-            self.add(EBSDisk(device_name=self.image.root_device,
-                             size=disk_size))
+            self.add(EBSDisk(device_name=self.image.root_device, size=disk_size))
         self.instance_profile = None
         self.network_interfaces = {}
         self.user_data = None
@@ -460,29 +467,30 @@ class LaunchTemplate(TemplateOrInstance):
 
         :rtype: dict
         """
-        td = {'ImageId': self.image.id,
-              'InstanceType': self.instance_type,
-              'BlockDeviceMappings':
-              [bd.properties for bd in self.block_devices]}
+        td = {
+            "ImageId": self.image.id,
+            "InstanceType": self.instance_type,
+            "BlockDeviceMappings": [bd.properties for bd in self.block_devices],
+        }
 
         if self.instance_profile is not None:
-            td['IamInstanceProfile'] = {'Name': self.instance_profile.ref}
+            td["IamInstanceProfile"] = {"Name": self.instance_profile.ref}
 
         if self.network_interfaces:
-            td['NetworkInterfaces'] = []
+            td["NetworkInterfaces"] = []
             for ni in self.network_interfaces.values():
                 # We need to tweak a bit the result for the network
                 # interface as API is not coherent between Instances and
                 # Templates. Basically the key GroupSet should be replaced
                 # by Groups
                 prop = ni.properties
-                if 'GroupSet' in prop:
-                    prop['Groups'] = prop['GroupSet']
-                    del prop['GroupSet']
-                td['NetworkInterfaces'].append(prop)
+                if "GroupSet" in prop:
+                    prop["Groups"] = prop["GroupSet"]
+                    del prop["GroupSet"]
+                td["NetworkInterfaces"].append(prop)
 
         if self.user_data is not None:
-            td['UserData'] = self.user_data.properties
+            td["UserData"] = self.user_data.properties
 
         if self.tags:
             merged_tags = {}
@@ -490,33 +498,36 @@ class LaunchTemplate(TemplateOrInstance):
                 merged_tags.update(self.image.tags)
             merged_tags.update(self.tags)
 
-            tags = [{'Key': k, 'Value': v}
-                    for k, v in merged_tags.items()]
+            tags = [{"Key": k, "Value": v} for k, v in merged_tags.items()]
 
-            td['TagSpecifications'] = [{"ResourceType": "instance",
-                                        "Tags": tags}]
+            td["TagSpecifications"] = [{"ResourceType": "instance", "Tags": tags}]
 
         if self.terminate_on_shutdown:
-            td['InstanceInitiatedShutdownBehavior'] = 'terminate'
+            td["InstanceInitiatedShutdownBehavior"] = "terminate"
 
-        return {"LaunchTemplateData": td,
-                "LaunchTemplateName": self.template_name}
+        return {"LaunchTemplateData": td, "LaunchTemplateName": self.template_name}
 
 
 class Instance(TemplateOrInstance):
     """EC2 Instance."""
 
-    ATTRIBUTES = ('AvailabilityZone',
-                  'PrivateDnsName',
-                  'PublicDnsName',
-                  'PrivateIp',
-                  'PublicIp')
+    ATTRIBUTES = (
+        "AvailabilityZone",
+        "PrivateDnsName",
+        "PublicDnsName",
+        "PrivateIp",
+        "PublicIp",
+    )
 
-    def __init__(self, name, image,
-                 instance_type='t2.micro',
-                 disk_size=None,
-                 terminate_on_shutdown=False,
-                 copy_ami_tags=False):
+    def __init__(
+        self,
+        name,
+        image,
+        instance_type="t2.micro",
+        disk_size=None,
+        terminate_on_shutdown=False,
+        copy_ami_tags=False,
+    ):
         """Initialize an EC2 instance.
 
         :param name: logical name of the instance
@@ -542,8 +553,7 @@ class Instance(TemplateOrInstance):
         self.instance_type = instance_type
         self.block_devices = []
         if disk_size is not None:
-            self.add(EBSDisk(device_name=self.image.root_device,
-                             size=disk_size))
+            self.add(EBSDisk(device_name=self.image.root_device, size=disk_size))
         self.instance_profile = None
         self.network_interfaces = {}
         self.user_data = None
@@ -557,7 +567,7 @@ class Instance(TemplateOrInstance):
 
         :rtype: e3.aws.cfn.GetAtt
         """
-        return GetAtt(self.name, 'PublicIp')
+        return GetAtt(self.name, "PublicIp")
 
     @property
     def private_ip(self):
@@ -565,7 +575,7 @@ class Instance(TemplateOrInstance):
 
         :rtype: e3.aws.cfn.GetAtt
         """
-        return GetAtt(self.name, 'PrivateIp')
+        return GetAtt(self.name, "PrivateIp")
 
     @property
     def properties(self):
@@ -575,21 +585,22 @@ class Instance(TemplateOrInstance):
 
         :rtype: dict
         """
-        result = {'ImageId': self.image.id,
-                  'InstanceType': self.instance_type,
-                  'BlockDeviceMappings': [bd.properties
-                                          for bd in self.block_devices]}
+        result = {
+            "ImageId": self.image.id,
+            "InstanceType": self.instance_type,
+            "BlockDeviceMappings": [bd.properties for bd in self.block_devices],
+        }
 
         if self.instance_profile is not None:
-            result['IamInstanceProfile'] = self.instance_profile.ref
+            result["IamInstanceProfile"] = self.instance_profile.ref
 
         if self.network_interfaces:
-            result['NetworkInterfaces'] = \
-                [ni.properties
-                 for ni in self.network_interfaces.values()]
+            result["NetworkInterfaces"] = [
+                ni.properties for ni in self.network_interfaces.values()
+            ]
 
         if self.user_data is not None:
-            result['UserData'] = self.user_data.properties
+            result["UserData"] = self.user_data.properties
 
         if self.tags:
             merged_tags = {}
@@ -597,11 +608,10 @@ class Instance(TemplateOrInstance):
                 merged_tags.update(self.image.tags)
             merged_tags.update(self.tags)
 
-            result['Tags'] = [
-                {'Key': k, 'Value': v} for k, v in merged_tags.items()]
+            result["Tags"] = [{"Key": k, "Value": v} for k, v in merged_tags.items()]
 
         if self.terminate_on_shutdown:
-            result['InstanceInitiatedShutdownBehavior'] = 'terminate'
+            result["InstanceInitiatedShutdownBehavior"] = "terminate"
 
         return result
 
@@ -609,11 +619,13 @@ class Instance(TemplateOrInstance):
 class VPC(Resource):
     """EC2 VPC."""
 
-    ATTRIBUTES = ('CidrBlock',
-                  'CidrBlockAssociations',
-                  'DefaultNetworkAcl',
-                  'DefaultSecurityGroup',
-                  'Ipv6CidrBlocks')
+    ATTRIBUTES = (
+        "CidrBlock",
+        "CidrBlockAssociations",
+        "DefaultNetworkAcl",
+        "DefaultSecurityGroup",
+        "Ipv6CidrBlocks",
+    )
 
     def __init__(self, name, cidr_block):
         """Initialize a VPC.
@@ -628,13 +640,15 @@ class VPC(Resource):
 
     @property
     def properties(self):
-        return {'CidrBlock': self.cidr_block,
-                'EnableDnsHostnames': True,
-                'EnableDnsSupport': True}
+        return {
+            "CidrBlock": self.cidr_block,
+            "EnableDnsHostnames": True,
+            "EnableDnsSupport": True,
+        }
 
     @property
     def cidrblock(self):
-        return self.getatt('CidrBlock')
+        return self.getatt("CidrBlock")
 
 
 class VPCEndpoint(Resource):
@@ -656,25 +670,26 @@ class VPCEndpoint(Resource):
         :type policy_docyment: e3.aws.cfn.ec2.security.PolicyDocument
         """
         super(VPCEndpoint, self).__init__(name, kind=AWSType.EC2_VPC_ENDPOINT)
-        assert service in ('dynamodb', 's3'), 'Invalid service: %s' % service
+        assert service in ("dynamodb", "s3"), "Invalid service: %s" % service
         self.service = service
-        assert isinstance(vpc, VPC), 'VPC instance expected'
+        assert isinstance(vpc, VPC), "VPC instance expected"
         self.vpc = vpc
         self.route_tables = route_tables
         for rt in self.route_tables:
-            assert isinstance(rt, RouteTable), 'RouteTable expected'
+            assert isinstance(rt, RouteTable), "RouteTable expected"
         self.policy_document = policy_document
         assert isinstance(self.policy_document, PolicyDocument)
 
     @property
     def properties(self):
         return {
-            'VpcId': self.vpc.ref,
-            'ServiceName': Join(["com.amazonaws.",
-                                 Ref("AWS::Region"),
-                                 "." + self.service]),
-            'PolicyDocument': self.policy_document.properties,
-            'RouteTableIds': [rt.ref for rt in self.route_tables]}
+            "VpcId": self.vpc.ref,
+            "ServiceName": Join(
+                ["com.amazonaws.", Ref("AWS::Region"), "." + self.service]
+            ),
+            "PolicyDocument": self.policy_document.properties,
+            "RouteTableIds": [rt.ref for rt in self.route_tables],
+        }
 
 
 class Subnet(Resource):
@@ -697,8 +712,7 @@ class Subnet(Resource):
 
     @property
     def properties(self):
-        return {'CidrBlock': self.cidr_block,
-                'VpcId': self.vpc.ref}
+        return {"CidrBlock": self.cidr_block, "VpcId": self.vpc.ref}
 
 
 class InternetGateway(Resource):
@@ -710,14 +724,13 @@ class InternetGateway(Resource):
         :param name: logical name in stack
         :type name: str
         """
-        super(InternetGateway, self).__init__(
-            name, kind=AWSType.EC2_INTERNET_GATEWAY)
+        super(InternetGateway, self).__init__(name, kind=AWSType.EC2_INTERNET_GATEWAY)
 
 
 class EIP(Resource):
     """EC2 Elastic IP."""
 
-    ATTRIBUTES = ('AllocationId', )
+    ATTRIBUTES = ("AllocationId",)
 
     def __init__(self, name, gateway_attach):
         """Initialize Elastic IP address.
@@ -733,11 +746,11 @@ class EIP(Resource):
 
     @property
     def allocation_id(self):
-        return GetAtt(self.name, 'AllocationId')
+        return GetAtt(self.name, "AllocationId")
 
     @property
     def properties(self):
-        return {'Domain': 'vpc'}
+        return {"Domain": "vpc"}
 
 
 class NatGateway(Resource):
@@ -761,8 +774,7 @@ class NatGateway(Resource):
 
     @property
     def properties(self):
-        return {'AllocationId': self.eip.allocation_id,
-                'SubnetId': self.subnet.ref}
+        return {"AllocationId": self.eip.allocation_id, "SubnetId": self.subnet.ref}
 
 
 class VPCGatewayAttachment(Resource):
@@ -779,7 +791,8 @@ class VPCGatewayAttachment(Resource):
         :type gateway: InternetGateway
         """
         super(VPCGatewayAttachment, self).__init__(
-            name, kind=AWSType.EC2_VPC_GATEWAY_ATTACHMENT)
+            name, kind=AWSType.EC2_VPC_GATEWAY_ATTACHMENT
+        )
         assert isinstance(vpc, VPC)
         assert isinstance(gateway, InternetGateway)
         self.vpc = vpc
@@ -787,8 +800,7 @@ class VPCGatewayAttachment(Resource):
 
     @property
     def properties(self):
-        return {'VpcId': self.vpc.ref,
-                'InternetGatewayId': self.gateway.ref}
+        return {"VpcId": self.vpc.ref, "InternetGatewayId": self.gateway.ref}
 
 
 class RouteTable(Resource):
@@ -811,18 +823,16 @@ class RouteTable(Resource):
 
     @property
     def properties(self):
-        result = {'VpcId': self.vpc.ref}
+        result = {"VpcId": self.vpc.ref}
         if self.tags is not None:
-            result['Tags'] = self.tags
+            result["Tags"] = self.tags
         return result
 
 
 class Route(Resource):
     """EC2 Route."""
 
-    def __init__(self, name, route_table, dest_cidr_block,
-                 gateway,
-                 gateway_attach):
+    def __init__(self, name, route_table, dest_cidr_block, gateway, gateway_attach):
         """Initialize a route.
 
         :param name: logical name in stack
@@ -838,8 +848,7 @@ class Route(Resource):
         """
         super(Route, self).__init__(name, kind=AWSType.EC2_ROUTE)
         assert isinstance(route_table, RouteTable)
-        assert isinstance(gateway, InternetGateway) or \
-            isinstance(gateway, NatGateway)
+        assert isinstance(gateway, InternetGateway) or isinstance(gateway, NatGateway)
         self.route_table = route_table
         self.dest_cidr_block = dest_cidr_block
         self.gateway = gateway
@@ -848,12 +857,14 @@ class Route(Resource):
 
     @property
     def properties(self):
-        result = {'RouteTableId': self.route_table.ref,
-                  'DestinationCidrBlock': self.dest_cidr_block}
+        result = {
+            "RouteTableId": self.route_table.ref,
+            "DestinationCidrBlock": self.dest_cidr_block,
+        }
         if isinstance(self.gateway, InternetGateway):
-            result['GatewayId'] = self.gateway.ref
+            result["GatewayId"] = self.gateway.ref
         else:
-            result['NatGatewayId'] = self.gateway.ref
+            result["NatGatewayId"] = self.gateway.ref
         return result
 
 
@@ -871,11 +882,11 @@ class SubnetRouteTableAssociation(Resource):
         :type route_table: RouteTable
         """
         super(SubnetRouteTableAssociation, self).__init__(
-            name, kind=AWSType.EC2_SUBNET_ROUTE_TABLE_ASSOCIATION)
+            name, kind=AWSType.EC2_SUBNET_ROUTE_TABLE_ASSOCIATION
+        )
         self.subnet = subnet
         self.route_table = route_table
 
     @property
     def properties(self):
-        return {'SubnetId': self.subnet.ref,
-                'RouteTableId': self.route_table.ref}
+        return {"SubnetId": self.subnet.ref, "RouteTableId": self.route_table.ref}
