@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 from datetime import datetime
 
-version = '20.08.' + datetime.utcnow().strftime('%Y%m%d')
+version = '22.0.' + datetime.utcnow().strftime('%Y%m%d')
 
 setup(
     name='e3-aws',
