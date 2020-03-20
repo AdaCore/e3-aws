@@ -26,8 +26,9 @@ class Principal(object):
         """
         assert isinstance(kind, PrincipalKind)
         self.kind = kind
-        assert (kind == PrincipalKind.EVERYONE and value is None) or \
-            (value is not None and value != '*')
+        assert (kind == PrincipalKind.EVERYONE and value is None) or (
+            value is not None and value != "*"
+        )
         self.value = value
 
     @classmethod
@@ -44,9 +45,8 @@ class Principal(object):
             if principal.kind == PrincipalKind.EVERYONE:
                 # If EVERYONE is present then it should be alone because
                 # it will mask any other principal.
-                assert len(principals) == 1, \
-                    'Principal "*" should be used alone'
-                result = '*'
+                assert len(principals) == 1, 'Principal "*" should be used alone'
+                result = "*"
                 break
 
             if principal.kind.value not in result:
@@ -59,12 +59,7 @@ class Principal(object):
 class Statement(object, metaclass=abc.ABCMeta):
     """Statement of IAM Policy Document."""
 
-    def __init__(self,
-                 sid=None,
-                 to=None,
-                 on=None,
-                 not_on=None,
-                 apply_to=None):
+    def __init__(self, sid=None, to=None, on=None, not_on=None, apply_to=None):
         """Initialize a statement.
 
         :param sid: statement id (optional)
@@ -103,19 +98,19 @@ class Statement(object, metaclass=abc.ABCMeta):
 
         :rtype: dict
         """
-        result = {'Effect': self.EFFECT}
+        result = {"Effect": self.EFFECT}
         if self.sid is not None:
-            result['Sid'] = self.sid
+            result["Sid"] = self.sid
         if self.resources:
-            result['Resource'] = self.resources
+            result["Resource"] = self.resources
         if self.not_resources:
-            result['NotResource'] = self.not_resources
+            result["NotResource"] = self.not_resources
         if self.principals:
-            result['Principal'] = Principal.property_list(self.principals)
+            result["Principal"] = Principal.property_list(self.principals)
         if self.actions:
-            result['Action'] = self.actions
+            result["Action"] = self.actions
         if self.condition is not None:
-            result['Condition'] = self.condition
+            result["Condition"] = self.condition
         return result
 
     def to(self, actions):
@@ -178,13 +173,13 @@ class Statement(object, metaclass=abc.ABCMeta):
 class Allow(Statement):
     """Allow statement."""
 
-    EFFECT = 'Allow'
+    EFFECT = "Allow"
 
 
 class Deny(Statement):
     """Deny statement."""
 
-    EFFECT = 'Deny'
+    EFFECT = "Deny"
 
 
 class PolicyDocument(object):
@@ -249,25 +244,22 @@ class PolicyDocument(object):
 
         :rtype: dict
         """
-        assert self.statements, 'A policy should have at least one statement'
-        return {'Version': '2012-10-17',
-                'Statement': [s.properties for s in self.statements]}
+        assert self.statements, "A policy should have at least one statement"
+        return {
+            "Version": "2012-10-17",
+            "Statement": [s.properties for s in self.statements],
+        }
 
 
-INSTANCE_ASSUME_ROLE = Allow(to='sts:AssumeRole',
-                             apply_to=Principal(PrincipalKind.SERVICE,
-                                                'ec2.amazonaws.com'))
+INSTANCE_ASSUME_ROLE = Allow(
+    to="sts:AssumeRole", apply_to=Principal(PrincipalKind.SERVICE, "ec2.amazonaws.com")
+)
 
 
 class Policy(Resource):
     """A CloudFormation Policy resource."""
 
-    def __init__(self,
-                 name,
-                 policy_document=None,
-                 roles=None,
-                 groups=None,
-                 users=None):
+    def __init__(self, name, policy_document=None, roles=None, groups=None, users=None):
         """Initialize a policy.
 
         :param name: logical name on the stack
@@ -295,16 +287,16 @@ class Policy(Resource):
 
         :rtype: dict
         """
-        result = {'PolicyName': self.name}
+        result = {"PolicyName": self.name}
         if self.policy_document is not None:
-            result['PolicyDocument'] = self.policy_document.properties
+            result["PolicyDocument"] = self.policy_document.properties
 
         if self.roles is not None:
-            result['Roles'] = self.roles
+            result["Roles"] = self.roles
         if self.groups is not None:
-            result['Groups'] = self.groups
+            result["Groups"] = self.groups
         if self.users is not None:
-            result['Users'] = self.users
+            result["Users"] = self.users
         return result
 
 
@@ -319,9 +311,7 @@ class InstanceProfile(Resource):
         :param role: name of the associated role
         :type role: str
         """
-        super(InstanceProfile, self).__init__(
-            name,
-            kind=AWSType.IAM_INSTANCE_PROFILE)
+        super(InstanceProfile, self).__init__(name, kind=AWSType.IAM_INSTANCE_PROFILE)
         self.role = role
 
     @property
@@ -332,14 +322,13 @@ class InstanceProfile(Resource):
 
         :rtype: dict
         """
-        return {'Roles': [self.role],
-                'Path': '/'}
+        return {"Roles": [self.role], "Path": "/"}
 
 
 class Role(Resource):
     """IAM Role."""
 
-    def __init__(self, name, assume_role_policy, path='/'):
+    def __init__(self, name, assume_role_policy, path="/"):
         """Initialize IAM Role.
 
         :param name: role name
@@ -378,17 +367,19 @@ class Role(Resource):
 
         :rtype: dict
         """
-        return {'AssumeRolePolicyDocument': self.assume_role_policy.properties,
-                'Path': self.path,
-                'Policies': [p.properties for p in self.policies]}
+        return {
+            "AssumeRolePolicyDocument": self.assume_role_policy.properties,
+            "Path": self.path,
+            "Policies": [p.properties for p in self.policies],
+        }
 
 
 class Group(Resource):
     """IAM Group."""
 
-    ATTRIBUTES = ("Arn", )
+    ATTRIBUTES = ("Arn",)
 
-    def __init__(self, name, managed_policy_arns=None, path='/'):
+    def __init__(self, name, managed_policy_arns=None, path="/"):
         """Initialize IAM Group.
 
         :param name: group name
@@ -424,19 +415,27 @@ class Group(Resource):
 
         :rtype: dict
         """
-        return {'ManagedPolicyArns': self.managed_policy_arns,
-                'GroupName': self.name,
-                'Path': self.path,
-                'Policies': [p.properties for p in self.policies]}
+        return {
+            "ManagedPolicyArns": self.managed_policy_arns,
+            "GroupName": self.name,
+            "Path": self.path,
+            "Policies": [p.properties for p in self.policies],
+        }
 
 
 class User(Resource):
     """IAM User."""
 
-    ATTRIBUTES = ("Arn", )
+    ATTRIBUTES = ("Arn",)
 
-    def __init__(self, name, groups=None, managed_policy_arns=None, path='/',
-                 permissions_boundary=None):
+    def __init__(
+        self,
+        name,
+        groups=None,
+        managed_policy_arns=None,
+        path="/",
+        permissions_boundary=None,
+    ):
         """Initialize IAM User.
 
         :param name: user name
@@ -478,13 +477,15 @@ class User(Resource):
 
         :rtype: dict
         """
-        props = {'ManagedPolicyArns': self.managed_policy_arns or [],
-                 'UserName': self.name,
-                 'Groups': self.groups,
-                 'Path': self.path,
-                 'Policies': [p.properties for p in self.policies]}
+        props = {
+            "ManagedPolicyArns": self.managed_policy_arns or [],
+            "UserName": self.name,
+            "Groups": self.groups,
+            "Path": self.path,
+            "Policies": [p.properties for p in self.policies],
+        }
         if self.permissions_boundary is not None:
-            props['PermissionsBoundary'] = self.permissions_boundary
+            props["PermissionsBoundary"] = self.permissions_boundary
         return props
 
 
@@ -494,7 +495,7 @@ class InstanceRole(Stack):
     Create both Role and associated profile.
     """
 
-    def __init__(self, name, path='/'):
+    def __init__(self, name, path="/"):
         """Initialize an instance role.
 
         :param name: name of the role. The instance profile name will be this
@@ -507,8 +508,7 @@ class InstanceRole(Stack):
         assume_role_policy = PolicyDocument()
         assume_role_policy.append(INSTANCE_ASSUME_ROLE)
         self.add(Role(name, assume_role_policy, path))
-        self.add(InstanceProfile(name + 'InstanceProfile',
-                                 self.resources[name].ref))
+        self.add(InstanceProfile(name + "InstanceProfile", self.resources[name].ref))
 
     def add_policy(self, policy):
         """Add a policy.
@@ -528,4 +528,4 @@ class InstanceRole(Stack):
         :return: the name of the instance profile
         :rtype: str
         """
-        return self.resources[self.name + 'InstanceProfile']
+        return self.resources[self.name + "InstanceProfile"]

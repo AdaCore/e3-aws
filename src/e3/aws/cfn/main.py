@@ -13,12 +13,15 @@ from e3.main import Main
 class CFNMain(Main, metaclass=abc.ABCMeta):
     """Main to handle CloudFormation stack from command line."""
 
-    def __init__(self, regions,
-                 default_profile='default',
-                 data_dir=None,
-                 s3_bucket=None,
-                 s3_key='',
-                 assume_role=None):
+    def __init__(
+        self,
+        regions,
+        default_profile="default",
+        data_dir=None,
+        s3_bucket=None,
+        s3_key="",
+        assume_role=None,
+    ):
         """Initialize main.
 
         :param regions: list of regions on which we can operate
@@ -42,44 +45,45 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         """
         super(CFNMain, self).__init__(platform_args=False)
         self.argument_parser.add_argument(
-            '--profile',
-            help='choose AWS profile, default is {}'.format(default_profile),
-            default=default_profile)
+            "--profile",
+            help="choose AWS profile, default is {}".format(default_profile),
+            default=default_profile,
+        )
 
         if len(regions) > 1:
             self.argument_parser.add_argument(
-                '--region',
-                help='choose region (default: %s)' % regions[0],
-                default=regions[0])
+                "--region",
+                help="choose region (default: %s)" % regions[0],
+                default=regions[0],
+            )
         else:
             self.argument_parser.set_defaults(region=regions[0])
 
         subs = self.argument_parser.add_subparsers(
-            title='commands',
-            description='available commands',
-            dest='command')
+            title="commands", description="available commands", dest="command"
+        )
         subs.required = True
 
-        create_args = subs.add_parser('push', help='push a stack')
+        create_args = subs.add_parser("push", help="push a stack")
         create_args.add_argument(
-            '--wait',
-            action='store_true',
+            "--wait",
+            action="store_true",
             default=False,
-            help='if used then wait for stack creation completion')
-        create_args.set_defaults(command='push')
+            help="if used then wait for stack creation completion",
+        )
+        create_args.set_defaults(command="push")
 
-        update_args = subs.add_parser('update', help='update a stack')
-        update_args.add_argument(
-            '--changeset',
-            help='Execute a given changeset')
-        update_args.set_defaults(command='update')
+        update_args = subs.add_parser("update", help="update a stack")
+        update_args.add_argument("--changeset", help="Execute a given changeset")
+        update_args.set_defaults(command="update")
 
-        show_args = subs.add_parser('show', help='show the changeset content')
-        show_args.set_defaults(command='show')
+        show_args = subs.add_parser("show", help="show the changeset content")
+        show_args.set_defaults(command="show")
 
         protect_args = subs.add_parser(
-            'protect', help='protect the stack against deletion')
-        protect_args.set_defaults(command='protect')
+            "protect", help="protect the stack against deletion"
+        )
+        protect_args.set_defaults(command="protect")
 
         self.regions = regions
 
@@ -94,17 +98,21 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         self.timestamp = str(int(time.time()))
 
         if s3_bucket is not None:
-            s3_root_key = '/'.join([s3_key.rstrip('/'),
-                                    self.timestamp]).strip('/') + '/'
-            self.s3_data_key = s3_root_key + 'data/'
-            self.s3_data_url = 'https://%s.s3.amazonaws.com/%s' % \
-                (self.s3_bucket, self.s3_data_key)
-            self.s3_template_key = s3_root_key + 'template'
-            self.s3_template_url = 'https://%s.s3.amazonaws.com/%s' % \
-                (self.s3_bucket, self.s3_template_key)
+            s3_root_key = (
+                "/".join([s3_key.rstrip("/"), self.timestamp]).strip("/") + "/"
+            )
+            self.s3_data_key = s3_root_key + "data/"
+            self.s3_data_url = "https://%s.s3.amazonaws.com/%s" % (
+                self.s3_bucket,
+                self.s3_data_key,
+            )
+            self.s3_template_key = s3_root_key + "template"
+            self.s3_template_url = "https://%s.s3.amazonaws.com/%s" % (
+                self.s3_bucket,
+                self.s3_template_key,
+            )
 
-    def execute(self, args=None, known_args_only=False,
-                aws_env=None):
+    def execute(self, args=None, known_args_only=False, aws_env=None):
         """Execute application and return exit status.
 
         See parse_args arguments.
@@ -115,48 +123,55 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         else:
 
             if self.assume_role:
-                main_session = Session(regions=self.regions,
-                                       profile=self.args.profile)
+                main_session = Session(regions=self.regions, profile=self.args.profile)
                 self.aws_env = main_session.assume_role(
-                    self.assume_role[0],
-                    self.assume_role[1])
+                    self.assume_role[0], self.assume_role[1]
+                )
                 # ??? needed since we still use a global variable for AWSEnv
                 Env().aws_env = self.aws_env
             else:
-                self.aws_env = AWSEnv(regions=self.regions,
-                                      profile=self.args.profile)
+                self.aws_env = AWSEnv(regions=self.regions, profile=self.args.profile)
             self.aws_env.default_region = self.args.region
 
         try:
-            if self.args.command in ('push', 'update'):
+            if self.args.command in ("push", "update"):
                 if self.data_dir is not None and self.s3_data_key is not None:
-                    s3 = self.aws_env.client('s3')
+                    s3 = self.aws_env.client("s3")
 
                     # synchronize data to the bucket before creating the stack
                     for f in find(self.data_dir):
-                        with open(f, 'rb') as fd:
-                            subkey = os.path.relpath(
-                                f,
-                                self.data_dir).replace('\\', '/')
-                            logging.info('Upload %s to %s:%s%s',
-                                         subkey, self.s3_bucket,
-                                         self.s3_data_key, subkey)
-                            s3.put_object(Bucket=self.s3_bucket,
-                                          Body=fd,
-                                          ServerSideEncryption='AES256',
-                                          Key=self.s3_data_key + subkey)
+                        with open(f, "rb") as fd:
+                            subkey = os.path.relpath(f, self.data_dir).replace(
+                                "\\", "/"
+                            )
+                            logging.info(
+                                "Upload %s to %s:%s%s",
+                                subkey,
+                                self.s3_bucket,
+                                self.s3_data_key,
+                                subkey,
+                            )
+                            s3.put_object(
+                                Bucket=self.s3_bucket,
+                                Body=fd,
+                                ServerSideEncryption="AES256",
+                                Key=self.s3_data_key + subkey,
+                            )
 
                 s = self.create_stack()
 
                 if self.s3_template_key is not None:
-                    logging.info('Upload template to %s:%s',
-                                 self.s3_bucket, self.s3_template_key)
-                    s3.put_object(Bucket=self.s3_bucket,
-                                  Body=s.body.encode('utf-8'),
-                                  ServerSideEncryption='AES256',
-                                  Key=self.s3_template_key)
+                    logging.info(
+                        "Upload template to %s:%s", self.s3_bucket, self.s3_template_key
+                    )
+                    s3.put_object(
+                        Bucket=self.s3_bucket,
+                        Body=s.body.encode("utf-8"),
+                        ServerSideEncryption="AES256",
+                        Key=self.s3_template_key,
+                    )
 
-                logging.info('Validate template for stack %s' % s.name)
+                logging.info("Validate template for stack %s" % s.name)
                 try:
                     s.validate(url=self.s3_template_url)
                 except Exception:
@@ -164,51 +179,50 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     logging.error(s.body)
                     raise
 
-                if self.args.command == 'update' and \
-                        self.args.changeset:
+                if self.args.command == "update" and self.args.changeset:
                     return s.execute_change_set(
-                        changeset_name=self.args.changeset, wait=True)
+                        changeset_name=self.args.changeset, wait=True
+                    )
 
                 if s.exists():
-                    changeset_name = 'changeset%s' % int(time.time())
-                    logging.info('Push changeset: %s' % changeset_name)
-                    s.create_change_set(changeset_name,
-                                        url=self.s3_template_url)
+                    changeset_name = "changeset%s" % int(time.time())
+                    logging.info("Push changeset: %s" % changeset_name)
+                    s.create_change_set(changeset_name, url=self.s3_template_url)
                     result = s.describe_change_set(changeset_name)
-                    while result['Status'] in ('CREATE_PENDING',
-                                               'CREATE_IN_PROGRESS'):
+                    while result["Status"] in ("CREATE_PENDING", "CREATE_IN_PROGRESS"):
                         time.sleep(1.0)
                         result = s.describe_change_set(changeset_name)
 
-                    if result['Status'] == 'FAILED':
-                        logging.error(result['StatusReason'])
+                    if result["Status"] == "FAILED":
+                        logging.error(result["StatusReason"])
                         s.delete_change_set(changeset_name)
                         return 1
                     else:
-                        for el in result['Changes']:
-                            if 'ResourceChange' not in el:
+                        for el in result["Changes"]:
+                            if "ResourceChange" not in el:
                                 continue
                             logging.info(
                                 "%-8s %-32s: (replacement:%s)",
-                                el['ResourceChange'].get('Action'),
-                                el['ResourceChange'].get('LogicalResourceId'),
-                                el['ResourceChange'].get('Replacement', 'n/a'))
+                                el["ResourceChange"].get("Action"),
+                                el["ResourceChange"].get("LogicalResourceId"),
+                                el["ResourceChange"].get("Replacement", "n/a"),
+                            )
 
                         return 0
                 else:
-                    logging.info('Create new stack')
+                    logging.info("Create new stack")
                     s.create(url=self.s3_template_url)
                     state = s.state()
                     if self.args.wait:
-                        while 'PROGRESS' in state['Stacks'][0]['StackStatus']:
+                        while "PROGRESS" in state["Stacks"][0]["StackStatus"]:
                             result = s.resource_status(in_progress_only=False)
                             print(result)
                             time.sleep(10.0)
                             state = s.state()
-            elif self.args.command == 'show':
+            elif self.args.command == "show":
                 s = self.create_stack()
                 print(s.body)
-            elif self.args.command == 'protect':
+            elif self.args.command == "protect":
                 s = self.create_stack()
 
                 # Enable termination protection

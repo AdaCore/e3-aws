@@ -4,13 +4,7 @@ from e3.aws.cfn import AWSType, Resource
 class RecordSet(Resource):
     """DNS Record."""
 
-    def __init__(self,
-                 name,
-                 hosted_zone,
-                 dns_name,
-                 dns_type,
-                 ttl,
-                 resource_records):
+    def __init__(self, name, hosted_zone, dns_name, dns_type, ttl, resource_records):
         """Initialize a DNS Record.
 
         :param name: logical name used in the stack
@@ -36,14 +30,16 @@ class RecordSet(Resource):
 
     @property
     def properties(self):
-        result = {'Name': self.dns_name,
-                  'Type': self.dns_type,
-                  'TTL': self.ttl,
-                  'ResourceRecords': self.resource_records}
+        result = {
+            "Name": self.dns_name,
+            "Type": self.dns_type,
+            "TTL": self.ttl,
+            "ResourceRecords": self.resource_records,
+        }
         if isinstance(self.hosted_zone, HostedZone):
-            result['HostedZoneId'] = self.hosted_zone.ref
+            result["HostedZoneId"] = self.hosted_zone.ref
         else:
-            result['HostedZoneName'] = self.hosted_zone
+            result["HostedZoneName"] = self.hosted_zone
         return result
 
 
@@ -62,17 +58,15 @@ class HostedZone(Resource):
             this is a AWS private zone.
         :type vpcs: None | list[VPC]
         """
-        super(HostedZone, self).__init__(
-            name,
-            kind=AWSType.ROUTE53_HOSTED_ZONE)
+        super(HostedZone, self).__init__(name, kind=AWSType.ROUTE53_HOSTED_ZONE)
         self.domain = domain
         self.vpcs = vpcs
 
     @property
     def properties(self):
-        result = {'Name': self.domain}
+        result = {"Name": self.domain}
         if self.vpcs is not None:
-            result['VPCs'] = [{'VPCId': vpc.ref,
-                               'VPCRegion': vpc.region}
-                              for vpc in self.vpcs]
+            result["VPCs"] = [
+                {"VPCId": vpc.ref, "VPCRegion": vpc.region} for vpc in self.vpcs
+            ]
         return result
