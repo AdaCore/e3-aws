@@ -1,8 +1,10 @@
 import argparse
-from uuid import uuid4
-from botocore.stub import Stubber
-from e3.env import Env
 import botocore.session
+import json
+from botocore.stub import Stubber
+from uuid import uuid4
+
+from e3.env import Env
 
 
 class Session(object):
@@ -251,6 +253,13 @@ def session():
 def assume_role_main():
     """Generate shell commands to set credentials for a role."""
     argument_parser = argparse.ArgumentParser()
+    argument_parser.add_argument(
+        "--json", action="store_true", help="Output credentials as JSON"
+    )
+    argument_parser.add_argument(
+        "--role-session-name",
+        help="Role session name, by default a random value is generated",
+    )
     argument_parser.add_argument("--session-duration")
     argument_parser.add_argument("role_arn")
     args = argument_parser.parse_args()
@@ -266,11 +275,23 @@ def assume_role_main():
     if session_duration is not None:
         session_duration = int(session_duration)
 
-    for k, v in s.assume_role_get_credentials(
-        args.role_arn, str(uuid4()).replace("-", ""), session_duration=session_duration
-    ).items():
-        if k in key_to_envvar:
-            print("export {}={}".format(key_to_envvar[k], v))
+    if args.role_session_name:
+        role_session_name = args.role_session_name
+    else:
+        role_session_name = str(uuid4()).replace("-", "")
+
+    credentials = s.assume_role_get_credentials(
+        args.role_arn, role_session_name, session_duration=session_duration
+    )
+    credentials["Expiration"] = credentials["Expiration"].timestamp()
+    if args.json:
+        print(json.dumps(credentials))
+    else:
+        credentials = {
+            key_to_envvar[k]: v for k, v in credentials.items() if k in key_to_envvar
+        }
+        for k, v in credentials.items():
+            print(f"export {k}={v}")
 
 
 def iterate(fun, key, **kwargs):
