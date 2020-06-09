@@ -1,11 +1,14 @@
 from setuptools import setup, find_packages
-from datetime import datetime
+import os
 
-version = "22.0." + datetime.utcnow().strftime("%Y%m%d")
+# Get e3 version from the VERSION file.
+version_file = os.path.join(os.path.dirname(__file__), "VERSION")
+with open(version_file) as f:
+    e3_version = f.read().strip()
 
 setup(
     name="e3-aws",
-    version=version,
+    version=e3_version,
     description="E3 Cloud Formation Extension",
     author="AdaCore's Production Team",
     packages=find_packages(where="src"),
