@@ -66,15 +66,22 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         create_args = subs.add_parser("push", help="push a stack")
         create_args.add_argument(
-            "--wait",
-            action="store_true",
-            default=False,
-            help="if used then wait for stack creation completion",
+            "--no-wait",
+            action="store_false",
+            default=True,
+            dest="wait_stack_creation",
+            help="do not wait for stack creation completion",
         )
         create_args.set_defaults(command="push")
 
         update_args = subs.add_parser("update", help="update a stack")
-        update_args.add_argument("--changeset", help="Execute a given changeset")
+        update_args.add_argument(
+            "--no-apply",
+            action="store_false",
+            default=True,
+            dest="apply_changeset",
+            help="do not ask whether to apply the changeset",
+        )
         update_args.set_defaults(command="update")
 
         show_args = subs.add_parser("show", help="show the changeset content")
@@ -179,11 +186,6 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     logging.error(s.body)
                     raise
 
-                if self.args.command == "update" and self.args.changeset:
-                    return s.execute_change_set(
-                        changeset_name=self.args.changeset, wait=True
-                    )
-
                 if s.exists():
                     changeset_name = "changeset%s" % int(time.time())
                     logging.info("Push changeset: %s" % changeset_name)
@@ -208,17 +210,24 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                                 el["ResourceChange"].get("Replacement", "n/a"),
                             )
 
+                        if self.args.apply_changeset:
+                            ask = input("Apply change (y/N): ")
+                            if ask[0] in "Yy":
+                                return s.execute_change_set(
+                                    changeset_name=changeset_name, wait=True
+                                )
                         return 0
                 else:
                     logging.info("Create new stack")
                     s.create(url=self.s3_template_url)
                     state = s.state()
-                    if self.args.wait:
+                    if self.args.wait_stack_creation:
+                        logging.info("waiting for stack creation...")
                         while "PROGRESS" in state["Stacks"][0]["StackStatus"]:
                             result = s.resource_status(in_progress_only=False)
-                            print(result)
                             time.sleep(10.0)
                             state = s.state()
+                        logging.info("done")
             elif self.args.command == "show":
                 s = self.create_stack()
                 print(s.body)

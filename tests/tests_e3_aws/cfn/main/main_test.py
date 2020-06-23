@@ -37,7 +37,7 @@ def test_cfn_main():
         stubber.add_response("describe_stacks", {}, {"StackName": "teststack"})
         with stubber:
             m = MyCFNMain(regions=["us-east-1"])
-            m.execute(args=["push"], aws_env=aws_env)
+            m.execute(args=["push", "--no-wait"], aws_env=aws_env)
 
 
 def test_cfn_main_s3():
@@ -83,4 +83,4 @@ def test_cfn_main_s3():
                     s3_bucket="superbucket",
                     s3_key="test_key",
                 )
-                m.execute(args=["push"], aws_env=aws_env)
+                m.execute(args=["push", "--no-wait"], aws_env=aws_env)
