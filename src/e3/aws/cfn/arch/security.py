@@ -6,42 +6,6 @@ from e3.aws.cfn.ec2.security import Ipv4EgressRule, SecurityGroup
 IP_RANGES_URL = "https://ip-ranges.amazonaws.com/ip-ranges.json"
 
 
-def amazon_security_group(name, vpc):
-    """Create a security group authorizing access to aws services.
-
-    :param vpc: vpc in which to create the group
-    :type vpc: VPC
-    :return: a security group
-    :rtype: SecurityGroup
-    """
-    ip_ranges = requests.get(IP_RANGES_URL).json()["prefixes"]
-
-    # Retrieve first the complete list of ipv4 ip ranges for a given region
-    amazon_ip_ranges = {
-        k["ip_prefix"]
-        for k in ip_ranges
-        if k["region"] == vpc.region and "ip_prefix" in k and k["service"] == "AMAZON"
-    }
-
-    # Sustract the list of ip ranges corresponding to EC2 instances
-    ec2_ip_ranges = {
-        k["ip_prefix"]
-        for k in ip_ranges
-        if k["region"] == vpc.region and "ip_prefix" in k and k["service"] == "EC2"
-    }
-    amazon_ip_ranges -= ec2_ip_ranges
-
-    # Authorize https on the resulting list of ip ranges
-    # Note: the limit of rules per security group is set to 50 at AWS.
-    # In case the number of ip ranges returned by Amazon would be greater
-    # than that there would be need to split into several security groups
-    sg = SecurityGroup(name, vpc, description="Allow acces to amazon services")
-    for ip_range in amazon_ip_ranges:
-        sg.add_rule(Ipv4EgressRule("https", ip_range))
-
-    return sg
-
-
 def amazon_security_groups(name, vpc):
     """Create a dict of security group authorizing access to aws services.
 
@@ -53,20 +17,29 @@ def amazon_security_groups(name, vpc):
     :return: a dict of security groups indexed by name
     :rtype: dict(str, SecurityGroup)
     """
+
+    def select_region(ip_range_record):
+        """Select the VPN region and the us-east-1 region.
+
+        Note that some global interface (e.g. sts) are only available in
+        the us-east-1 region.
+        """
+        return ip_range_record["region"] in (vpc.region, "us-east-1")
+
     ip_ranges = requests.get(IP_RANGES_URL).json()["prefixes"]
 
     # Retrieve first the complete list of ipv4 ip ranges for a given region
     amazon_ip_ranges = {
         k["ip_prefix"]
         for k in ip_ranges
-        if k["region"] == vpc.region and "ip_prefix" in k and k["service"] == "AMAZON"
+        if select_region(k) and "ip_prefix" in k and k["service"] == "AMAZON"
     }
 
     # Sustract the list of ip ranges corresponding to EC2 instances
     ec2_ip_ranges = {
         k["ip_prefix"]
         for k in ip_ranges
-        if k["region"] == vpc.region and "ip_prefix" in k and k["service"] == "EC2"
+        if select_region(k) and "ip_prefix" in k and k["service"] == "EC2"
     }
     amazon_ip_ranges -= ec2_ip_ranges
 
