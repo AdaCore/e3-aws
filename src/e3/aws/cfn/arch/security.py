@@ -17,20 +17,29 @@ def amazon_security_groups(name, vpc):
     :return: a dict of security groups indexed by name
     :rtype: dict(str, SecurityGroup)
     """
+
+    def select_region(ip_range_record):
+        """Select the VPN region and the us-east-1 region.
+
+        Note that some global interface (e.g. sts) are only available in
+        the us-east-1 region.
+        """
+        return ip_range_record["region"] in (vpc.region, "us-east-1")
+
     ip_ranges = requests.get(IP_RANGES_URL).json()["prefixes"]
 
     # Retrieve first the complete list of ipv4 ip ranges for a given region
     amazon_ip_ranges = {
         k["ip_prefix"]
         for k in ip_ranges
-        if k["region"] == vpc.region and "ip_prefix" in k and k["service"] == "AMAZON"
+        if select_region(k) and "ip_prefix" in k and k["service"] == "AMAZON"
     }
 
     # Sustract the list of ip ranges corresponding to EC2 instances
     ec2_ip_ranges = {
         k["ip_prefix"]
         for k in ip_ranges
-        if k["region"] == vpc.region and "ip_prefix" in k and k["service"] == "EC2"
+        if select_region(k) and "ip_prefix" in k and k["service"] == "EC2"
     }
     amazon_ip_ranges -= ec2_ip_ranges
 
