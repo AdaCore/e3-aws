@@ -1,5 +1,5 @@
 from e3.aws.cfn import Stack, Join
-from e3.aws.cfn.arch.security import amazon_security_groups
+from e3.aws.cfn.arch.security import amazon_security_groups, github_security_groups
 from e3.aws.cfn.ec2 import (
     EC2NetworkInterface,
     EIP,
@@ -235,6 +235,7 @@ class Fortress(Stack):
         internal_server_policy,
         bastion_ami=None,
         allow_ssh_from=None,
+        allow_github=False,
         description=None,
         vpc_cidr_block="10.10.0.0/16",
         private_cidr_block="10.10.0.0/17",
@@ -257,6 +258,9 @@ class Fortress(Stack):
         :param allow_ssh_from: ip ranges from which ssh can be done to the
             bastion. if bastion_ami is None, parameter is discarded
         :type allow_ssh_from: str | None
+        :param allow_github: if True, add security groups allowing the use
+            of GitHub git repositories
+        :type allow_github: bool
         :param vpc_cidr_block: ip ranges for the associated vpc
         :type vpc_cidr_block: str
         :param private_cidr_block: ip ranges (subset of vpc_cidr_block) used
@@ -280,6 +284,15 @@ class Fortress(Stack):
         self.amazon_groups = amazon_security_groups(
             self.name + "AmazonServices", self.vpc.vpc
         )
+
+        if allow_github:
+            self.github_groups = github_security_groups(
+                name=f"{self.name}GitHub", vpc=self.vpc.vpc, protocol="ssh"
+            )
+            for sg in self.github_groups.values():
+                self.add(sg)
+        else:
+            self.github_groups = {}
 
         for sg in self.amazon_groups.values():
             self.add(sg)
@@ -339,7 +352,7 @@ class Fortress(Stack):
         return self[self.name + "VPC"].region
 
     def add_network_access(self, protocol, cidr_block="0.0.0.0/0"):
-        """Authorize some ooutbound protocols for internal servers.
+        """Authorize some outbound protocols for internal servers.
 
         :param protocol: protocol name
         :type protocol: str
@@ -362,6 +375,7 @@ class Fortress(Stack):
         instance_type="t2.micro",
         disk_size=None,
         amazon_access=True,
+        github_access=True,
         persistent_eni=False,
         is_template=False,
         template_name=None,
@@ -381,6 +395,9 @@ class Fortress(Stack):
         :param amazon_access: if True add a security group that allow access to
             amazon services. Default is True
         :type amazon_access: bool
+        :param github_access: if True add a security group that allow access to
+            github services. Default is True
+        :type github_access: bool
         :param persistent_eni: Use a separate network interface (i.e: not
             embedded inside the EC2 instance). This is useful to preserve for
             example IP address and MAC address when a server is redeployed.
@@ -391,6 +408,9 @@ class Fortress(Stack):
         groups = [self[self.name + "InternalSG"]]
         if amazon_access:
             for group in self.amazon_groups.values():
+                groups.append(group)
+        if github_access:
+            for group in self.github_groups.values():
                 groups.append(group)
 
         for name in names:
