@@ -276,6 +276,7 @@ class NetworkInterface(Resource):
         self.subnet = subnet
         self.groups = groups
         self.description = description
+        self.tags = {}
 
     @property
     def properties(self):
@@ -290,6 +291,8 @@ class NetworkInterface(Resource):
             result["Description"] = self.description
         if self.groups is not None:
             result["GroupSet"] = [group.ref for group in self.groups]
+        if self.tags:
+            result["Tags"] = [{"Key": k, "Value": v} for k, v in self.tags.items()]
         return result
 
 
