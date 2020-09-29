@@ -732,17 +732,20 @@ class EIP(Resource):
 
     ATTRIBUTES = ("AllocationId",)
 
-    def __init__(self, name, gateway_attach):
+    def __init__(self, name, gateway_attach, instance=None):
         """Initialize Elastic IP address.
 
         :param name: logical name in stack
         :type name: str
         :param gateway_attach: gateway attachment
         :type gateway_attach: VPCGatewayAttachment
+        :param instance: instance to which EIP is asstached
+        :type instance: Optional[Instance]
         """
         super(EIP, self).__init__(name, kind=AWSType.EC2_EIP)
         assert isinstance(gateway_attach, VPCGatewayAttachment)
         self.depends = gateway_attach.name
+        self.instance = instance
 
     @property
     def allocation_id(self):
@@ -750,7 +753,10 @@ class EIP(Resource):
 
     @property
     def properties(self):
-        return {"Domain": "vpc"}
+        result = {"Domain": "vpc"}
+        if self.instance is not None:
+            result["InstanceId"] = self.instance.ref
+        return result
 
 
 class NatGateway(Resource):

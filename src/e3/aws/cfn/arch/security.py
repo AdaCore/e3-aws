@@ -46,7 +46,7 @@ def amazon_security_groups(name, vpc):
     # Authorize https on the resulting list of ip ranges
     sgs = {}
     i = 0
-    limit = 50
+    limit = 60
     sg_name = name + str(i)
     sg = SecurityGroup(sg_name, vpc, description="Allow access to amazon services")
     sgs[sg_name] = sg
