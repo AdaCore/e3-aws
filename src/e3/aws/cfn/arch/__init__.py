@@ -368,6 +368,27 @@ class Fortress(Stack):
             )
         )
 
+    def private_server_security_groups(self, amazon_access=True, github_access=True):
+        """Return list of security groups to apply to private servers.
+
+        :param amazon_access: if True add a security group that allow access to
+            amazon services. Default is True
+        :type amazon_access: bool
+        :param github_access: if True add a security group that allow access to
+            github services. Default is True
+        :type github_access: bool
+        :return: a list of security groups
+        :rtype: List[SecurityGroups]
+        """
+        groups = [self[self.name + "InternalSG"]]
+        if amazon_access:
+            for group in self.amazon_groups.values():
+                groups.append(group)
+        if github_access:
+            for group in self.github_groups.values():
+                groups.append(group)
+        return groups
+
     def add_private_server(
         self,
         server_ami,
@@ -405,13 +426,9 @@ class Fortress(Stack):
         :param is_template: create a template rather than an instance
         :type is_template: bool
         """
-        groups = [self[self.name + "InternalSG"]]
-        if amazon_access:
-            for group in self.amazon_groups.values():
-                groups.append(group)
-        if github_access:
-            for group in self.github_groups.values():
-                groups.append(group)
+        groups = self.private_server_security_groups(
+            amazon_access=amazon_access, github_access=github_access
+        )
 
         for name in names:
             if not is_template:
