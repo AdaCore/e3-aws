@@ -235,7 +235,6 @@ class Fortress(Stack):
         internal_server_policy,
         bastion_ami=None,
         allow_ssh_from=None,
-        allow_github=False,
         description=None,
         vpc_cidr_block="10.10.0.0/16",
         private_cidr_block="10.10.0.0/17",
@@ -258,9 +257,6 @@ class Fortress(Stack):
         :param allow_ssh_from: ip ranges from which ssh can be done to the
             bastion. if bastion_ami is None, parameter is discarded
         :type allow_ssh_from: str | None
-        :param allow_github: if True, add security groups allowing the use
-            of GitHub git repositories
-        :type allow_github: bool
         :param vpc_cidr_block: ip ranges for the associated vpc
         :type vpc_cidr_block: str
         :param private_cidr_block: ip ranges (subset of vpc_cidr_block) used
@@ -281,21 +277,8 @@ class Fortress(Stack):
             self.name + "PrivateNet", private_cidr_block, nat_to=self.name + "PublicNet"
         )
 
-        self.amazon_groups = amazon_security_groups(
-            self.name + "AmazonServices", self.vpc.vpc
-        )
-
-        if allow_github:
-            self.github_groups = github_security_groups(
-                name=f"{self.name}GitHub", vpc=self.vpc.vpc, protocol="ssh"
-            )
-            for sg in self.github_groups.values():
-                self.add(sg)
-        else:
-            self.github_groups = {}
-
-        for sg in self.amazon_groups.values():
-            self.add(sg)
+        self.amazon_groups = {}
+        self.github_groups = {}
 
         if bastion_ami is not None:
             # Allow ssh to bastion only from a range of IP address
@@ -368,7 +351,9 @@ class Fortress(Stack):
             )
         )
 
-    def private_server_security_groups(self, amazon_access=True, github_access=True):
+    def private_server_security_groups(
+        self, amazon_access=True, github_access=True, extra_groups=None
+    ):
         """Return list of security groups to apply to private servers.
 
         :param amazon_access: if True add a security group that allow access to
@@ -377,16 +362,40 @@ class Fortress(Stack):
         :param github_access: if True add a security group that allow access to
             github services. Default is True
         :type github_access: bool
+        :param extra_groups: additional security groups
+        :type extra_groups: Optional[List[SecurityGroups]]
         :return: a list of security groups
         :rtype: List[SecurityGroups]
         """
         groups = [self[self.name + "InternalSG"]]
         if amazon_access:
+            if not self.amazon_groups:
+                self.amazon_groups = amazon_security_groups(
+                    self.name + "AmazonServices", self.vpc.vpc
+                )
+                for sg in self.amazon_groups.values():
+                    self.add(sg)
+
             for group in self.amazon_groups.values():
                 groups.append(group)
+
         if github_access:
+            if not self.github_groups:
+                self.github_groups = github_security_groups(
+                    name=f"{self.name}GitHub", vpc=self.vpc.vpc, protocol="ssh"
+                )
+                for sg in self.github_groups.values():
+                    self.add(sg)
+
             for group in self.github_groups.values():
                 groups.append(group)
+
+        if extra_groups:
+            # Register the groups if necesssary
+            for group in extra_groups:
+                if group.name not in self:
+                    self.add(group)
+            groups += extra_groups
         return groups
 
     def add_private_server(
@@ -396,10 +405,11 @@ class Fortress(Stack):
         instance_type="t2.micro",
         disk_size=None,
         amazon_access=True,
-        github_access=True,
+        github_access=False,
         persistent_eni=False,
         is_template=False,
         template_name=None,
+        extra_groups=None,
     ):
         """Add servers in the private network.
 
@@ -417,7 +427,7 @@ class Fortress(Stack):
             amazon services. Default is True
         :type amazon_access: bool
         :param github_access: if True add a security group that allow access to
-            github services. Default is True
+            github services. Default is False
         :type github_access: bool
         :param persistent_eni: Use a separate network interface (i.e: not
             embedded inside the EC2 instance). This is useful to preserve for
@@ -425,9 +435,13 @@ class Fortress(Stack):
         :type persistent_eni: bool
         :param is_template: create a template rather than an instance
         :type is_template: bool
+        :param extra_groups: a list of security groups to add
+        :type extra_groups: Optional[List[SecurityGroup]]
         """
         groups = self.private_server_security_groups(
-            amazon_access=amazon_access, github_access=github_access
+            amazon_access=amazon_access,
+            github_access=github_access,
+            extra_groups=extra_groups,
         )
 
         for name in names:
