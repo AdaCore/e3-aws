@@ -81,7 +81,6 @@ def test_create_fortress(enable_github, requests_mock):
         f = Fortress(
             "myfortress",
             allow_ssh_from="0.0.0.0/0",
-            allow_github=enable_github,
             bastion_ami=AMI("ami-1234"),
             internal_server_policy=p,
         )
