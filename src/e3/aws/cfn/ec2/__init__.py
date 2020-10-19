@@ -503,7 +503,11 @@ class LaunchTemplate(TemplateOrInstance):
 
             tags = [{"Key": k, "Value": v} for k, v in merged_tags.items()]
 
-            td["TagSpecifications"] = [{"ResourceType": "instance", "Tags": tags}]
+            # Tag both volumes and instance
+            td["TagSpecifications"] = [
+                {"ResourceType": "instance", "Tags": tags},
+                {"ResourceType": "volume", "Tags": tags},
+            ]
 
         if self.terminate_on_shutdown:
             td["InstanceInitiatedShutdownBehavior"] = "terminate"
