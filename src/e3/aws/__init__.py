@@ -1,31 +1,40 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import argparse
 import botocore.session
 import json
+import os
 from botocore.stub import Stubber
 from uuid import uuid4
 
 from e3.env import Env
 
+if TYPE_CHECKING:
+    from typing import Dict, List, Optional
+
 
 class Session(object):
     """Handle AWS session and clients."""
 
-    def __init__(self, regions=None, stub=False, profile=None, credentials=None):
+    def __init__(
+        self,
+        regions: Optional[List] = None,
+        stub: bool = False,
+        profile: Optional[str] = None,
+        credentials: Optional[Dict] = None,
+    ) -> None:
         """Initialize an AWS session.
 
-        Once intialized AWS environment can be accessed from Env().aws_env
+        Once initialized AWS environment can be accessed from Env().aws_env
 
         :param regions: list of regions to work on. The first region is
-            considered as the default region.
-        :type regions: list[str]
+            considered as the default region. This parameter should be provided
+            if AWS environment variables are not used to specified the region
         :param stub: if True clients are necessarily stubbed
-        :type stub: bool
         :param profile: profile name
-        :type profile: str | None
         :param credentials: AWS credentials dictionary containing the
             following keys: AccessKeyId, SecretAccessKey, SessionToken
-            as returnedy by ``assume_role``
-        :type credentials: dict[str]
+            as returned by ``assume_role``
         """
         if profile is not None or credentials is None:
             self.session = botocore.session.Session(profile=profile)
@@ -39,17 +48,28 @@ class Session(object):
 
         self.profile = profile
         if regions is None:
-            self.regions = [self.session.region_name]
+            # the value return below is ('region', 'AWS_DEFAULT_REGION', None, None)
+            # See botocore/configprovider.py
+            region_variable = self.session.SESSION_VARIABLES["region"][1]
+            region = os.environ.get(region_variable, "")
+            if not region:
+                raise ValueError(
+                    "region should be specified either using regions "
+                    "parameter or using AWS environment variables"
+                )
+            self.regions = [region]
         else:
             self.regions = regions
-        self.default_region = None
+
+        self.default_region = self.regions[0]
+
         self.force_stub = stub
         self.clients = {}
         self.stubbers = {}
 
         self._account_alias = None
 
-    def assume_role(self, role_arn, role_session_name):
+    def assume_role(self, role_arn: str, role_session_name: str) -> Session:
         """Return a session with ``role_arn`` credentials.
 
         :param role_arn: ARN of the role to assume

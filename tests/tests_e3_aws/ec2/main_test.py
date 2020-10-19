@@ -1,4 +1,5 @@
-from e3.aws import AWSEnv, default_region
+import pytest
+from e3.aws import AWSEnv, default_region, Session
 from e3.aws.ec2.ami import AMI
 
 
@@ -96,3 +97,10 @@ def test_select():
     with default_region("us-east-1"):
         ami = AMI.select(platform="x86_64-linux", os_version="suse11")
         assert ami.id == "ami-2"
+
+
+def test_session_without_args():
+    """Raise error when no arguments."""
+    with pytest.raises(ValueError):
+        session = Session()
+        session.client("ec2")
