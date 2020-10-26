@@ -1,16 +1,26 @@
 from __future__ import annotations
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 import argparse
 import botocore.session
 import json
+import logging
 import os
+import re
+import time
+
+from botocore.exceptions import ClientError
 from botocore.stub import Stubber
 from uuid import uuid4
+from troposphere import AWSObject, Template
 
 from e3.env import Env
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
-    from typing import Dict, List, Optional
+    from typing import Any, Dict, List, Optional
+    from botocore.client import BaseClient
 
 
 class Session(object):
@@ -344,3 +354,155 @@ def iterate(fun, key, **kwargs):
         result = fun(NextToken=result["NextToken"], **kwargs)
         for data in result.get(key, []):
             yield data
+
+
+class Property(ABC):
+    """Property abstract class.
+
+    Define an intermediate class that can be used to build a Construct.
+    Construct use property by accessing their as_dict attribute that should
+    correspond to a valid troposphere property definition.
+    """
+
+    @property
+    @abstractmethod
+    def as_dict(self) -> dict:
+        """Return dictionary representation of the property."""
+        pass
+
+
+class Construct(ABC):
+    """Represent one or multiple troposphere AWSObject.
+
+    AWSObjects are accessible with aws_object attribute.
+    """
+
+    @property
+    @abstractmethod
+    def aws_objects(self) -> List[AWSObject]:
+        """Return a list of troposphere AWSObject.
+
+        Objects returned can be added to a troposphere template with
+        add_resource Template method.
+        """
+        pass
+
+
+class Stack:
+    """High level class to build and deploy a CloudFormation stack."""
+
+    def __init__(
+        self, stack_name: str, session: Session, opts: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """Initialize Stack attributes.
+
+        :param stack_name: name of the stack to deploy
+        :param session: AWS session
+        :param opts: boto3 option for CloudFormation stack deployment
+            (see CloudFormation.Client.create_stack)
+        """
+        self.name = stack_name
+        self.session = session
+        self._client = None
+        self.opts = opts
+        self.template: Template = Template()
+
+    def __getitem__(self, resource_name: str) -> AWSObject:
+        """Return AWSObject associated with resource_name.
+
+        :param resource_name: name of the resource to retrieve
+        """
+        return self.template.resources[name_to_id(resource_name)]
+
+    @property
+    def client(self) -> BaseClient:
+        """Return botocore client for Cloudformation."""
+        if not self._client:
+            self._client = self.session.client("cloudformation")
+        return self._client
+
+    def __stack_status(self) -> Dict[str, Any]:
+        """Return stack status information.
+
+        :return: stack status information
+            (see boto3 documentation CloudFormation.Client.describe_stacks)
+        """
+        response = self.client.describe_stacks(StackName=self.name)
+        return response["Stacks"][0]
+
+    def add_resource(self, obj: AWSObject) -> None:
+        """Add a troposphere AWSObject to self template.
+
+        :param obj: object to add to the template
+        """
+        self.template.add_resource(obj)
+
+    def add_construct(self, aws_constructs: List[Construct]) -> None:
+        """Add resources associated to Construct instances to a troposphere template.
+
+        :param aws_constructs: list of constructs from which associated AWSObject
+            are added to template
+        """
+        for construct in aws_constructs:
+            construct_objects = construct.aws_objects
+            for obj in construct_objects:
+                logger.debug(f"Adding {obj.title} to template {self.name}")
+                self.add_resource(obj)
+
+    def deploy(self) -> None:
+        """Deploy stack by creating or updating it if it already exists."""
+        logger.info(f"Deploying stack {self.name}")
+        logger.info(f"With template:\n {self.template.to_json()}")
+        kwargs = {"StackName": self.name, "TemplateBody": self.template.to_json()}
+        if self.opts:
+            kwargs.update(self.opts)
+
+        try:
+            logging.info(f"Creating stack: {self.name}")
+            self.client.create_stack(**kwargs)
+        except ClientError as boto_exception:
+            if boto_exception.response["Error"]["Code"] == "AlreadyExistsException":
+                logging.info(f"Updating already existing stack: {self.name}")
+                self.client.update_stack(**kwargs)
+            else:
+                raise boto_exception
+
+    def undeploy(self) -> None:
+        """Undeploy stack."""
+        logger.info(f"Undeploying stack {self.name}")
+        # ??? probably we should look before if the stack exists
+        self.client.delete_stack(StackName=self.name)
+        status = ""
+        while True:
+            try:
+                status_info = self.__stack_status()
+                status = status_info["StackStatus"]
+                logger.info(f"Status : {status}")
+            except ClientError as boto_exception:
+                if boto_exception.response["Error"]["Code"] == "ValidationError":
+                    logger.info("Delete successful")
+                    break
+                else:
+                    raise boto_exception
+
+            if status == "DELETE_FAILED":
+                logger.info("Undeploy failed")
+                break
+            time.sleep(2)
+
+
+def name_to_id(name: str) -> str:
+    """Convert a resource name to a resource id.
+
+    The conversion is done by removing characters that are not alphanumeric as
+    resource id must contain only alphanumeric character and first character and
+    characters following a dash to uppercase for a better readability.
+    """
+
+    def replacement(match):
+        """Return uppercased second character of the match."""
+        return match.group(1)[1].upper()
+
+    resource_id = re.sub(r"[^a-zA-Z0-9]", "", re.sub(r"(-[a-z])", replacement, name))
+    resource_id = resource_id[0].upper() + resource_id[1:]
+    return resource_id
