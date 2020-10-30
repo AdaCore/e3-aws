@@ -69,6 +69,8 @@ class Session(object):
 
         self._account_alias = None
 
+        self._identity = None
+
     def assume_role(self, role_arn: str, role_session_name: str) -> Session:
         """Return a session with ``role_arn`` credentials.
 
@@ -121,6 +123,16 @@ class Session(object):
             else:
                 self._account_alias = ""
         return self._account_alias
+
+    @property
+    def identity(self):
+        """Return identity information."""
+        if self._identity is None:
+            sts_client = self.client("sts")
+            self._identity = {"UserId": "", "Account": "", "Arn": ""}
+            self._identity.update(sts_client.get_caller_identity())
+
+        return self._identity
 
     def stub(self, name, region=None):
         """Return stub for a given client.
