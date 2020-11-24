@@ -13,7 +13,7 @@ setup(
     author="AdaCore's Production Team",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
-    install_requires=("botocore", "pyyaml", "e3-core"),
+    install_requires=("botocore", "pyyaml", "troposphere", "e3-core"),
     namespace_packages=["e3"],
     entry_points={"console_scripts": ["e3-aws-assume-role = e3.aws:assume_role_main"]},
 )
