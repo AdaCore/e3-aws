@@ -144,6 +144,7 @@ EXPECTED_RECORDER = {
                 "IgnorePublicAcls": "true",
                 "RestrictPublicBuckets": "true",
             },
+            "VersioningConfiguration": {"Status": "Enabled"},
         },
         "Type": "AWS::S3::Bucket",
     },
