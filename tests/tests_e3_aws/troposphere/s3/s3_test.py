@@ -20,6 +20,7 @@ EXPECTED_BUCKET = {
                 "IgnorePublicAcls": "true",
                 "RestrictPublicBuckets": "true",
             },
+            "VersioningConfiguration": {"Status": "Enabled"},
         },
         "Type": "AWS::S3::Bucket",
     },
@@ -80,6 +81,7 @@ EXPECTED_AWS_CONFIG_BUCKET = {
                 "IgnorePublicAcls": "true",
                 "RestrictPublicBuckets": "true",
             },
+            "VersioningConfiguration": {"Status": "Enabled"},
         },
         "Type": "AWS::S3::Bucket",
     },
@@ -151,7 +153,6 @@ EXPECTED_AWS_CONFIG_BUCKET = {
         "DependsOn": "TestBucket",
     },
 }
-
 
 EXPECTED_S3_ACCESS_MANAGED_POLICY = {
     "S3ManagedPolicy": {

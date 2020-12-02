@@ -25,9 +25,12 @@ class Bucket(Construct):
     """Define a S3 bucket construct with security parameters and a security policy.
 
     :param name: bucket name
+    :param enable_versioning: can be set to enable multiple versions of all
+         objects in the bucket.
     """
 
     name: str
+    enable_versioning: bool = True
     access_control: str = field(default="Private", init=False)
     bucket_encryption: Dict[str, List[Dict[str, Dict[str, str]]]] = field(
         default_factory=lambda: {
@@ -62,6 +65,10 @@ class Bucket(Construct):
     @property
     def aws_objects(self) -> List[AWSObject]:
         """Construct and return a s3.Bucket and its associated s3.BucketPolicy."""
+        versioning_status = "Suspended"
+        if self.enable_versioning:
+            versioning_status = "Enabled"
+
         return [
             s3.Bucket(
                 name_to_id(self.name),
@@ -71,6 +78,9 @@ class Bucket(Construct):
                     "DefautBucketEncryption", self.bucket_encryption
                 ),
                 PublicAccessBlockConfiguration=self.public_access_block_configuration,
+                VersioningConfiguration=s3.VersioningConfiguration(
+                    Status=versioning_status
+                ),
             ),
             s3.BucketPolicy(
                 name_to_id(self.name) + "Policy",
