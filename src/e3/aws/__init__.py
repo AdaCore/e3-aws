@@ -97,20 +97,21 @@ class Session(object):
         return Session(regions=self.regions, credentials=credentials)
 
     def assume_role_get_credentials(
-        self, role_arn, role_session_name, session_duration=None
-    ):
+        self,
+        role_arn: str,
+        role_session_name: str,
+        session_duration: Optional[int] = None,
+        as_env_var: bool = False,
+    ) -> Dict[str]:
         """Return credentials for ``role_arn``.
 
         :param role_arn: ARN of the role to assume
-        :type role_arn: str
         :param role_session_name: a name to associate with the created
             session
-        :type role_session_name: str
         :param session_duration: session duration in seconds or None for
             default
-        :type session_duration: int | None
-        :return: credentials dictionary
-        :rtype: dict
+        :param as_env_var: if set to True the returned credentials dictionnary
+            keys are translated to be compatible to update os.environ.
         """
         client = self.client("sts", region=self.regions[0])
         arguments = {"RoleArn": role_arn, "RoleSessionName": role_session_name}
@@ -118,7 +119,21 @@ class Session(object):
             arguments["DurationSeconds"] = session_duration
 
         response = client.assume_role(**arguments)
-        return response["Credentials"]
+
+        credentials = response["Credentials"]
+        if as_env_var:
+            key_to_envvar = {
+                "AccessKeyId": "AWS_ACCESS_KEY_ID",
+                "SecretAccessKey": "AWS_SECRET_ACCESS_KEY",
+                "SessionToken": "AWS_SESSION_TOKEN",
+            }
+            credentials = {
+                key_to_envvar[k]: v
+                for k, v in credentials.items()
+                if k in key_to_envvar
+            }
+
+        return credentials
 
     @property
     def account_alias(self):
