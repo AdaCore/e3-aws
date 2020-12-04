@@ -478,7 +478,17 @@ class Stack:
         except ClientError as boto_exception:
             if boto_exception.response["Error"]["Code"] == "AlreadyExistsException":
                 logging.info(f"Updating already existing stack: {self.name}")
-                self.client.update_stack(**kwargs)
+                try:
+                    self.client.update_stack(**kwargs)
+                except ClientError as e:
+                    if (
+                        e.response["Error"]["Message"]
+                        == "No updates are to be performed."
+                    ):
+                        logger.info(f"Nothing to update for stack {self.name}")
+                    else:
+                        logging.exception("Error updating")
+                        raise
             else:
                 raise boto_exception
 
