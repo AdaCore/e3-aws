@@ -1,10 +1,16 @@
+from __future__ import annotations
 import abc
 import logging
 import os
 import time
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import List, Union
 
 import botocore.exceptions
-from e3.aws import AWSEnv, Session
+
+from e3.aws import AWSEnv, Session, Stack
 from e3.env import Env
 from e3.fs import find
 from e3.main import Main
@@ -119,27 +125,11 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 self.s3_template_key,
             )
 
-    def execute(self, args=None, known_args_only=False, aws_env=None):
-        """Execute application and return exit status.
+    def execute_for_stack(self, stack: Stack) -> int:
+        """Execute application for a given stack and return exit status.
 
-        See parse_args arguments.
+        :param Stack: the stack on which the application executes
         """
-        super(CFNMain, self).parse_args(args, known_args_only)
-        if aws_env is not None:
-            self.aws_env = aws_env
-        else:
-
-            if self.assume_role:
-                main_session = Session(regions=self.regions, profile=self.args.profile)
-                self.aws_env = main_session.assume_role(
-                    self.assume_role[0], self.assume_role[1]
-                )
-                # ??? needed since we still use a global variable for AWSEnv
-                Env().aws_env = self.aws_env
-            else:
-                self.aws_env = AWSEnv(regions=self.regions, profile=self.args.profile)
-            self.aws_env.default_region = self.args.region
-
         try:
             if self.args.command in ("push", "update"):
                 if self.data_dir is not None and self.s3_data_key is not None:
@@ -165,39 +155,37 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                                 Key=self.s3_data_key + subkey,
                             )
 
-                s = self.create_stack()
-
                 if self.s3_template_key is not None:
                     logging.info(
                         "Upload template to %s:%s", self.s3_bucket, self.s3_template_key
                     )
                     s3.put_object(
                         Bucket=self.s3_bucket,
-                        Body=s.body.encode("utf-8"),
+                        Body=stack.body.encode("utf-8"),
                         ServerSideEncryption="AES256",
                         Key=self.s3_template_key,
                     )
 
-                logging.info("Validate template for stack %s" % s.name)
+                logging.info("Validate template for stack %s" % stack.name)
                 try:
-                    s.validate(url=self.s3_template_url)
+                    stack.validate(url=self.s3_template_url)
                 except Exception:
                     logging.error("Invalid cloud formation template")
-                    logging.error(s.body)
+                    logging.error(stack.body)
                     raise
 
-                if s.exists():
+                if stack.exists():
                     changeset_name = "changeset%s" % int(time.time())
                     logging.info("Push changeset: %s" % changeset_name)
-                    s.create_change_set(changeset_name, url=self.s3_template_url)
-                    result = s.describe_change_set(changeset_name)
+                    stack.create_change_set(changeset_name, url=self.s3_template_url)
+                    result = stack.describe_change_set(changeset_name)
                     while result["Status"] in ("CREATE_PENDING", "CREATE_IN_PROGRESS"):
                         time.sleep(1.0)
-                        result = s.describe_change_set(changeset_name)
+                        result = stack.describe_change_set(changeset_name)
 
                     if result["Status"] == "FAILED":
                         logging.error(result["StatusReason"])
-                        s.delete_change_set(changeset_name)
+                        stack.delete_change_set(changeset_name)
                         return 1
                     else:
                         for el in result["Changes"]:
@@ -213,32 +201,29 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                         if self.args.apply_changeset:
                             ask = input("Apply change (y/N): ")
                             if ask[0] in "Yy":
-                                return s.execute_change_set(
+                                return stack.execute_change_set(
                                     changeset_name=changeset_name, wait=True
                                 )
                         return 0
                 else:
                     logging.info("Create new stack")
-                    s.create(url=self.s3_template_url)
-                    state = s.state()
+                    stack.create(url=self.s3_template_url)
+                    state = stack.state()
                     if self.args.wait_stack_creation:
                         logging.info("waiting for stack creation...")
                         while "PROGRESS" in state["Stacks"][0]["StackStatus"]:
-                            result = s.resource_status(in_progress_only=False)
+                            result = stack.resource_status(in_progress_only=False)
                             time.sleep(10.0)
-                            state = s.state()
+                            state = stack.state()
                         logging.info("done")
             elif self.args.command == "show":
-                s = self.create_stack()
-                print(s.body)
+                print(stack.body)
             elif self.args.command == "protect":
-                s = self.create_stack()
-
                 # Enable termination protection
-                result = s.enable_termination_protection()
+                result = stack.enable_termination_protection()
 
                 if self.stack_policy_body is not None:
-                    s.set_stack_policy(self.stack_policy_body)
+                    stack.set_stack_policy(self.stack_policy_body)
                 else:
                     print("No stack policy to set")
 
@@ -247,8 +232,43 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             logging.error(str(e))
             return 1
 
+    def execute(self, args=None, known_args_only=False, aws_env=None):
+        """Execute application and return exit status.
+
+        See parse_args arguments.
+        """
+        super(CFNMain, self).parse_args(args, known_args_only)
+        if aws_env is not None:
+            self.aws_env = aws_env
+        else:
+
+            if self.assume_role:
+                main_session = Session(regions=self.regions, profile=self.args.profile)
+                self.aws_env = main_session.assume_role(
+                    self.assume_role[0], self.assume_role[1]
+                )
+                # ??? needed since we still use a global variable for AWSEnv
+                Env().aws_env = self.aws_env
+            else:
+                self.aws_env = AWSEnv(regions=self.regions, profile=self.args.profile)
+            self.aws_env.default_region = self.args.region
+
+        return_val = 0
+        stacks = self.create_stack()
+
+        if isinstance(stacks, list):
+            for stack in stacks:
+                return_val = self.execute_for_stack(stack)
+                # Stop at first failure
+                if return_val:
+                    return return_val
+        else:
+            return_val = self.execute_for_stack(stacks)
+
+        return return_val
+
     @abc.abstractmethod
-    def create_stack(self):
+    def create_stack(self) -> Union[Stack, List[Stack]]:
         """Create a stack.
 
         :return: Stack on which the application will operate
