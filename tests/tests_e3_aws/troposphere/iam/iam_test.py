@@ -30,13 +30,11 @@ def test_role(stack: Stack) -> None:
 
     Creating a Role also tests PolicyDocument and Policystatement classes.
     """
-    stack.add_construct(
-        [
-            Role(
-                name="TestRole",
-                description="TestRole description",
-                principal={"Service": "test"},
-            )
-        ]
+    stack.add(
+        Role(
+            name="TestRole",
+            description="TestRole description",
+            principal={"Service": "test"},
+        )
     )
-    assert stack.template.to_dict()["Resources"] == EXPECTED_ROLE
+    assert stack.export()["Resources"] == EXPECTED_ROLE

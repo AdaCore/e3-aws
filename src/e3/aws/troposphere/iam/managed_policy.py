@@ -34,7 +34,7 @@ class ManagedPolicy(Construct):
     policy_document: PolicyDocument = field(init=False)
 
     @property
-    def aws_objects(self) -> List[AWSObject]:
+    def resources(self) -> List[AWSObject]:
         """Return troposphere objects defining the managed policy."""
         attr_policy = {
             key: val

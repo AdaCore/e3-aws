@@ -40,7 +40,7 @@ class Role(Construct):
         return PolicyDocument(statements=[AssumeRole(principal=self.principal)])
 
     @property
-    def aws_objects(self) -> List[AWSObject]:
+    def resources(self) -> List[AWSObject]:
         """Return troposphere objects defining the role."""
         attr = {
             "RoleName": self.name,

@@ -31,7 +31,7 @@ class ConfigRule(Construct):
     scope: Dict[str, Any] = field(default_factory=dict)
 
     @property
-    def aws_objects(self) -> List[AWSObject]:
+    def resources(self) -> List[AWSObject]:
         """Return troposphere objects defining the configuration rule."""
         return [
             config.ConfigRule(

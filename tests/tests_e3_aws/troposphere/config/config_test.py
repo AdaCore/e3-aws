@@ -225,19 +225,19 @@ EXPECTED_RECORDER = {
 
 def test_config_recorder(stack: Stack) -> None:
     """Test config recorder creation."""
-    stack.add_construct([ConfigurationRecorder(bucket_name="config-test-bucket")])
-    assert stack.template.to_dict()["Resources"] == EXPECTED_RECORDER
+    stack.add(ConfigurationRecorder(bucket_name="config-test-bucket"))
+    assert stack.export()["Resources"] == EXPECTED_RECORDER
 
 
 def test_config_rules(stack: Stack) -> None:
     """Test config rules creation."""
-    stack.add_construct(
-        [
-            S3BucketPublicWriteProhibited,
-            S3BucketPublicReadProhibited,
-            S3BucketServerSideEncryptionEnabled,
-            S3BucketSSLRequestsOnly,
-            IAMUserNoPoliciesCheck,
-        ]
-    )
-    assert stack.template.to_dict()["Resources"] == EXPECTED_RULES
+    for config_rule in (
+        S3BucketPublicWriteProhibited,
+        S3BucketPublicReadProhibited,
+        S3BucketServerSideEncryptionEnabled,
+        S3BucketSSLRequestsOnly,
+        IAMUserNoPoliciesCheck,
+    ):
+        stack.add(config_rule)
+
+    assert stack.export()["Resources"] == EXPECTED_RULES

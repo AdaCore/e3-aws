@@ -63,7 +63,7 @@ class Bucket(Construct):
         )
 
     @property
-    def aws_objects(self) -> List[AWSObject]:
+    def resources(self) -> List[AWSObject]:
         """Construct and return a s3.Bucket and its associated s3.BucketPolicy."""
         versioning_status = "Suspended"
         if self.enable_versioning:

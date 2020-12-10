@@ -2,10 +2,10 @@
 
 import pytest
 
-from e3.aws import Session, Stack
+from e3.aws import Stack
 
 
 @pytest.fixture
 def stack() -> Stack:
     """Stack fixture to help dumping dictionnaries from constructs."""
-    return Stack("test-stack", Session(regions=["eu-west-1"]), opts=None)
+    return Stack("test-stack", "this is a test stack")
