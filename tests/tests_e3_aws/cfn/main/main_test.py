@@ -40,6 +40,33 @@ def test_cfn_main():
             m.execute(args=["push", "--no-wait"], aws_env=aws_env)
 
 
+def test_cfn_main_multiple_stacks():
+    class MyCFNMain(CFNMain):
+        def create_stack(self):
+            return [Stack(name="first-stack"), Stack(name="second-stack")]
+
+    aws_env = AWSEnv(regions=["us-east-1"], stub=True)
+    with default_region("us-east-1"):
+        aws_env.client("cloudformation", region="us-east-1")
+
+        stubber = aws_env.stub("cloudformation")
+        for stack_name in ("first-stack", "second-stack"):
+            stubber.add_response("validate_template", {}, {"TemplateBody": ANY})
+            stubber.add_response(
+                "create_stack",
+                {},
+                {
+                    "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+                    "StackName": f"{stack_name}",
+                    "TemplateBody": ANY,
+                },
+            )
+            stubber.add_response("describe_stacks", {}, {"StackName": f"{stack_name}"})
+        with stubber:
+            m = MyCFNMain(regions=["us-east-1"])
+            m.execute(args=["push", "--no-wait"], aws_env=aws_env)
+
+
 def test_cfn_main_s3():
     class MyCFNMain(CFNMain):
         def create_stack(self):
