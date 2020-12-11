@@ -1,4 +1,3 @@
-from e3.aws import client
 from e3.env import Env
 from enum import Enum
 import re
@@ -7,6 +6,33 @@ import yaml
 
 VALID_STACK_NAME = re.compile("^[a-zA-Z][a-zA-Z0-9-]*$")
 VALID_STACK_NAME_MAX_LEN = 128
+
+
+def client(name):
+    """Decorate a function to handle automatically AWS client retrieval.
+
+    The function in input should take a mandatory argument called client.
+    The function seen by the user will have an optional argument region
+    to select the region in which the client is created.
+
+    :param name: client name
+    :type name: str
+    """
+
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            aws_env = Env().aws_env
+            if "region" in kwargs:
+                region = kwargs["region"]
+                del kwargs["region"]
+            else:
+                region = aws_env.default_region
+            client = aws_env.client(name, region=region)
+            return func(*args, client=client, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 class AWSType(Enum):

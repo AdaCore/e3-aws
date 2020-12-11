@@ -25,7 +25,7 @@ class ConfigurationRecorder(Construct):
     bucket_name: str
 
     @property
-    def aws_objects(self) -> List[AWSObject]:
+    def resources(self) -> List[AWSObject]:
         """Build and return objects associated with the configuration recorder.
 
         Return a configuration recorder and a delivery channel with its s3 bucket
@@ -65,7 +65,7 @@ class ConfigurationRecorder(Construct):
         )
 
         # Add a delivery channel and an associated s3 bucket
-        aws_objects.extend(AWSConfigBucket(name=f"{self.bucket_name}").aws_objects)
+        aws_objects.extend(AWSConfigBucket(name=f"{self.bucket_name}").resources)
         aws_objects.append(
             config.DeliveryChannel(
                 name_to_id("DeliveryChannel"),

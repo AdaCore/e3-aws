@@ -7,20 +7,18 @@ import json
 import logging
 import os
 import re
-import time
 
-from botocore.exceptions import ClientError
 from botocore.stub import Stubber
 from uuid import uuid4
 from troposphere import AWSObject, Template
 
+from e3.aws import cfn
 from e3.env import Env
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional
-    from botocore.client import BaseClient
+    from typing import Dict, List, Optional, Union
 
 
 class Session(object):
@@ -257,33 +255,6 @@ class default_region(object):
         Env().aws_env.default_region = self.previous_region
 
 
-def client(name):
-    """Decorate a function to handle automatically AWS client retrieval.
-
-    The function in input should take a mandatory argument called client.
-    The function seen by the user will have an optional argument region
-    to select the region in which the client is created.
-
-    :param name: client name
-    :type name: str
-    """
-
-    def decorator(func):
-        def wrapper(*args, **kwargs):
-            aws_env = Env().aws_env
-            if "region" in kwargs:
-                region = kwargs["region"]
-                del kwargs["region"]
-            else:
-                region = aws_env.default_region
-            client = aws_env.client(name, region=region)
-            return func(*args, client=client, **kwargs)
-
-        return wrapper
-
-    return decorator
-
-
 def session():
     """Decorate a function to handle automatically AWS session retrieval.
 
@@ -389,12 +360,12 @@ class Property(ABC):
 class Construct(ABC):
     """Represent one or multiple troposphere AWSObject.
 
-    AWSObjects are accessible with aws_object attribute.
+    AWSObjects are accessible with resources attribute.
     """
 
     @property
     @abstractmethod
-    def aws_objects(self) -> List[AWSObject]:
+    def resources(self) -> List[AWSObject]:
         """Return a list of troposphere AWSObject.
 
         Objects returned can be added to a troposphere template with
@@ -403,24 +374,46 @@ class Construct(ABC):
         pass
 
 
-class Stack:
-    """High level class to build and deploy a CloudFormation stack."""
+class Stack(cfn.Stack, Construct):
+    """Cloudformation stack using troposphere resources."""
 
-    def __init__(
-        self, stack_name: str, session: Session, opts: Optional[Dict[str, Any]] = None
-    ) -> None:
+    def __init__(self, stack_name: str, description: Optional[str] = None) -> None:
         """Initialize Stack attributes.
 
-        :param stack_name: name of the stack to deploy
-        :param session: AWS session
-        :param opts: boto3 option for CloudFormation stack deployment
-            (see CloudFormation.Client.create_stack)
+        :param stack_name: stack name
+        :param description: a description of the stack
         """
-        self.name = stack_name
-        self.session = session
-        self._client = None
-        self.opts = opts
+        self.resources = {}
+        super().__init__(stack_name, description)
         self.template: Template = Template()
+
+    def add(self, element: Union[AWSObject, Construct]) -> Stack:
+        """Add a Construct or AWSObject to the stack.
+
+        :param element: if a resource an AWSObject or Construct add the resource
+             to the stack. If a stack merge its resources into the current stack.
+        """
+        resources = []
+
+        if isinstance(element, Construct):
+            resources = element.resources
+
+        if isinstance(element, AWSObject):
+            resources = [element]
+
+        self.template.add_resource(resources)
+
+        return self
+
+    @property
+    def resources(self) -> List[AWSObject]:
+        """Return stack resources."""
+        return self.template.resources
+
+    @resources.setter
+    def resources(self, value: Dict[str]) -> None:
+        """Empty setter needed when calling cfn.Stack init method."""
+        pass
 
     def __getitem__(self, resource_name: str) -> AWSObject:
         """Return AWSObject associated with resource_name.
@@ -429,81 +422,12 @@ class Stack:
         """
         return self.template.resources[name_to_id(resource_name)]
 
-    @property
-    def client(self) -> BaseClient:
-        """Return botocore client for Cloudformation."""
-        if not self._client:
-            self._client = self.session.client("cloudformation")
-        return self._client
+    def export(self) -> dict:
+        """Export stack as dict.
 
-    def __stack_status(self) -> Dict[str, Any]:
-        """Return stack status information.
-
-        :return: stack status information
-            (see boto3 documentation CloudFormation.Client.describe_stacks)
+        :return: a dict that can be serialized as YAML to produce a template
         """
-        response = self.client.describe_stacks(StackName=self.name)
-        return response["Stacks"][0]
-
-    def add_resource(self, obj: AWSObject) -> None:
-        """Add a troposphere AWSObject to self template.
-
-        :param obj: object to add to the template
-        """
-        self.template.add_resource(obj)
-
-    def add_construct(self, aws_constructs: List[Construct]) -> None:
-        """Add resources associated to Construct instances to a troposphere template.
-
-        :param aws_constructs: list of constructs from which associated AWSObject
-            are added to template
-        """
-        for construct in aws_constructs:
-            construct_objects = construct.aws_objects
-            for obj in construct_objects:
-                logger.debug(f"Adding {obj.title} to template {self.name}")
-                self.add_resource(obj)
-
-    def deploy(self) -> None:
-        """Deploy stack by creating or updating it if it already exists."""
-        logger.info(f"Deploying stack {self.name}")
-        logger.info(f"With template:\n {self.template.to_json()}")
-        kwargs = {"StackName": self.name, "TemplateBody": self.template.to_json()}
-        if self.opts:
-            kwargs.update(self.opts)
-
-        try:
-            logging.info(f"Creating stack: {self.name}")
-            self.client.create_stack(**kwargs)
-        except ClientError as boto_exception:
-            if boto_exception.response["Error"]["Code"] == "AlreadyExistsException":
-                logging.info(f"Updating already existing stack: {self.name}")
-                self.client.update_stack(**kwargs)
-            else:
-                raise boto_exception
-
-    def undeploy(self) -> None:
-        """Undeploy stack."""
-        logger.info(f"Undeploying stack {self.name}")
-        # ??? probably we should look before if the stack exists
-        self.client.delete_stack(StackName=self.name)
-        status = ""
-        while True:
-            try:
-                status_info = self.__stack_status()
-                status = status_info["StackStatus"]
-                logger.info(f"Status : {status}")
-            except ClientError as boto_exception:
-                if boto_exception.response["Error"]["Code"] == "ValidationError":
-                    logger.info("Delete successful")
-                    break
-                else:
-                    raise boto_exception
-
-            if status == "DELETE_FAILED":
-                logger.info("Undeploy failed")
-                break
-            time.sleep(2)
+        return self.template.to_dict()
 
 
 def name_to_id(name: str) -> str:

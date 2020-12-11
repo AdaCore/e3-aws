@@ -184,8 +184,8 @@ def test_bucket(stack: Stack) -> None:
 
     Note that a bucket policy is also created when a Bucket is instanciated
     """
-    stack.add_construct([Bucket(name="test-bucket")])
-    assert stack.template.to_dict()["Resources"] == EXPECTED_BUCKET
+    stack.add(Bucket(name="test-bucket"))
+    assert stack.export()["Resources"] == EXPECTED_BUCKET
 
 
 def test_aws_config_bucket(stack: Stack) -> None:
@@ -193,20 +193,18 @@ def test_aws_config_bucket(stack: Stack) -> None:
 
     Note that a bucket policy is also created when a Bucket is instanciated
     """
-    stack.add_construct([AWSConfigBucket(name="test-bucket")])
-    assert stack.template.to_dict()["Resources"] == EXPECTED_AWS_CONFIG_BUCKET
+    stack.add(AWSConfigBucket(name="test-bucket"))
+    assert stack.export()["Resources"] == EXPECTED_AWS_CONFIG_BUCKET
 
 
 def test_s3_access_managed_policy(stack: Stack) -> None:
     """Test S3 access managed policy creation."""
-    stack.add_construct(
-        [
-            S3AccessManagedPolicy(
-                name="S3ManagedPolicy",
-                buckets=["test-bucket"],
-                action=["s3:PutObject"],
-                roles=["TestRole"],
-            )
-        ]
+    stack.add(
+        S3AccessManagedPolicy(
+            name="S3ManagedPolicy",
+            buckets=["test-bucket"],
+            action=["s3:PutObject"],
+            roles=["TestRole"],
+        )
     )
-    assert stack.template.to_dict()["Resources"] == EXPECTED_S3_ACCESS_MANAGED_POLICY
+    assert stack.export()["Resources"] == EXPECTED_S3_ACCESS_MANAGED_POLICY
