@@ -28,9 +28,9 @@ class S3AccessManagedPolicy(ManagedPolicy):
     name: str
     buckets: List[str] = field(default_factory=list)
     action: List[str] = field(default_factory=list)
-    users: Optional[List[str]] = None
-    groups: Optional[List[str]] = None
-    roles: Optional[List[str]] = None
+    users: Optional[List[str]] = field(default_factory=list)
+    groups: Optional[List[str]] = field(default_factory=list)
+    roles: Optional[List[str]] = field(default_factory=list)
     description: str = "S3 Bucket access managed policy"
 
     @property

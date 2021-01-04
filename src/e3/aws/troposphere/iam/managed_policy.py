@@ -1,6 +1,7 @@
 """Provide IAM Managed policies."""
 from __future__ import annotations
 from dataclasses import dataclass, field
+from itertools import chain
 from typing import TYPE_CHECKING
 
 from troposphere import iam, AWSObject
@@ -26,9 +27,9 @@ class ManagedPolicy(Construct):
 
     name: str
     description: Optional[str] = None
-    users: Optional[List[str]] = None
-    groups: Optional[List[str]] = None
-    roles: Optional[List[str]] = None
+    users: Optional[List[str]] = field(default_factory=list)
+    groups: Optional[List[str]] = field(default_factory=list)
+    roles: Optional[List[str]] = field(default_factory=list)
 
     # PolicyDocument to attach to this policy
     policy_document: PolicyDocument = field(init=False)
@@ -45,7 +46,11 @@ class ManagedPolicy(Construct):
                 "PolicyDocument": self.policy_document.as_dict,
                 "Roles": self.roles,
                 "Users": self.users,
+                "DependsOn": [
+                    name_to_id(entity)
+                    for entity in chain(self.users, self.groups, self.roles)
+                ],
             }.items()
-            if val is not None
+            if val
         }
-        return [iam.ManagedPolicy.from_dict(name_to_id(self.name), attr_policy)]
+        return [iam.ManagedPolicy(name_to_id(self.name), **attr_policy)]

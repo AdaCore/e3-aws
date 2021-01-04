@@ -156,6 +156,7 @@ EXPECTED_AWS_CONFIG_BUCKET = {
 
 EXPECTED_S3_ACCESS_MANAGED_POLICY = {
     "S3ManagedPolicy": {
+        "DependsOn": ["TestRole"],
         "Properties": {
             "Description": "S3 Bucket access managed policy",
             "ManagedPolicyName": "S3ManagedPolicy",
