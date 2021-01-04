@@ -1,0 +1,85 @@
+"""Provide Event Rules constructs."""
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import List
+
+from troposphere import AWSObject, events, GetAtt, Ref
+
+from e3.aws import Construct, name_to_id
+from e3.aws.troposphere.ecs.cluster import FargateCluster
+from e3.aws.troposphere.ecs.vpc import EcsVPC
+
+
+@dataclass(frozen=True)
+class FargateScheduledTaskRule(Construct):
+    """Define an EventBridge rule that schedule fargate tasks.
+
+    :param description: rule description
+    :param ecs_cluster: ECS Cluster that should run the scheduled task
+    :param name: name of the rule
+    :param schedule_expression: expression that defines when the rule is
+        triggered. For example to trigger the rule every 15 minutes the
+        following expression can be given "cron(0/15 * * * ? *)".
+    :param task_names: List of tasks to schedule
+    :param vpc: VPC used to run the scheduled task
+    :param state: state of the rule (DISABLED | ENABLED)
+    """
+
+    description: str
+    ecs_cluster: FargateCluster
+    name: str
+    schedule_expression: str
+    task_names: List[str]
+    vpc: EcsVPC
+    state: str = "DISABLED"
+
+    def ecs_parameters(self, task_name) -> events.EcsParameters:
+        """Return ECS parameters describing the fargate task to run.
+
+        :param task_name: name of the task
+        """
+        return events.EcsParameters(
+            LaunchType="FARGATE",
+            NetworkConfiguration=events.NetworkConfiguration(
+                AwsVpcConfiguration=events.AwsVpcConfiguration(
+                    AssignPublicIp="DISABLED",
+                    SecurityGroups=[Ref(self.vpc.security_group)],
+                    Subnets=[Ref(self.vpc.subnet)],
+                )
+            ),
+            TaskDefinitionArn=Ref(name_to_id(f"{task_name}")),
+            PlatformVersion="1.4.0",
+        )
+
+    @property
+    def targets(self) -> List[events.Target]:
+        """Return rule's targets."""
+        return [
+            events.Target(
+                Arn=GetAtt(name_to_id(self.ecs_cluster.name), "Arn"),
+                RoleArn=GetAtt(self.ecs_cluster.ecs_events_role.name, "Arn"),
+                EcsParameters=self.ecs_parameters(task_name),
+                Id=name_to_id(f"{task_name}-target"),
+            )
+            for task_name in self.task_names
+        ]
+
+    @property
+    def rule(self) -> events.Rule:
+        """Return the rule scheduling the fargate task."""
+        return events.Rule(
+            name_to_id(self.name),
+            Description=self.description,
+            Name=self.name,
+            ScheduleExpression=self.schedule_expression,
+            State=self.state,
+            Targets=self.targets,
+        )
+
+    @property
+    def resources(self) -> List[AWSObject]:
+        """Return FargateScheduledRule resources."""
+        return [self.rule]
