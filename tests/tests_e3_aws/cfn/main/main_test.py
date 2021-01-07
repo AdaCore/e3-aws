@@ -1,11 +1,17 @@
-from __future__ import absolute_import, division, print_function
+from __future__ import annotations, absolute_import, division, print_function
 
+from datetime import datetime
 import os
+import pytest
+from typing import TYPE_CHECKING
 
 from botocore.stub import ANY
 from e3.aws import AWSEnv, default_region
 from e3.aws.cfn import Stack
 from e3.aws.cfn.main import CFNMain
+
+if TYPE_CHECKING:
+    from typing import Tuple
 
 DEFAULT_S3_ANSWER = {
     "ResponseMetadata": {"HTTPStatusCode": 200, "RetryAttempts": 1},
@@ -65,6 +71,107 @@ def test_cfn_main_multiple_stacks():
         with stubber:
             m = MyCFNMain(regions=["us-east-1"])
             m.execute(args=["push", "--no-wait"], aws_env=aws_env)
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        ("NOT_FAILED", "Other Reason", 0),
+        (
+            "FAILED",
+            (
+                "The submitted information didn't contain changes."
+                "Submit different information to create a change set."
+            ),
+            0,
+        ),
+        ("FAILED", "Other Reason", 1),
+    ],
+)
+def test_cfn_main_push_existing_stack(
+    status: Tuple[str, str, int], monkeypatch
+) -> None:
+    """Test pushing an already existing stack.
+
+    :param status: Tuple with status and status reason from describe_change_set
+        response and associated expected execute return value.
+    """
+
+    class MyCFNMain(CFNMain):
+        def create_stack(self):
+            return [Stack(name="existing-stack")]
+
+    aws_env = AWSEnv(regions=["us-east-1"], stub=True)
+
+    with default_region("us-east-1"):
+        aws_env.client("cloudformation", region="us-east-1")
+
+        stack_name = "existing-stack"
+        stubber = aws_env.stub("cloudformation")
+        stubber.add_response("validate_template", {}, {"TemplateBody": ANY})
+        stubber.add_response(
+            "describe_stacks",
+            service_response={
+                "Stacks": [
+                    {
+                        "StackName": stack_name,
+                        "CreationTime": datetime(2016, 1, 20, 22, 9),
+                        "StackStatus": "CREATE_COMPLETE",
+                    }
+                ]
+            },
+            expected_params={"StackName": stack_name},
+        )
+        stubber.add_response(
+            "create_change_set",
+            {},
+            {
+                "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+                "ChangeSetName": ANY,
+                "StackName": stack_name,
+                "TemplateBody": ANY,
+            },
+        )
+        stubber = stubber
+        stubber.add_response(
+            "describe_change_set",
+            {
+                "StackName": stack_name,
+                "Status": status[0],
+                "StatusReason": status[1],
+                "Changes": [],
+            },
+            {"ChangeSetName": ANY, "StackName": stack_name},
+        )
+
+        if status[0] == "FAILED":
+            stubber.add_response(
+                "delete_change_set", {}, {"ChangeSetName": ANY, "StackName": stack_name}
+            )
+        else:
+            stubber.add_response(
+                "execute_change_set",
+                {},
+                {"ChangeSetName": ANY, "StackName": stack_name},
+            )
+            stubber.add_response(
+                "describe_stacks",
+                service_response={
+                    "Stacks": [
+                        {
+                            "StackName": stack_name,
+                            "CreationTime": datetime(2016, 1, 20, 22, 9),
+                            "StackStatus": "UPDATE_COMPLETE",
+                        }
+                    ]
+                },
+                expected_params={"StackName": stack_name},
+            )
+            monkeypatch.setattr("builtins.input", lambda _: "Y")
+
+        with stubber:
+            m = MyCFNMain(regions=["us-east-1"])
+            assert m.execute(args=["update"], aws_env=aws_env) == status[2]
 
 
 def test_cfn_main_s3():

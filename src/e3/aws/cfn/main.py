@@ -184,9 +184,19 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                         result = stack.describe_change_set(changeset_name)
 
                     if result["Status"] == "FAILED":
-                        logging.error(result["StatusReason"])
+                        change_executed = False
+                        if (
+                            "The submitted information didn't contain changes"
+                            in result["StatusReason"]
+                        ):
+                            logging.warning(result["StatusReason"])
+                            change_executed = True
+                        else:
+                            logging.error(result["StatusReason"])
+
                         stack.delete_change_set(changeset_name)
-                        return 1
+                        if not change_executed:
+                            return 1
                     else:
                         for el in result["Changes"]:
                             if "ResourceChange" not in el:
@@ -201,7 +211,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                         if self.args.apply_changeset:
                             ask = input("Apply change (y/N): ")
                             if ask[0] in "Yy":
-                                return stack.execute_change_set(
+                                stack.execute_change_set(
                                     changeset_name=changeset_name, wait=True
                                 )
                         return 0
