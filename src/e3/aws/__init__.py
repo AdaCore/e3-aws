@@ -12,13 +12,32 @@ from botocore.stub import Stubber
 from uuid import uuid4
 from troposphere import AWSObject, Template
 
+
 from e3.aws import cfn
+from e3.error import E3Error
 from e3.env import Env
+from e3.os.process import Run
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Optional, Union
+    from typing import Any, Dict, List, Optional, Union
+
+
+class AWSSessionRunError(E3Error):
+    def __init__(
+        self, message: str, origin: str, process: Optional[Run] = None
+    ) -> None:
+        """Initialize an AWSSessionRunError.
+
+        :param message: the exception message
+        :param origin: the name of the function, class, or module having raised
+        :param process: process that failed
+        """
+        super().__init__(message, origin)
+        self.origin = origin
+        self.message = message
+        self.process = process
 
 
 class Session(object):
@@ -210,6 +229,38 @@ class Session(object):
                 self.stubbers[name][region].activate()
 
         return self.clients[name][region]
+
+    def run(
+        self, cmd: List[str], role_arn: str, session_duration: int, **kwargs: Any
+    ) -> Run:
+        """Execute a command with credentials to assume role role_arn.
+
+        :param cmd: command to execute
+        :role_arn: Arn of the role to be used by the command
+        :session_duration: session duration in seconds or None for default
+        :param kwargs: additional parameters to provide to e3.os.process.Run
+        :return: Result of the call to Run for the command
+        """
+        credentials = self.assume_role_get_credentials(
+            role_arn, "aws_run_session", session_duration, as_env_var=True
+        )
+
+        if "env" not in kwargs:
+            if not "ignore_environ" in kwargs:
+                kwargs["ignore_environ"] = False
+            kwargs["env"] = credentials
+        else:
+            kwargs["env"] = dict(kwargs["env"]).update(credentials)
+
+        aws_p = Run(cmd, **kwargs)
+
+        if aws_p.status:
+            raise AWSSessionRunError(
+                f"{cmd} failed (exit status: {aws_p.status})",
+                origin="aws_session_cli_cmd",
+                process=aws_p,
+            )
+        return aws_p
 
 
 class AWSEnv(Session):
