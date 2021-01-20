@@ -31,7 +31,6 @@ class Bucket(Construct):
 
     name: str
     enable_versioning: bool = True
-    access_control: str = field(default="Private", init=False)
     bucket_encryption: Dict[str, List[Dict[str, Dict[str, str]]]] = field(
         default_factory=lambda: {
             "ServerSideEncryptionConfiguration": [
@@ -73,7 +72,6 @@ class Bucket(Construct):
             s3.Bucket(
                 name_to_id(self.name),
                 BucketName=self.name,
-                AccessControl=self.access_control,
                 BucketEncryption=s3.BucketEncryption.from_dict(
                     "DefautBucketEncryption", self.bucket_encryption
                 ),

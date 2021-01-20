@@ -8,7 +8,6 @@ EXPECTED_BUCKET = {
     "TestBucket": {
         "Properties": {
             "BucketName": "test-bucket",
-            "AccessControl": "Private",
             "BucketEncryption": {
                 "ServerSideEncryptionConfiguration": [
                     {"ServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}
@@ -69,7 +68,6 @@ EXPECTED_AWS_CONFIG_BUCKET = {
     "TestBucket": {
         "Properties": {
             "BucketName": "test-bucket",
-            "AccessControl": "Private",
             "BucketEncryption": {
                 "ServerSideEncryptionConfiguration": [
                     {"ServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}
