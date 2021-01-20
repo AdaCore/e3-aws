@@ -2,6 +2,7 @@ from e3.env import Env
 from enum import Enum
 import re
 import yaml
+import logging
 
 
 VALID_STACK_NAME = re.compile("^[a-zA-Z][a-zA-Z0-9-]*$")
@@ -265,13 +266,17 @@ class Resource(object):
 class Stack(object):
     """A CloudFormation stack."""
 
-    def __init__(self, name, description=None):
+    def __init__(self, name, cfn_role_arn=None, description=None):
         """Initialize a stack.
 
         :param name: stack name
         :type name: str
         :param description: a description of the stack
         :type description: str | None
+        :param cfn_role_arn: Arn of the role to be assumed by cloudformation. If
+            None then use user role. In the future role_arn should be mandatory in
+            order to avoid giving users too much rights.
+        :type cfn_role_arn: Optional[str]
         """
         assert (
             re.match(VALID_STACK_NAME, name) and len(name) <= VALID_STACK_NAME_MAX_LEN
@@ -279,6 +284,15 @@ class Stack(object):
         self.resources = {}
         self.name = name
         self.description = description
+
+        # Emit a warning to the user if no role is passed for Cloud Formation
+        if cfn_role_arn is None:
+            logging.warning(
+                "Consider using a separate role for CloudFormation to "
+                "reduce permissions needed by the entity in charge of "
+                "deploying the stack (see Stack cfn_role_arn parameter)"
+            )
+        self.cfn_role_arn = cfn_role_arn
 
     def add(self, element):
         """Add a resource or merge a stack.
@@ -373,18 +387,20 @@ class Stack(object):
             50Ko.
         :type url: str | None
         """
+        parameters = {
+            "StackName": self.name,
+            "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+        }
+
         if url is None:
-            return client.create_stack(
-                StackName=self.name,
-                TemplateBody=self.body,
-                Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
-            )
+            parameters["TemplateBody"] = self.body
         else:
-            return client.create_stack(
-                StackName=self.name,
-                TemplateURL=url,
-                Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
-            )
+            parameters["TemplateURL"] = url
+
+        if self.cfn_role_arn is not None:
+            parameters["RoleARN"] = self.cfn_role_arn
+
+        return client.create_stack(**parameters)
 
     def exists(self):
         """Check if a given stack exists.
