@@ -428,14 +428,24 @@ class Construct(ABC):
 class Stack(cfn.Stack, Construct):
     """Cloudformation stack using troposphere resources."""
 
-    def __init__(self, stack_name: str, description: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        stack_name: str,
+        cfn_role_arn: Optional[str] = None,
+        description: Optional[str] = None,
+    ) -> None:
         """Initialize Stack attributes.
 
         :param stack_name: stack name
+        :param cfn_role_arn: role asssumed by cloud formation to create the stack
         :param description: a description of the stack
         """
         self.resources = {}
-        super().__init__(stack_name, description)
+        super().__init__(
+            stack_name,
+            cfn_role_arn=cfn_role_arn,
+            description=description,
+        )
         self.template: Template = Template()
 
     def add(self, element: Union[AWSObject, Construct]) -> Stack:
