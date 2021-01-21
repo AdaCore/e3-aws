@@ -8,7 +8,7 @@ EXPECTED_ROLE = {
         "Properties": {
             "RoleName": "TestRole",
             "Description": "TestRole description",
-            "ManagedPolicyArns": [],
+            "MaxSessionDuration": 7200,
             "AssumeRolePolicyDocument": {
                 "Version": "2012-10-17",
                 "Statement": [
@@ -19,6 +19,10 @@ EXPECTED_ROLE = {
                     }
                 ],
             },
+            "Tags": [
+                {"Key": "Name", "Value": "TestRole"},
+                {"Key": "TestTagKey", "Value": "TestTagValue"},
+            ],
         },
         "Type": "AWS::IAM::Role",
     }
@@ -34,7 +38,9 @@ def test_role(stack: Stack) -> None:
         Role(
             name="TestRole",
             description="TestRole description",
+            max_session_duration=7200,
             principal={"Service": "test"},
+            tags={"TestTagKey": "TestTagValue"},
         )
     )
     assert stack.export()["Resources"] == EXPECTED_ROLE

@@ -132,7 +132,6 @@ EXPECTED_RECORDER = {
     "ConfigTestBucket": {
         "Properties": {
             "BucketName": "config-test-bucket",
-            "AccessControl": "Private",
             "BucketEncryption": {
                 "ServerSideEncryptionConfiguration": [
                     {"ServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}
