@@ -8,7 +8,8 @@ if TYPE_CHECKING:
 
 from troposphere import AWSObject, ec2, Ref, Tags
 
-from e3.aws import Construct, name_to_id
+from e3.aws import name_to_id
+from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 

@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 
 from troposphere import iam, AWSObject
 
-from e3.aws import Construct, name_to_id
+from e3.aws import name_to_id
+from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 
 if TYPE_CHECKING:

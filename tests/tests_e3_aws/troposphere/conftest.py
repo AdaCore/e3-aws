@@ -2,7 +2,7 @@
 
 import pytest
 
-from e3.aws import Stack
+from e3.aws.troposphere import Stack
 
 
 @pytest.fixture

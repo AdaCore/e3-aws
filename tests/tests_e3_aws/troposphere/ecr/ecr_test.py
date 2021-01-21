@@ -1,6 +1,6 @@
 """Provide ecr construct tests."""
 
-from e3.aws import Stack
+from e3.aws.troposphere import Stack
 from e3.aws.troposphere.ecr.repository import Repository
 
 EXPECTED_REPOSITORY = {

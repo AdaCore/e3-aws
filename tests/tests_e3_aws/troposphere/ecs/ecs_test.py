@@ -1,7 +1,7 @@
 """Provide ecr construct tests."""
 from troposphere import ecs
 
-from e3.aws import Stack
+from e3.aws.troposphere import Stack
 from e3.aws.troposphere.ecs.cluster import FargateCluster
 from e3.aws.troposphere.ecs.task_definition import FargateTaskDefinition
 from e3.aws.troposphere.ecs.vpc import EcsVPC

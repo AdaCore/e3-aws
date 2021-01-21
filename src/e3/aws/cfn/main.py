@@ -7,10 +7,11 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import List, Union
+    from e3.aws.cfn import Stack
 
 import botocore.exceptions
 
-from e3.aws import AWSEnv, Session, Stack
+from e3.aws import AWSEnv, Session
 from e3.env import Env
 from e3.fs import find
 from e3.main import Main

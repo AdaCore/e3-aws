@@ -1,7 +1,7 @@
 """Provide IAM construct tests."""
 
 from e3.aws.troposphere.iam.role import Role
-from e3.aws import Stack
+from e3.aws.troposphere import Stack
 
 EXPECTED_ROLE = {
     "TestRole": {

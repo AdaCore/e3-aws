@@ -7,7 +7,8 @@ if TYPE_CHECKING:
 
 from troposphere import AWSObject, ecs, Ref, Tags
 
-from e3.aws import Construct, name_to_id
+from e3.aws import name_to_id
+from e3.aws.troposphere import Construct
 
 
 @dataclass(frozen=True)
