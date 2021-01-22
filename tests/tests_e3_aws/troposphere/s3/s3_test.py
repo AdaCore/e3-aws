@@ -2,7 +2,7 @@
 
 from e3.aws.troposphere.s3.bucket import AWSConfigBucket, Bucket
 from e3.aws.troposphere.s3.managed_policy import S3AccessManagedPolicy
-from e3.aws import Stack
+from e3.aws.troposphere import Stack
 
 EXPECTED_BUCKET = {
     "TestBucket": {

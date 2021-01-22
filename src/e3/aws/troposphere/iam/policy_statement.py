@@ -9,7 +9,7 @@ if TYPE_CHECKING:
 
     PrincipalType = Union[str, Dict[str, Union[str, List[str]]]]
 
-from e3.aws import Property
+from e3.aws.troposphere import Property
 
 
 @dataclass(frozen=True)

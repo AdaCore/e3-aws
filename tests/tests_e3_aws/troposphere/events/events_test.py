@@ -1,6 +1,6 @@
 """Provide events construct tests."""
 
-from e3.aws import Stack
+from e3.aws.troposphere import Stack
 from e3.aws.troposphere.ecs.cluster import FargateCluster
 from e3.aws.troposphere.ecs.vpc import EcsVPC
 from e3.aws.troposphere.events.rule import FargateScheduledTaskRule

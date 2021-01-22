@@ -8,7 +8,7 @@ from e3.aws.troposphere.config.config_rule import (
     S3BucketSSLRequestsOnly,
     IAMUserNoPoliciesCheck,
 )
-from e3.aws import Stack
+from e3.aws.troposphere import Stack
 
 EXPECTED_RULES = {
     "S3BucketPublicWriteProhibited": {

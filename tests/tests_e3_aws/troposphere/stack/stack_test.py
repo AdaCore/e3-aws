@@ -1,7 +1,7 @@
 """Provide Stack tests."""
 
 from e3.aws.troposphere.s3.bucket import Bucket
-from e3.aws import Stack
+from e3.aws.troposphere import Stack
 
 
 def test_instanciate() -> None:

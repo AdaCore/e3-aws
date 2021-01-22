@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import List
 
-from e3.aws import Property
+from e3.aws.troposphere import Property
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 
 

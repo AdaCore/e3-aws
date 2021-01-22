@@ -8,7 +8,8 @@ if TYPE_CHECKING:
 
 from troposphere import AWSObject, events, GetAtt, Ref
 
-from e3.aws import Construct, name_to_id
+from e3.aws import name_to_id
+from e3.aws.troposphere import Construct
 from e3.aws.troposphere.ecs.cluster import FargateCluster
 from e3.aws.troposphere.ecs.vpc import EcsVPC
 
