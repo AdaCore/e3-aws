@@ -47,8 +47,8 @@ class Stack(cfn.Stack, Construct):
     def __init__(
         self,
         stack_name: str,
-        cfn_role_arn: Optional[str] = None,
         description: Optional[str] = None,
+        cfn_role_arn: Optional[str] = None,
     ) -> None:
         """Initialize Stack attributes.
 
@@ -58,9 +58,7 @@ class Stack(cfn.Stack, Construct):
         """
         self.resources = {}
         super().__init__(
-            stack_name,
-            cfn_role_arn=cfn_role_arn,
-            description=description,
+            stack_name, cfn_role_arn=cfn_role_arn, description=description,
         )
         self.template: Template = Template()
 

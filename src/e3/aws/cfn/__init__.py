@@ -408,7 +408,7 @@ class StackEvent:
 class Stack(object):
     """A CloudFormation stack."""
 
-    def __init__(self, name, cfn_role_arn=None, description=None):
+    def __init__(self, name, description=None, cfn_role_arn=None):
         """Initialize a stack.
 
         :param name: stack name
