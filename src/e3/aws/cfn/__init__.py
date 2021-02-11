@@ -1,9 +1,17 @@
+from __future__ import annotations
 from e3.env import Env
+from datetime import datetime
 from enum import Enum
+from typing import TYPE_CHECKING
 import re
+import time
+import uuid
 import yaml
 import logging
 
+if TYPE_CHECKING:
+    import botocore.client
+    from typing import Iterator
 
 VALID_STACK_NAME = re.compile("^[a-zA-Z][a-zA-Z0-9-]*$")
 VALID_STACK_NAME_MAX_LEN = 128
@@ -263,6 +271,140 @@ class Resource(object):
         return result
 
 
+class StackEventOperation(Enum):
+    """Operations associated with stack events."""
+
+    create = "CREATE"
+    delete = "DELETE"
+    update = "UPDATE"
+    update_rollback = "UPDATE_ROLLBACK"
+    import_resource = "IMPORT"
+    import_rollback = "IMPORT_ROLLBACK"
+    rollback = "ROLLBACK"
+
+    def __str__(self) -> str:
+        return {
+            "CREATE": "creation",
+            "DELETE": "deletion",
+            "UPDATE": "update",
+            "IMPORT": "import",
+            "IMPORT_ROLLBACK": "import rollback",
+            "UPDATE_ROLLBACK": "update rollback",
+            "ROLLBACK": "rollback",
+        }[self.value]
+
+
+class StackEventState(Enum):
+    """Operation states associated with stack events."""
+
+    in_progress = "IN_PROGRESS"
+    failed = "FAILED"
+    complete = "COMPLETE"
+    skipped = "SKIPPED"
+
+    def __str__(self) -> str:
+        return {
+            "IN_PROGRESS": "started",
+            "FAILED": "failed",
+            "COMPLETE": "completed",
+            "SKIPPED": "skipped",
+        }[self.value]
+
+
+class StackEventStatus:
+    """Stack event status.
+
+    This represents the combination of an operation and its current state
+
+    :ivar operation: the operation name
+    :ivar state: the operation state
+    """
+
+    def __init__(self, operation: StackEventOperation, state: StackEventState) -> None:
+        """Initialize a stack event status.
+
+        :param operation: an operation
+        :param state: an operation state
+        """
+        self.operation = operation
+        self.state = state
+
+    @classmethod
+    def from_str(cls, event_status_str: str) -> StackEventStatus:
+        """Create a StackEventStatus based on string returned by AWS CFN.
+
+        :param event_status_str: a string representing the status
+        :return: a StackEventStatus
+        """
+        match = re.match(
+            r"(CREATE|DELETE|UPDATE|IMPORT|IMPORT_ROLLBACK|UPDATE_ROLLBACK|ROLLBACK)_"
+            r"(IN_PROGRESS|FAILED|COMPLETE|SKIPPED)",
+            event_status_str,
+        )
+        assert match is not None, f"invalid event status {event_status_str}"
+        return cls(
+            operation=StackEventOperation(match.group(1)),
+            state=StackEventState(match.group(2)),
+        )
+
+    def __str__(self) -> str:
+        return f"{self.operation} {self.state}"
+
+
+class StackEvent:
+    """A stack event (see describe_stack_events API)."""
+
+    def __init__(
+        self,
+        stack_id: str,
+        event_id: str,
+        stack_name: str,
+        logical_resource_id: str,
+        physical_resource_id: str,
+        resource_type: str,
+        timestamp: datetime,
+        resource_status: StackEventStatus,
+        client_token=None,
+        resource_status_reason: str = "",
+        resource_properties: str = "",
+    ):
+        """Create a stack event."""
+        self.stack_id = stack_id
+        self.event_id = event_id
+        self.stack_name = stack_name
+        self.logical_resource_id = logical_resource_id
+        self.physical_resource_id = physical_resource_id
+        self.resource_type = resource_type
+        self.timestamp = timestamp
+        self.resource_status = resource_status
+        self.client_token = client_token
+        self.resource_status_reason = resource_status_reason
+        self.resource_properties = resource_properties
+
+    @classmethod
+    def from_dict(cls, data) -> StackEvent:
+        """Create a stack event from a dict as returned by AWS API."""
+        return cls(
+            stack_id=data["StackId"],
+            event_id=data["EventId"],
+            stack_name=data["StackName"],
+            logical_resource_id=data["LogicalResourceId"],
+            physical_resource_id=data["PhysicalResourceId"],
+            resource_type=data["ResourceType"],
+            timestamp=data["Timestamp"],
+            resource_status=StackEventStatus.from_str(data["ResourceStatus"]),
+            client_token=data.get("ClientRequestToken", None),
+            resource_status_reason=data.get("ResourceStatusReason", ""),
+            resource_properties=data.get("ResourceProperties", ""),
+        )
+
+    def __str__(self) -> str:
+        return (
+            f"{self.logical_resource_id:<32}: {self.resource_type:<32}: "
+            + f"{str(self.resource_status):<16} ({self.resource_status_reason})"
+        )
+
+
 class Stack(object):
     """A CloudFormation stack."""
 
@@ -283,6 +425,12 @@ class Stack(object):
         ), ("invalid stack name: %s" % name)
         self.resources = {}
         self.name = name
+
+        # In most cfn calls name and id can be used for StackName parameter. On first
+        # call to state the real stack_id will be stored in self.stack_id ensuring
+        # that the stack can be still refered to even when operation like delete are
+        # used.
+        self.stack_id = name
         self.description = description
 
         # Emit a warning to the user if no role is passed for Cloud Formation
@@ -293,6 +441,12 @@ class Stack(object):
                 "deploying the stack (see Stack cfn_role_arn parameter)"
             )
         self.cfn_role_arn = cfn_role_arn
+        self.creation_date = datetime.now().timestamp()
+
+        # The uuid is used by create and create_change_set. It allows then
+        # to track for example events associated with that deployment
+        self.uuid = str(uuid.uuid1(clock_seq=int(1000 * time.time())))
+        self.latest_read_event = None
 
     def add(self, element):
         """Add a resource or merge a stack.
@@ -364,17 +518,7 @@ class Stack(object):
         return yaml.dump(self.export(), Dumper=CFNYamlDumper)
 
     @client("cloudformation")
-    def describe(self, client):
-        """Describe a stack.
-
-        :return: the stack metadata
-        :rtype: dict
-        """
-        aws_result = client.describe_stacks(StackName=self.name)["Stacks"][0]
-        return aws_result
-
-    @client("cloudformation")
-    def create(self, client, url=None):
+    def create(self, client, url=None, wait: bool = False):
         """Create a stack.
 
         :param client: a botocore client
@@ -386,6 +530,7 @@ class Stack(object):
             version allows to use template of size up to 500Ko instead of
             50Ko.
         :type url: str | None
+        :param wait: if True wait for creation completion
         """
         parameters = {
             "StackName": self.name,
@@ -400,7 +545,27 @@ class Stack(object):
         if self.cfn_role_arn is not None:
             parameters["RoleARN"] = self.cfn_role_arn
 
-        return client.create_stack(**parameters)
+        parameters["ClientRequestToken"] = self.uuid
+
+        client.create_stack(**parameters)
+
+        if wait:
+            logging.info("Waiting for stack creation...")
+            logging.info(f"Done (status: {self.wait()})")
+
+    @client("cloudformation")
+    def wait(self, client) -> str:
+        status = self.state()
+        while "PROGRESS" in status["StackStatus"]:
+            for event in self.events(mark_as_read=True):
+                logging.info(str(event))
+            time.sleep(5.0)
+            status = self.state()
+
+        # Get last eents
+        for event in self.events(mark_as_read=True):
+            logging.info(str(event))
+        return status["StackStatus"]
 
     def exists(self):
         """Check if a given stack exists.
@@ -411,12 +576,17 @@ class Stack(object):
             self.state()
             return True
         except Exception:
+            # Documentation does not specify the right exception that is raised
+            # by botocore.
             return False
 
     @client("cloudformation")
     def state(self, client):
         """Return state of the stack on AWS."""
-        return client.describe_stacks(StackName=self.name)
+        result = client.describe_stacks(StackName=self.stack_id)["Stacks"][0]
+        if self.stack_id != result["StackId"]:
+            self.stack_id = result["StackId"]
+        return result
 
     @client("cloudformation")
     def validate(self, client, url=None):
@@ -496,15 +666,68 @@ class Stack(object):
         return client.delete_change_set(ChangeSetName=name, StackName=self.name)
 
     @client("cloudformation")
-    def delete(self, client):
+    def delete(self, client, wait: bool = False):
         """Delete a stack.
 
         Delete a stack. Note that operation is aynchron
 
         :param client: a botocore client
         :type client: botocore.client.Client
+        :param wait: if True wait for complete deletion
         """
-        return client.delete_stack(StackName=self.name)
+        # Ensure to fill stack_id
+        try:
+            self.state()
+        except Exception:
+            logging.error(f"Stack {self.name} does not exist")
+            return
+
+        client.delete_stack(StackName=self.name, ClientRequestToken=self.uuid)
+        if wait:
+            logging.info("Wait for stack deletion")
+            logging.info(f"Done (status: {self.wait()})")
+
+    @client("cloudformation")
+    def events(
+        self,
+        client: botocore.client.BaseClient,
+        failed_only: bool = False,
+        mark_as_read: bool = True,
+    ) -> Iterator[list[StackEvent]]:
+        """Return non read events.
+
+        :param failed_only: return only failed events
+        :param mark_as_read: if True, all events read won't be returned on next
+            calls to events method.
+        """
+        from e3.aws import iterate
+
+        latest_read_event = self.latest_read_event
+        if mark_as_read:
+            self.latest_read_event = None
+
+        for element in iterate(
+            client.describe_stack_events, key="StackEvents", StackName=self.stack_id
+        ):
+            event = StackEvent.from_dict(element)
+
+            # Update marker for last event read
+            if mark_as_read and self.latest_read_event is None:
+                self.latest_read_event = event
+
+            if event.client_token != self.uuid:
+                # Event is not associated with current operations. Skip
+                continue
+            elif (
+                latest_read_event is not None
+                and latest_read_event.timestamp == event.timestamp
+            ):
+                # Event is already read so stop iterating.
+                break
+            elif failed_only and event.resource_status != StackEventState.failed:
+                continue
+            else:
+                yield event
 
     @client("cloudformation")
     def cost(self, client):
@@ -526,13 +749,15 @@ class Stack(object):
         :param wait: whether to wait for the completion of the command
         :type wait: bool
         """
-        client.execute_change_set(ChangeSetName=changeset_name, StackName=self.name)
+        client.execute_change_set(
+            ChangeSetName=changeset_name,
+            StackName=self.name,
+            ClientRequestToken=self.uuid,
+        )
 
         if wait:
-            waiter = client.get_waiter("stack_update_complete")
-            print("... waiting for stack update")
-            waiter.wait(StackName=self.name)
-            print("done")
+            logging.info("Waiting for stack update...")
+            logging.info(f"Done (status: {self.wait()})")
 
     @client("cloudformation")
     def resource_status(self, client, in_progress_only=True):
@@ -560,7 +785,7 @@ class Stack(object):
     @client("cloudformation")
     def enable_termination_protection(self, client):
         """Enable termination protection for a stack."""
-        aws_result = self.describe()
+        aws_result = self.state()
         if aws_result["EnableTerminationProtection"]:
             print("Stack termination protection is already enabled")
             return

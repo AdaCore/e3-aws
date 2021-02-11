@@ -37,6 +37,7 @@ def test_cfn_main():
             {
                 "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
                 "StackName": "teststack",
+                "ClientRequestToken": ANY,
                 "TemplateBody": ANY,
             },
         )
@@ -64,10 +65,10 @@ def test_cfn_main_multiple_stacks():
                 {
                     "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
                     "StackName": f"{stack_name}",
+                    "ClientRequestToken": ANY,
                     "TemplateBody": ANY,
                 },
             )
-            stubber.add_response("describe_stacks", {}, {"StackName": f"{stack_name}"})
         with stubber:
             m = MyCFNMain(regions=["us-east-1"])
             m.execute(args=["push", "--no-wait"], aws_env=aws_env)
@@ -117,6 +118,7 @@ def test_cfn_main_push_existing_stack(
                         "StackName": stack_name,
                         "CreationTime": datetime(2016, 1, 20, 22, 9),
                         "StackStatus": "CREATE_COMPLETE",
+                        "StackId": stack_name + "1",
                     }
                 ]
             },
@@ -152,7 +154,7 @@ def test_cfn_main_push_existing_stack(
             stubber.add_response(
                 "execute_change_set",
                 {},
-                {"ChangeSetName": ANY, "StackName": stack_name},
+                {"ChangeSetName": ANY, "StackName": ANY, "ClientRequestToken": ANY},
             )
             stubber.add_response(
                 "describe_stacks",
@@ -162,16 +164,17 @@ def test_cfn_main_push_existing_stack(
                             "StackName": stack_name,
                             "CreationTime": datetime(2016, 1, 20, 22, 9),
                             "StackStatus": "UPDATE_COMPLETE",
+                            "StackId": stack_name + "1",
                         }
                     ]
                 },
-                expected_params={"StackName": stack_name},
+                expected_params={"StackName": ANY},
             )
             monkeypatch.setattr("builtins.input", lambda _: "Y")
 
         with stubber:
             m = MyCFNMain(regions=["us-east-1"])
-            assert m.execute(args=["update"], aws_env=aws_env) == status[2]
+            assert m.execute(args=["update", "--no-wait"], aws_env=aws_env) == status[2]
 
 
 def test_cfn_main_s3():
@@ -192,6 +195,7 @@ def test_cfn_main_s3():
             {
                 "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
                 "StackName": "teststack",
+                "ClientRequestToken": ANY,
                 "TemplateURL": ANY,
             },
         )

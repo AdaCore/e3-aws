@@ -2,19 +2,22 @@ from __future__ import annotations
 import abc
 import logging
 import os
+import tempfile
 import time
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from typing import List, Union
-    from e3.aws.cfn import Stack
 
 import botocore.exceptions
 
 from e3.aws import AWSEnv, Session
 from e3.env import Env
-from e3.fs import find
+from e3.fs import find, sync_tree
 from e3.main import Main
+
+if TYPE_CHECKING:
+    from typing import List, Union
+    from e3.aws.cfn import Stack
 
 
 class CFNMain(Main, metaclass=abc.ABCMeta):
@@ -89,6 +92,13 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             dest="apply_changeset",
             help="do not ask whether to apply the changeset",
         )
+        update_args.add_argument(
+            "--no-wait",
+            action="store_false",
+            default=True,
+            dest="wait_stack_creation",
+            help="do not wait for stack update completion",
+        )
         update_args.set_defaults(command="update")
 
         show_args = subs.add_parser("show", help="show the changeset content")
@@ -98,6 +108,16 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             "protect", help="protect the stack against deletion"
         )
         protect_args.set_defaults(command="protect")
+
+        delete_args = subs.add_parser("delete", help="delete stack")
+        delete_args.add_argument(
+            "--no-wait",
+            action="store_false",
+            default=True,
+            dest="wait_stack_creation",
+            help="do not wait for stack deletion completion",
+        )
+        delete_args.set_defaults(command="delete")
 
         self.regions = regions
 
@@ -109,7 +129,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         self.s3_template_url = None
         self.assume_role = assume_role
 
-        self.timestamp = str(int(time.time()))
+        self.timestamp = datetime.utcnow().strftime("%Y-%m-%d/%H:%M:%S.%f")
 
         if s3_bucket is not None:
             s3_root_key = (
@@ -126,6 +146,23 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 self.s3_template_key,
             )
 
+    def create_data_dir(self, root_dir: str) -> bool:
+        """Sync into root_dir data uploaded to the s3 bucket used by the stack.
+
+        By default the content of self.data_dir is copied into root_dir.
+        self.s3_data_key and self.s3_bucket can be used to reference resources in
+        the template. The method can be overriden to create dynamically the content
+        to upload.
+
+        :param root_dir: location in which data to upload should be placed.
+        :param bool: return True is content should be uploaded, False otherwise
+        """
+        if self.data_dir is not None:
+            sync_tree(self.data_dir, root_dir)
+            return True
+        else:
+            return False
+
     def execute_for_stack(self, stack: Stack) -> int:
         """Execute application for a given stack and return exit status.
 
@@ -133,28 +170,28 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         """
         try:
             if self.args.command in ("push", "update"):
-                if self.data_dir is not None and self.s3_data_key is not None:
-                    s3 = self.aws_env.client("s3")
+                s3 = self.aws_env.client("s3")
+                with tempfile.TemporaryDirectory() as tempd:
+                    has_data_dir = self.create_data_dir(root_dir=tempd)
+                    if has_data_dir and self.s3_data_key is not None:
 
-                    # synchronize data to the bucket before creating the stack
-                    for f in find(self.data_dir):
-                        with open(f, "rb") as fd:
-                            subkey = os.path.relpath(f, self.data_dir).replace(
-                                "\\", "/"
-                            )
-                            logging.info(
-                                "Upload %s to %s:%s%s",
-                                subkey,
-                                self.s3_bucket,
-                                self.s3_data_key,
-                                subkey,
-                            )
-                            s3.put_object(
-                                Bucket=self.s3_bucket,
-                                Body=fd,
-                                ServerSideEncryption="AES256",
-                                Key=self.s3_data_key + subkey,
-                            )
+                        # synchronize data to the bucket before creating the stack
+                        for f in find(tempd):
+                            with open(f, "rb") as fd:
+                                subkey = os.path.relpath(f, tempd).replace("\\", "/")
+                                logging.info(
+                                    "Upload %s to %s:%s%s",
+                                    subkey,
+                                    self.s3_bucket,
+                                    self.s3_data_key,
+                                    subkey,
+                                )
+                                s3.put_object(
+                                    Bucket=self.s3_bucket,
+                                    Body=fd,
+                                    ServerSideEncryption="AES256",
+                                    Key=self.s3_data_key + subkey,
+                                )
 
                 if self.s3_template_key is not None:
                     logging.info(
@@ -213,20 +250,15 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                             ask = input("Apply change (y/N): ")
                             if ask[0] in "Yy":
                                 stack.execute_change_set(
-                                    changeset_name=changeset_name, wait=True
+                                    changeset_name=changeset_name,
+                                    wait=self.args.wait_stack_creation,
                                 )
                         return 0
                 else:
                     logging.info("Create new stack")
-                    stack.create(url=self.s3_template_url)
-                    state = stack.state()
-                    if self.args.wait_stack_creation:
-                        logging.info("waiting for stack creation...")
-                        while "PROGRESS" in state["Stacks"][0]["StackStatus"]:
-                            result = stack.resource_status(in_progress_only=False)
-                            time.sleep(10.0)
-                            state = stack.state()
-                        logging.info("done")
+                    stack.create(
+                        url=self.s3_template_url, wait=self.args.wait_stack_creation
+                    )
             elif self.args.command == "show":
                 print(stack.body)
             elif self.args.command == "protect":
@@ -237,6 +269,8 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     stack.set_stack_policy(self.stack_policy_body)
                 else:
                     print("No stack policy to set")
+            elif self.args.command == "delete":
+                stack.delete(wait=self.args.wait_stack_creation)
 
             return 0
         except botocore.exceptions.ClientError as e:

@@ -39,6 +39,7 @@ def test_create_stack():
             {
                 "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
                 "StackName": "teststack",
+                "ClientRequestToken": ANY,
                 "TemplateBody": ANY,
             },
         )
@@ -48,6 +49,7 @@ def test_create_stack():
             {
                 "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
                 "StackName": "teststack",
+                "ClientRequestToken": ANY,
                 "TemplateURL": ANY,
             },
         )
