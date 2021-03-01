@@ -3,13 +3,16 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from typing import Any, Dict, List
 
 from troposphere import AWSObject, config
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
+
+
+if TYPE_CHECKING:
+    from typing import Any
+    from e3.aws.troposphere import Stack
 
 
 @dataclass(frozen=True)
@@ -28,11 +31,10 @@ class ConfigRule(Construct):
     name: str
     source_identifier: str = ""
     description: str = ""
-    input_parameters: Dict[str, Any] = field(default_factory=dict)
-    scope: Dict[str, Any] = field(default_factory=dict)
+    input_parameters: dict[str, Any] = field(default_factory=dict)
+    scope: dict[str, Any] = field(default_factory=dict)
 
-    @property
-    def resources(self) -> List[AWSObject]:
+    def resources(self, stack: Stack) -> list[AWSObject]:
         """Return troposphere objects defining the configuration rule."""
         return [
             config.ConfigRule(

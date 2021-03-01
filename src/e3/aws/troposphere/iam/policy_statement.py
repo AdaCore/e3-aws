@@ -9,11 +9,9 @@ if TYPE_CHECKING:
 
     PrincipalType = Union[str, Dict[str, Union[str, List[str]]]]
 
-from e3.aws.troposphere import Property
-
 
 @dataclass(frozen=True)
-class PolicyStatement(Property):
+class PolicyStatement:
     """Default Policy statement class.
 
     :param action: actions on which the policy has effect

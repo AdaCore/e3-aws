@@ -4,13 +4,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from typing import Dict, List
 
 from troposphere import AWSObject, ecr, Tags
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
+
+if TYPE_CHECKING:
+    from e3.aws.troposphere import Stack
 
 
 @dataclass(frozen=True)
@@ -22,10 +23,9 @@ class Repository(Construct):
     """
 
     name: str
-    tags: Dict[str, str] = field(default_factory=lambda: {})
+    tags: dict[str, str] = field(default_factory=lambda: {})
 
-    @property
-    def resources(self) -> List[AWSObject]:
+    def resources(self, stack: Stack) -> list[AWSObject]:
         """Construct and return a ECR Repository."""
         return [
             ecr.Repository(

@@ -4,14 +4,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from typing import List
 
 from troposphere import AWSObject, AccountId, iam, config, Join
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.s3.bucket import AWSConfigBucket
+
+if TYPE_CHECKING:
+    from typing import List
+    from e3.aws.troposphere import Stack
 
 
 @dataclass(frozen=True)
@@ -25,8 +27,7 @@ class ConfigurationRecorder(Construct):
 
     bucket_name: str
 
-    @property
-    def resources(self) -> List[AWSObject]:
+    def resources(self, stack: Stack) -> List[AWSObject]:
         """Build and return objects associated with the configuration recorder.
 
         Return a configuration recorder and a delivery channel with its s3 bucket
@@ -66,7 +67,9 @@ class ConfigurationRecorder(Construct):
         )
 
         # Add a delivery channel and an associated s3 bucket
-        aws_objects.extend(AWSConfigBucket(name=f"{self.bucket_name}").resources)
+        aws_objects.extend(
+            AWSConfigBucket(name=f"{self.bucket_name}").resources(stack=stack)
+        )
         aws_objects.append(
             config.DeliveryChannel(
                 name_to_id("DeliveryChannel"),

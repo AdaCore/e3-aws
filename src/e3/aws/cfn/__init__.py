@@ -11,7 +11,7 @@ import logging
 
 if TYPE_CHECKING:
     import botocore.client
-    from typing import Iterator
+    from typing import Iterator, Optional
 
 VALID_STACK_NAME = re.compile("^[a-zA-Z][a-zA-Z0-9-]*$")
 VALID_STACK_NAME_MAX_LEN = 128
@@ -270,6 +270,14 @@ class Resource(object):
             result["Metadata"] = self.metadata
         return result
 
+    def create_data_dir(self, root_dir: str) -> None:
+        """Put data in root_dir before export to S3 bucket referenced by the stack.
+
+        :param root_dir: local directory in which data should be stored. Data will
+            be then uploaded to an S3 bucket accessible from the template.
+        """
+        pass
+
 
 class StackEventOperation(Enum):
     """Operations associated with stack events."""
@@ -408,17 +416,23 @@ class StackEvent:
 class Stack(object):
     """A CloudFormation stack."""
 
-    def __init__(self, name, description=None, cfn_role_arn=None):
+    def __init__(
+        self,
+        name: str,
+        description: Optional[str] = None,
+        cfn_role_arn: Optional[str] = None,
+        s3_bucket: Optional[str] = None,
+        s3_key: Optional[str] = None,
+    ):
         """Initialize a stack.
 
         :param name: stack name
-        :type name: str
         :param description: a description of the stack
-        :type description: str | None
         :param cfn_role_arn: Arn of the role to be assumed by cloudformation. If
             None then use user role. In the future role_arn should be mandatory in
             order to avoid giving users too much rights.
-        :type cfn_role_arn: Optional[str]
+        :param s3_bucket: s3 bucket used to store data needed by the stack
+        :param s3_key: s3 prefix in s3_bucket in which data is stored
         """
         assert (
             re.match(VALID_STACK_NAME, name) and len(name) <= VALID_STACK_NAME_MAX_LEN
@@ -432,6 +446,8 @@ class Stack(object):
         # used.
         self.stack_id = name
         self.description = description
+        self.s3_bucket = s3_bucket
+        self.s3_key = s3_key
 
         # Emit a warning to the user if no role is passed for Cloud Formation
         if cfn_role_arn is None:
@@ -484,6 +500,14 @@ class Stack(object):
 
     def __contains__(self, key):
         return key in self.resources
+
+    def create_data_dir(self, root_dir):
+        """Populate directory that will be exported into a S3 bucket for the stack.
+
+        :param root_dir: temporary local directory
+        """
+        for resource in self.resources.values():
+            resource.create_data_dir(root_dir)
 
     def export(self):
         """Export stack as dict.
@@ -546,7 +570,6 @@ class Stack(object):
             parameters["RoleARN"] = self.cfn_role_arn
 
         parameters["ClientRequestToken"] = self.uuid
-
         client.create_stack(**parameters)
 
         if wait:

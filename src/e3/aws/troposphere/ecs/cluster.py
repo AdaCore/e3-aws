@@ -2,8 +2,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from typing import Dict, List, Optional
 
 from troposphere import AWSObject, ecs, GetAtt, Ref, Tags
 
@@ -13,6 +11,10 @@ from e3.aws.troposphere.iam.role import Role
 from e3.aws.troposphere.iam.managed_policy import ManagedPolicy
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
+
+if TYPE_CHECKING:
+    from typing import Optional
+    from e3.aws.troposphere import Stack
 
 
 @dataclass(frozen=True)
@@ -29,13 +31,12 @@ class Cluster(Construct):
     """
 
     name: str
-    capacity_providers: Optional[List[str]] = None
-    cluster_settings: Optional[List[Dict[str, str]]] = None
-    default_capacity_provider_strategy: Optional[List[Dict[str, str]]] = None
-    tags: Dict[str, str] = field(default_factory=lambda: {})
+    capacity_providers: Optional[list[str]] = None
+    cluster_settings: Optional[list[dict[str, str]]] = None
+    default_capacity_provider_strategy: Optional[list[dict[str, str]]] = None
+    tags: dict[str, str] = field(default_factory=lambda: {})
 
-    @property
-    def resources(self) -> List[AWSObject]:
+    def resources(self, stack: Stack) -> list[AWSObject]:
         """Construct and return ECS cluster troposphere resources."""
         c_settings = None
         if self.cluster_settings:
@@ -100,21 +101,22 @@ class FargateCluster(Cluster):
     """
 
     name: str
-    capacity_providers: Optional[List[str]] = field(default_factory=lambda: ["FARGATE"])
-    cluster_settings: Optional[List[Dict[str, str]]] = field(
+    capacity_providers: Optional[list[str]] = field(default_factory=lambda: ["FARGATE"])
+    cluster_settings: Optional[list[dict[str, str]]] = field(
         default_factory=lambda: [{"Name": "containerInsights", "Value": "enabled"}]
     )
-    default_capacity_provider_strategy: Optional[List[Dict[str, str]]] = field(
+    default_capacity_provider_strategy: Optional[list[dict[str, str]]] = field(
         default_factory=lambda: [{"CapacityProvider": "FARGATE", "Weight": "1"}]
     )
-    tags: Dict[str, str] = field(default_factory=lambda: {})
+    tags: dict[str, str] = field(default_factory=lambda: {})
 
     @property
     def ecs_task_execution_role(self) -> Role:
         """Return ecs task execution role, see role description for details."""
         return Role(
             name="ECSTaskExecutionRole",
-            description="grants the Amazon ECS container agent permission to make AWS API calls on your behalf.",
+            description="grants the Amazon ECS container agent permission to make "
+            "AWS API calls on your behalf.",
             principal={"Service": "ecs-tasks.amazonaws.com"},
             managed_policy_arns=[
                 "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
@@ -122,27 +124,27 @@ class FargateCluster(Cluster):
         )
 
     @property
-    def ecs_events_role(self) -> List[AWSObject]:
+    def ecs_events_role(self) -> list[AWSObject]:
         """Return ecs events role, see role description for details."""
         return Role(
             name="ECSEventsRole",
             description="Allow CloudWatch Events service to run Amazon ECS tasks",
             principal={"Service": "events.amazonaws.com"},
             managed_policy_arns=[
-                "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceEventsRole",
+                "arn:aws:iam::aws:policy/service-role/"
+                "AmazonEC2ContainerServiceEventsRole",
                 Ref(name_to_id("ECSPassExecutionRolePolicy")),
             ],
         )
 
-    @property
-    def resources(self) -> List[AWSObject]:
+    def resources(self, stack: Stack) -> list[AWSObject]:
         """Construct and return Fargate ECS cluster and associated resources.
 
         An IAM role for Fargates tasks to be used is also returned.
         """
         return (
-            super().resources
-            + ECSPassExecutionRolePolicy().resources
-            + self.ecs_task_execution_role.resources
-            + self.ecs_events_role.resources
+            super().resources(stack=stack)
+            + ECSPassExecutionRolePolicy().resources(stack=stack)
+            + self.ecs_task_execution_role.resources(stack=stack)
+            + self.ecs_events_role.resources(stack=stack)
         )

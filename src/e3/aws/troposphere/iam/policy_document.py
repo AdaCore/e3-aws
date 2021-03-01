@@ -6,13 +6,11 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import List
-
-from e3.aws.troposphere import Property
-from e3.aws.troposphere.iam.policy_statement import PolicyStatement
+    from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 
 
-@dataclass(frozen=True)
-class PolicyDocument(Property):
+@dataclass
+class PolicyDocument:
     """Define a policy document.
 
     :param statements: policy statements to add to the policy
@@ -23,12 +21,16 @@ class PolicyDocument(Property):
     statements: List[PolicyStatement]
     version: str = "2012-10-17"
 
-    def __add__(self, other) -> PolicyDocument:
+    def __add__(self, other: PolicyDocument) -> PolicyDocument:
         """Return a new policy document combining statements from self and other.
 
         :param other: Other PolicyDocument from which to add statements
         """
         return PolicyDocument(statements=self.statements + other.statements)
+
+    def __iadd__(self, other: PolicyDocument) -> PolicyDocument:
+        self.statements += other.statements
+        return self
 
     @property
     def as_dict(self) -> dict:
