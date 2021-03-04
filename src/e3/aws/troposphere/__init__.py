@@ -57,9 +57,7 @@ class Stack(cfn.Stack, Construct):
         :param description: a description of the stack
         """
         self.resources = {}
-        super().__init__(
-            stack_name, cfn_role_arn=cfn_role_arn, description=description,
-        )
+        super().__init__(stack_name, cfn_role_arn=cfn_role_arn, description=description)
         self.template: Template = Template()
 
     def add(self, element: Union[AWSObject, Construct]) -> Stack:
@@ -102,4 +100,7 @@ class Stack(cfn.Stack, Construct):
 
         :return: a dict that can be serialized as YAML to produce a template
         """
-        return self.template.to_dict()
+        result = self.template.to_dict()
+        if self.description is not None:
+            result["Description"] = self.description
+        return result
