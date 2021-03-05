@@ -3,16 +3,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from typing import Dict, List, Optional
-    from e3.aws.troposphere.iam.policy_document import PrincipalType
-
 from troposphere import AWSObject, iam, Tags
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import AssumeRole
+
+if TYPE_CHECKING:
+    from typing import Optional
+    from e3.aws.troposphere import Stack
+    from e3.aws.troposphere.iam.policy_document import PrincipalType
 
 
 @dataclass(frozen=True)
@@ -32,9 +33,9 @@ class Role(Construct):
     name: str
     description: str
     principal: PrincipalType
-    managed_policy_arns: Optional[List[str]] = None
+    managed_policy_arns: Optional[list[str]] = None
     max_session_duration: Optional[int] = None
-    tags: Dict[str, str] = field(default_factory=lambda: {})
+    tags: dict[str, str] = field(default_factory=lambda: {})
 
     _assume_role_policy_document: PolicyDocument = field(
         default=PolicyDocument([]), init=False
@@ -45,8 +46,7 @@ class Role(Construct):
         """Return PolicyDocument to be attached to the bucket."""
         return PolicyDocument(statements=[AssumeRole(principal=self.principal)])
 
-    @property
-    def resources(self) -> List[AWSObject]:
+    def resources(self, stack: Stack) -> list[AWSObject]:
         """Return troposphere objects defining the role."""
         attr = {}
 

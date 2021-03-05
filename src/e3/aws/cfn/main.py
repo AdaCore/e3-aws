@@ -146,7 +146,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 self.s3_template_key,
             )
 
-    def create_data_dir(self, root_dir: str) -> bool:
+    def create_data_dir(self, root_dir: str) -> None:
         """Sync into root_dir data uploaded to the s3 bucket used by the stack.
 
         By default the content of self.data_dir is copied into root_dir.
@@ -155,13 +155,9 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         to upload.
 
         :param root_dir: location in which data to upload should be placed.
-        :param bool: return True is content should be uploaded, False otherwise
         """
         if self.data_dir is not None:
             sync_tree(self.data_dir, root_dir)
-            return True
-        else:
-            return False
 
     def execute_for_stack(self, stack: Stack) -> int:
         """Execute application for a given stack and return exit status.
@@ -170,10 +166,16 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         """
         try:
             if self.args.command in ("push", "update"):
+
+                # Synchronize resources to the S3 bucket
                 s3 = self.aws_env.client("s3")
                 with tempfile.TemporaryDirectory() as tempd:
-                    has_data_dir = self.create_data_dir(root_dir=tempd)
-                    if has_data_dir and self.s3_data_key is not None:
+                    # Push data associated with CFNMain and then all data
+                    # related to the stack
+                    self.create_data_dir(root_dir=tempd)
+                    stack.create_data_dir(root_dir=tempd)
+
+                    if self.s3_data_key is not None:
 
                         # synchronize data to the bucket before creating the stack
                         for f in find(tempd):

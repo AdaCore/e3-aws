@@ -137,7 +137,7 @@ class VPCStack(Stack):
         :param description: optional description
         :type description: str | None
         """
-        super(VPCStack, self).__init__(name, description)
+        super(VPCStack, self).__init__(name, description=description)
         self.add(VPC(self.name, cidr_block))
         self.add(InternetGateway(self.name + "InternetGateway"))
         self.add(VPCGatewayAttachment(self.name + "GateLink", self.vpc, self.gateway))

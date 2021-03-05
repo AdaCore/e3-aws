@@ -4,14 +4,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from typing import Dict, List
 
 from troposphere import AWSObject, s3
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
+from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 from e3.aws.troposphere.s3.policy_statement import (
     DenyUnsecureTransport,
     DenyBadEncryptionHeader,
@@ -19,6 +18,10 @@ from e3.aws.troposphere.s3.policy_statement import (
     AWSConfigBucketPermissionsCheck,
     AWSConfigBucketDelivery,
 )
+
+
+if TYPE_CHECKING:
+    from e3.aws.troposphere import Stack
 
 
 @dataclass(frozen=True)
@@ -32,7 +35,7 @@ class Bucket(Construct):
 
     name: str
     enable_versioning: bool = True
-    bucket_encryption: Dict[str, List[Dict[str, Dict[str, str]]]] = field(
+    bucket_encryption: dict[str, list[dict[str, dict[str, str]]]] = field(
         default_factory=lambda: {
             "ServerSideEncryptionConfiguration": [
                 {"ServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}
@@ -62,8 +65,7 @@ class Bucket(Construct):
             ]
         )
 
-    @property
-    def resources(self) -> List[AWSObject]:
+    def resources(self, stack: Stack) -> list[AWSObject]:
         """Construct and return a s3.Bucket and its associated s3.BucketPolicy."""
         versioning_status = "Suspended"
         if self.enable_versioning:
@@ -88,6 +90,33 @@ class Bucket(Construct):
                 DependsOn=name_to_id(self.name),
             ),
         ]
+
+    @property
+    def arn(self):
+        return f"arn:aws:s3:::{self.name}"
+
+    def cfn_policy_document(self, stack_name):
+        return PolicyDocument(
+            [
+                PolicyStatement(
+                    action=[
+                        "s3:CreateBucket",
+                        "s3:DeleteBucket",
+                        "s3:DeleteBucketPolicy",
+                        "s3:GetBucketPolicy",
+                        "s3:PutBucketPolicy",
+                        "s3:PutEncryptionConfiguration",
+                        "s3:GetEncryptionConfiguration",
+                        "s3:PutBucketVersioning",
+                        "s3:GetBucketVersioning",
+                        "s3:PutBucketPublicAccessBlock",
+                        "s3:GetBucketPublicAccessBlock",
+                    ],
+                    effect="Allow",
+                    resource=self.arn,
+                )
+            ]
+        )
 
 
 @dataclass(frozen=True)

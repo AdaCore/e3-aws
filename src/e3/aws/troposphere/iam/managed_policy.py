@@ -11,7 +11,9 @@ from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 
 if TYPE_CHECKING:
-    from typing import List, Optional
+    from typing import Optional
+
+    from e3.aws.troposphere import Stack
 
 
 @dataclass(frozen=True)
@@ -20,7 +22,7 @@ class ManagedPolicy(Construct):
 
     :param name: name of the managed policy
     :param roles: list of roles to which this policy is attached
-    :param description: managed_policy description    :param description: managed_policy description
+    :param description: managed_policy description
     :param users: names (friendly names, not ARN) of users to attach the policy to
     :param groups: names (friendly names, not ARN) of groups to attach the policy to
     :param roles: names (friendly names, not ARN) of roles to attach the policy to
@@ -28,15 +30,14 @@ class ManagedPolicy(Construct):
 
     name: str
     description: Optional[str] = None
-    users: Optional[List[str]] = field(default_factory=list)
-    groups: Optional[List[str]] = field(default_factory=list)
-    roles: Optional[List[str]] = field(default_factory=list)
+    users: Optional[list[str]] = field(default_factory=list)
+    groups: Optional[list[str]] = field(default_factory=list)
+    roles: Optional[list[str]] = field(default_factory=list)
 
     # PolicyDocument to attach to this policy
     policy_document: PolicyDocument = field(init=False)
 
-    @property
-    def resources(self) -> List[AWSObject]:
+    def resources(self, stack: Stack) -> list[AWSObject]:
         """Return troposphere objects defining the managed policy."""
         attr_policy = {
             key: val

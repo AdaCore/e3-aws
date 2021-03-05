@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from typing import Dict, List
 
 from troposphere import AWSObject, ec2, Ref, Tags
 
@@ -12,6 +10,9 @@ from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
+
+if TYPE_CHECKING:
+    from e3.aws.troposphere import Stack
 
 
 @dataclass(frozen=True)
@@ -29,7 +30,7 @@ class EcsVPC(Construct):
     region: str
     cidr_block: str = "10.0.0.0/16"
     subnet_cidr_block: str = "10.0.0.0/24"
-    tags: Dict[str, str] = field(default_factory=lambda: {})
+    tags: dict[str, str] = field(default_factory=lambda: {})
 
     @property
     def vpc(self) -> ec2.VPC:
@@ -227,8 +228,7 @@ class EcsVPC(Construct):
             ]
         )
 
-    @property
-    def resources(self) -> List[AWSObject]:
+    def resources(self, stack: Stack) -> list[AWSObject]:
         """Construct and return EcsVPC resources."""
         return [
             self.vpc,

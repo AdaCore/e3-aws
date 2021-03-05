@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from typing import List
 
 from troposphere import AWSObject, events, GetAtt, Ref
 
@@ -12,6 +10,10 @@ from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.ecs.cluster import FargateCluster
 from e3.aws.troposphere.ecs.vpc import EcsVPC
+
+if TYPE_CHECKING:
+
+    from e3.aws.troposphere import Stack
 
 
 @dataclass(frozen=True)
@@ -33,7 +35,7 @@ class FargateScheduledTaskRule(Construct):
     ecs_cluster: FargateCluster
     name: str
     schedule_expression: str
-    task_names: List[str]
+    task_names: list[str]
     vpc: EcsVPC
     state: str = "DISABLED"
 
@@ -56,7 +58,7 @@ class FargateScheduledTaskRule(Construct):
         )
 
     @property
-    def targets(self) -> List[events.Target]:
+    def targets(self) -> list[events.Target]:
         """Return rule's targets."""
         return [
             events.Target(
@@ -80,7 +82,6 @@ class FargateScheduledTaskRule(Construct):
             Targets=self.targets,
         )
 
-    @property
-    def resources(self) -> List[AWSObject]:
+    def resources(self, stack: Stack) -> list[AWSObject]:
         """Return FargateScheduledRule resources."""
         return [self.rule]
