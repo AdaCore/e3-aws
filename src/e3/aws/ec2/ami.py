@@ -34,7 +34,7 @@ class AMI(EC2Element):
             data = session.client("ec2", region).describe_images(ImageIds=[ami_id])[
                 "Images"
             ][0]
-        super(AMI, self).__init__(data, region)
+        super().__init__(data, region)
 
     @property
     def creation_date(self):

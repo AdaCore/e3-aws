@@ -52,7 +52,7 @@ class SubnetStack(Stack):
         :param description: optional description
         :type description: str | None
         """
-        super(SubnetStack, self).__init__(name, description)
+        super().__init__(name, description)
 
         # Create the subnet
         self.add(Subnet(name, vpc, cidr_block))
@@ -137,7 +137,7 @@ class VPCStack(Stack):
         :param description: optional description
         :type description: str | None
         """
-        super(VPCStack, self).__init__(name, description=description)
+        super().__init__(name, description=description)
         self.add(VPC(self.name, cidr_block))
         self.add(InternetGateway(self.name + "InternetGateway"))
         self.add(VPCGatewayAttachment(self.name + "GateLink", self.vpc, self.gateway))
@@ -266,7 +266,7 @@ class Fortress(Stack):
             for public subnet
         :type public_cidr_block: str
         """
-        super(Fortress, self).__init__(name, description)
+        super().__init__(name, description)
 
         # Create VPC along with the two subnets
         self.add(VPCStack(self.name + "VPC", vpc_cidr_block))

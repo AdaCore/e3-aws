@@ -2,7 +2,7 @@ from e3.aws import session
 from dateutil.parser import parse as parse_date
 
 
-class EC2Element(object):
+class EC2Element:
     """EC2 Element.
 
     All objects returned by EC2 API
@@ -67,7 +67,7 @@ class SecurityGroup(EC2Element):
             data = session.client("ec2", region).describe_security_groups(
                 GroupIds=[group_id]
             )["SecurityGroups"][0]
-        super(SecurityGroup, self).__init__(data, region)
+        super().__init__(data, region)
 
     @classmethod
     @session()
@@ -118,7 +118,7 @@ class Instance(EC2Element):
                 InstanceIds=[instance_id]
             )["Reservations"]["Instances"][0]
 
-        super(Instance, self).__init__(data, region)
+        super().__init__(data, region)
 
     @property
     def security_groups(self):
@@ -254,7 +254,7 @@ class VolumeAttachment(EC2Element):
 
     def __init__(self, data, region):
         """Initialize Volume Attachment description."""
-        super(VolumeAttachment, self).__init__(data, region)
+        super().__init__(data, region)
         self._instance_cache = None
         self._volume_cache = None
 
@@ -322,7 +322,7 @@ class Volume(EC2Element):
                 InstanceIds=[volume_id]
             )["Volumes"][0]
 
-        super(Volume, self).__init__(data, region)
+        super().__init__(data, region)
 
     @property
     def attachments(self):
@@ -391,7 +391,7 @@ class Snapshot(EC2Element):
                 SnapshotIds=[snapshot_id]
             )["Snapshots"][0]
 
-        super(Snapshot, self).__init__(data, region)
+        super().__init__(data, region)
 
     @session()
     def delete(self, session=None):

@@ -4,7 +4,7 @@ from e3.aws.cfn import AWSType, Resource
 from e3.aws.cfn.ec2 import VPC
 
 
-class GroupSecurityRule(object, metaclass=abc.ABCMeta):
+class GroupSecurityRule(metaclass=abc.ABCMeta):
     """Security rule for EC2 Security groups."""
 
     RULE_TYPE = None
@@ -113,7 +113,7 @@ class SecurityGroup(Resource):
         :param description: an optional description
         :type description: str | None
         """
-        super(SecurityGroup, self).__init__(name, kind=AWSType.EC2_SECURITY_GROUP)
+        super().__init__(name, kind=AWSType.EC2_SECURITY_GROUP)
         assert isinstance(vpc, VPC)
         self.vpc = vpc
         self.description = description
