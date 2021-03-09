@@ -25,7 +25,7 @@ CFN_INIT_STARTUP_SCRIPT_WIN = (
 )
 
 
-class BlockDevice(object):
+class BlockDevice:
     """Block device for EC2 instances."""
 
     pass
@@ -96,7 +96,7 @@ class EBSDisk(BlockDevice):
         return result
 
 
-class EC2NetworkInterface(object):
+class EC2NetworkInterface:
     """EC2 Instance network interface."""
 
     def __init__(
@@ -179,7 +179,7 @@ class EC2NetworkInterface(object):
         return result
 
 
-class UserData(object):
+class UserData:
     """EC2 Instance user data."""
 
     def __init__(self):
@@ -221,7 +221,7 @@ class UserData(object):
         return Base64(Sub(multi_part.as_string(), self.variables))
 
 
-class WinUserData(object):
+class WinUserData:
     """EC2 Windows Instance user data."""
 
     def __init__(self):
@@ -271,7 +271,7 @@ class NetworkInterface(Resource):
         :param description: optional description
         :type description: str | None
         """
-        super(NetworkInterface, self).__init__(name, kind=AWSType.EC2_NETWORK_INTERFACE)
+        super().__init__(name, kind=AWSType.EC2_NETWORK_INTERFACE)
         assert isinstance(subnet, Subnet)
         self.subnet = subnet
         self.groups = groups
@@ -444,7 +444,7 @@ class LaunchTemplate(TemplateOrInstance):
             tags
         :type copy_ami_tags: bool
         """
-        super(LaunchTemplate, self).__init__(name, kind=AWSType.EC2_LAUNCH_TEMPLATE)
+        super().__init__(name, kind=AWSType.EC2_LAUNCH_TEMPLATE)
         assert isinstance(image, AMI)
         self.image = image
         self.instance_type = instance_type
@@ -554,7 +554,7 @@ class Instance(TemplateOrInstance):
             tags
         :type copy_ami_tags: bool
         """
-        super(Instance, self).__init__(name, kind=AWSType.EC2_INSTANCE)
+        super().__init__(name, kind=AWSType.EC2_INSTANCE)
         assert isinstance(image, AMI)
         self.image = image
         self.instance_type = instance_type
@@ -642,7 +642,7 @@ class VPC(Resource):
         :param cidr_block: IPv4 address range
         :type cidr_block: str
         """
-        super(VPC, self).__init__(name, kind=AWSType.EC2_VPC)
+        super().__init__(name, kind=AWSType.EC2_VPC)
         self.cidr_block = cidr_block
 
     @property
@@ -676,7 +676,7 @@ class VPCEndpoint(Resource):
         :param policy_document: policy document attached to the endpoint.
         :type policy_docyment: e3.aws.cfn.ec2.security.PolicyDocument
         """
-        super(VPCEndpoint, self).__init__(name, kind=AWSType.EC2_VPC_ENDPOINT)
+        super().__init__(name, kind=AWSType.EC2_VPC_ENDPOINT)
         assert service in ("dynamodb", "s3"), "Invalid service: %s" % service
         self.service = service
         assert isinstance(vpc, VPC), "VPC instance expected"
@@ -712,7 +712,7 @@ class Subnet(Resource):
         :param cidr_block: IPv4 address range
         :type cidr_block: str
         """
-        super(Subnet, self).__init__(name, kind=AWSType.EC2_SUBNET)
+        super().__init__(name, kind=AWSType.EC2_SUBNET)
         self.cidr_block = cidr_block
         assert isinstance(vpc, VPC)
         self.vpc = vpc
@@ -731,7 +731,7 @@ class InternetGateway(Resource):
         :param name: logical name in stack
         :type name: str
         """
-        super(InternetGateway, self).__init__(name, kind=AWSType.EC2_INTERNET_GATEWAY)
+        super().__init__(name, kind=AWSType.EC2_INTERNET_GATEWAY)
 
 
 class EIP(Resource):
@@ -749,7 +749,7 @@ class EIP(Resource):
         :param instance: instance to which EIP is asstached
         :type instance: Optional[Instance]
         """
-        super(EIP, self).__init__(name, kind=AWSType.EC2_EIP)
+        super().__init__(name, kind=AWSType.EC2_EIP)
         assert isinstance(gateway_attach, VPCGatewayAttachment)
         self.depends = gateway_attach.name
         self.instance = instance
@@ -780,7 +780,7 @@ class NatGateway(Resource):
             should be a public subnet
         :type subnet: Subnet
         """
-        super(NatGateway, self).__init__(name, kind=AWSType.EC2_NAT_GATEWAY)
+        super().__init__(name, kind=AWSType.EC2_NAT_GATEWAY)
         self.eip = eip
         assert isinstance(subnet, Subnet)
         self.subnet = subnet
@@ -803,9 +803,7 @@ class VPCGatewayAttachment(Resource):
         :param gateway: a gateway
         :type gateway: InternetGateway
         """
-        super(VPCGatewayAttachment, self).__init__(
-            name, kind=AWSType.EC2_VPC_GATEWAY_ATTACHMENT
-        )
+        super().__init__(name, kind=AWSType.EC2_VPC_GATEWAY_ATTACHMENT)
         assert isinstance(vpc, VPC)
         assert isinstance(gateway, InternetGateway)
         self.vpc = vpc
@@ -829,7 +827,7 @@ class RouteTable(Resource):
         :param tags: a dict of key/value tags
         :type tags: dict
         """
-        super(RouteTable, self).__init__(name, kind=AWSType.EC2_ROUTE_TABLE)
+        super().__init__(name, kind=AWSType.EC2_ROUTE_TABLE)
         assert isinstance(vpc, VPC)
         self.vpc = vpc
         self.tags = tags
@@ -859,7 +857,7 @@ class Route(Resource):
         :param gateway_attach: a gateway attachment instance
         :type gateway_attach: VPCGatewayAttachment
         """
-        super(Route, self).__init__(name, kind=AWSType.EC2_ROUTE)
+        super().__init__(name, kind=AWSType.EC2_ROUTE)
         assert isinstance(route_table, RouteTable)
         assert isinstance(gateway, InternetGateway) or isinstance(gateway, NatGateway)
         self.route_table = route_table
@@ -894,9 +892,7 @@ class SubnetRouteTableAssociation(Resource):
         :param route_rable: a route table
         :type route_table: RouteTable
         """
-        super(SubnetRouteTableAssociation, self).__init__(
-            name, kind=AWSType.EC2_SUBNET_ROUTE_TABLE_ASSOCIATION
-        )
+        super().__init__(name, kind=AWSType.EC2_SUBNET_ROUTE_TABLE_ASSOCIATION)
         self.subnet = subnet
         self.route_table = route_table
 
