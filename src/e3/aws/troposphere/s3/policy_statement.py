@@ -3,18 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from itertools import chain
 from typing import TYPE_CHECKING
+from troposphere import AccountId, Join
+from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 
 if TYPE_CHECKING:
     from typing import Dict, List, Optional
     from e3.aws.troposphere.iam.policy_statement import PrincipalType
 
-from troposphere import AccountId, Join
 
-
-from e3.aws.troposphere.iam.policy_statement import PolicyStatement
-
-
-@dataclass(frozen=True)
+@dataclass
 class AWSConfigAllow(PolicyStatement):
     """Define a default s3 policy statement class for AWSConfig delivery bucket.
 
@@ -39,7 +36,7 @@ class AWSConfigAllow(PolicyStatement):
         return
 
 
-@dataclass(frozen=True)
+@dataclass
 class AWSConfigBucketPermissionsCheck(AWSConfigAllow):
     """Define AWSConfigBucketPermissionsCheck policy statement.
 
@@ -50,7 +47,7 @@ class AWSConfigBucketPermissionsCheck(AWSConfigAllow):
     action: str = field(default="s3:GetBucketAcl", init=False)
 
 
-@dataclass(frozen=True)
+@dataclass
 class AWSConfigBucketExistenceCheck(AWSConfigAllow):
     """Define AWSConfigBucketExistenceCheck policy statement.
 
@@ -61,7 +58,7 @@ class AWSConfigBucketExistenceCheck(AWSConfigAllow):
     action: str = field(default="s3:ListBucket", init=False)
 
 
-@dataclass(frozen=True)
+@dataclass
 class AWSConfigBucketDelivery(AWSConfigAllow):
     """Define AWSConfigBucketDelivery policy statement.
 
@@ -90,7 +87,7 @@ class AWSConfigBucketDelivery(AWSConfigAllow):
         return
 
 
-@dataclass(frozen=True)
+@dataclass
 class S3DenyAll(PolicyStatement):
     """Define a default s3 policy statement class.
 
@@ -115,7 +112,7 @@ class S3DenyAll(PolicyStatement):
         return
 
 
-@dataclass(frozen=True)
+@dataclass
 class DenyUnsecureTransport(S3DenyAll):
     """Define a S3 policy statement fields to deny unsecure transport.
 
@@ -128,7 +125,7 @@ class DenyUnsecureTransport(S3DenyAll):
     )
 
 
-@dataclass(frozen=True)
+@dataclass
 class DenyBadEncryptionHeader(S3DenyAll):
     """Define a S3 policy statement fields to deny bad encryption header.
 
@@ -145,7 +142,7 @@ class DenyBadEncryptionHeader(S3DenyAll):
     )
 
 
-@dataclass(frozen=True)
+@dataclass
 class DenyUnencryptedObjectUploads(S3DenyAll):
     """Define a S3 policy statement fields to deny unencrypted object uploads.
 
@@ -160,7 +157,7 @@ class DenyUnencryptedObjectUploads(S3DenyAll):
     )
 
 
-@dataclass(frozen=True)
+@dataclass
 class AllowAccess(PolicyStatement):
     """Define a S3 access policy statement.
 

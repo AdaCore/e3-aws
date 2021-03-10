@@ -22,7 +22,8 @@ EXPECTED_FARGATE_CLUSTER = {
     },
     "ECSPassExecutionRolePolicy": {
         "Properties": {
-            "Description": "Needed to be attached to ECSEventsRole if scheduldedtask requires ECSTaskExecutionRole",
+            "Description": "Needed to be attached to ECSEventsRole if scheduldedtask "
+            "requires ECSTaskExecutionRole",
             "ManagedPolicyName": "ECSPassExecutionRolePolicy",
             "PolicyDocument": {
                 "Version": "2012-10-17",
@@ -40,7 +41,8 @@ EXPECTED_FARGATE_CLUSTER = {
     "ECSTaskExecutionRole": {
         "Properties": {
             "RoleName": "ECSTaskExecutionRole",
-            "Description": "grants the Amazon ECS container agent permission to make AWS API calls on your behalf.",
+            "Description": "grants the Amazon ECS container agent permission to make"
+            " AWS API calls on your behalf.",
             "ManagedPolicyArns": [
                 "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
             ],
@@ -49,7 +51,7 @@ EXPECTED_FARGATE_CLUSTER = {
                 "Statement": [
                     {
                         "Effect": "Allow",
-                        "Principal": {"Service": "ecs-tasks.amazonaws.com"},
+                        "Principal": {"Service": ["ecs-tasks.amazonaws.com"]},
                         "Action": "sts:AssumeRole",
                     }
                 ],
@@ -63,7 +65,8 @@ EXPECTED_FARGATE_CLUSTER = {
             "RoleName": "ECSEventsRole",
             "Description": "Allow CloudWatch Events service to run Amazon ECS tasks",
             "ManagedPolicyArns": [
-                "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceEventsRole",
+                "arn:aws:iam::aws:policy/service-role/"
+                "AmazonEC2ContainerServiceEventsRole",
                 {"Ref": "ECSPassExecutionRolePolicy"},
             ],
             "AssumeRolePolicyDocument": {
@@ -71,7 +74,7 @@ EXPECTED_FARGATE_CLUSTER = {
                 "Statement": [
                     {
                         "Effect": "Allow",
-                        "Principal": {"Service": "events.amazonaws.com"},
+                        "Principal": {"Service": ["events.amazonaws.com"]},
                         "Action": "sts:AssumeRole",
                     }
                 ],

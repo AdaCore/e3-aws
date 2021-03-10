@@ -39,7 +39,7 @@ def test_role(stack: Stack) -> None:
             name="TestRole",
             description="TestRole description",
             max_session_duration=7200,
-            principal={"Service": "test"},
+            trust={"Service": "test"},
             tags={"TestTagKey": "TestTagValue"},
         )
     )

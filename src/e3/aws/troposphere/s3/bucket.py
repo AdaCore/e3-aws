@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 
-from troposphere import AWSObject, s3
+from troposphere import AWSObject, s3, Ref
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -85,9 +85,8 @@ class Bucket(Construct):
             ),
             s3.BucketPolicy(
                 name_to_id(self.name) + "Policy",
-                Bucket=self.name,
+                Bucket=Ref(name_to_id(self.name)),
                 PolicyDocument=self.policy_document.as_dict,
-                DependsOn=name_to_id(self.name),
             ),
         ]
 
@@ -95,7 +94,7 @@ class Bucket(Construct):
     def arn(self):
         return f"arn:aws:s3:::{self.name}"
 
-    def cfn_policy_document(self, stack_name):
+    def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         return PolicyDocument(
             [
                 PolicyStatement(
