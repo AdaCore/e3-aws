@@ -24,7 +24,7 @@ EXPECTED_BUCKET = {
     },
     "TestBucketPolicy": {
         "Properties": {
-            "Bucket": "test-bucket",
+            "Bucket": {"Ref": "TestBucket"},
             "PolicyDocument": {
                 "Version": "2012-10-17",
                 "Statement": [
@@ -59,7 +59,6 @@ EXPECTED_BUCKET = {
             },
         },
         "Type": "AWS::S3::BucketPolicy",
-        "DependsOn": "TestBucket",
     },
 }
 
@@ -84,7 +83,7 @@ EXPECTED_AWS_CONFIG_BUCKET = {
     },
     "TestBucketPolicy": {
         "Properties": {
-            "Bucket": "test-bucket",
+            "Bucket": {"Ref": "TestBucket"},
             "PolicyDocument": {
                 "Version": "2012-10-17",
                 "Statement": [
@@ -147,7 +146,6 @@ EXPECTED_AWS_CONFIG_BUCKET = {
             },
         },
         "Type": "AWS::S3::BucketPolicy",
-        "DependsOn": "TestBucket",
     },
 }
 
