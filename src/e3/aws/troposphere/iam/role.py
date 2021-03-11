@@ -13,7 +13,7 @@ from e3.aws.troposphere.iam.policy_statement import AssumeRole, Trust
 if TYPE_CHECKING:
     from typing import Optional
     from e3.aws.troposphere import Stack
-    from e3.aws.troposphere.iam.policy_document import PrincipalType
+    from e3.aws.troposphere.iam.policy_statement import PrincipalType
 
 
 @dataclass

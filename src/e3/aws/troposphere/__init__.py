@@ -33,7 +33,7 @@ class Construct(ABC):
         """
         return PolicyDocument([])
 
-    def create_data_dir(self, root_dir) -> None:
+    def create_data_dir(self, root_dir: str) -> None:
         """Put data in root_dir before export to S3 bucket referenced by the stack.
 
         :param root_dir: local directory in which data should be stored. Data will
@@ -70,7 +70,7 @@ class Stack(cfn.Stack):
             s3_bucket=s3_bucket,
             s3_key=s3_key,
         )
-        self.constructs = []
+        self.constructs: list[Construct | AWSObject] = []
         self.template = Template()
 
     def add(self, element: Union[AWSObject, Construct, Stack]) -> Stack:

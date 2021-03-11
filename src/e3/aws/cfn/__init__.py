@@ -11,13 +11,13 @@ import logging
 
 if TYPE_CHECKING:
     import botocore.client
-    from typing import Iterator, Optional
+    from typing import Iterator, Optional, Iterable, Callable, Any
 
 VALID_STACK_NAME = re.compile("^[a-zA-Z][a-zA-Z0-9-]*$")
 VALID_STACK_NAME_MAX_LEN = 128
 
 
-def client(name):
+def client(name: str) -> Callable:
     """Decorate a function to handle automatically AWS client retrieval.
 
     The function in input should take a mandatory argument called client.
@@ -198,7 +198,7 @@ class Resource(object):
     """A CloudFormation resource."""
 
     # List of valid attribute names
-    ATTRIBUTES = ()
+    ATTRIBUTES: Iterable[str] = ()
 
     def __init__(self, name, kind):
         """Initialize a resource.
@@ -255,13 +255,12 @@ class Resource(object):
         """
         return {}
 
-    def export(self):
+    def export(self) -> dict:
         """Export resource as a template fragment.
 
         :return: the dict representing the resources. The resulting dict can
             be serialized using Yaml to get a valid CloudFormation template
             fragment
-        :rtype: dict
         """
         result = {"Type": self.kind.value, "Properties": self.properties}
         if self.depends is not None:
@@ -372,10 +371,10 @@ class StackEvent:
         resource_type: str,
         timestamp: datetime,
         resource_status: StackEventStatus,
-        client_token=None,
+        client_token: Optional[str] = None,
         resource_status_reason: str = "",
         resource_properties: str = "",
-    ):
+    ) -> None:
         """Create a stack event."""
         self.stack_id = stack_id
         self.event_id = event_id
@@ -390,7 +389,7 @@ class StackEvent:
         self.resource_properties = resource_properties
 
     @classmethod
-    def from_dict(cls, data) -> StackEvent:
+    def from_dict(cls, data: dict[str, Any]) -> StackEvent:
         """Create a stack event from a dict as returned by AWS API."""
         return cls(
             stack_id=data["StackId"],
@@ -437,7 +436,7 @@ class Stack(object):
         assert (
             re.match(VALID_STACK_NAME, name) and len(name) <= VALID_STACK_NAME_MAX_LEN
         ), ("invalid stack name: %s" % name)
-        self.resources = {}
+        self.resources: dict[str, Resource | Stack] = {}
         self.name = name
 
         # In most cfn calls name and id can be used for StackName parameter. On first
@@ -462,7 +461,7 @@ class Stack(object):
         # The uuid is used by create and create_change_set. It allows then
         # to track for example events associated with that deployment
         self.uuid = str(uuid.uuid1(clock_seq=int(1000 * time.time())))
-        self.latest_read_event = None
+        self.latest_read_event: Optional[StackEvent] = None
 
     def add(self, element):
         """Add a resource or merge a stack.
@@ -501,7 +500,7 @@ class Stack(object):
     def __contains__(self, key):
         return key in self.resources
 
-    def create_data_dir(self, root_dir):
+    def create_data_dir(self, root_dir: str) -> None:
         """Populate directory that will be exported into a S3 bucket for the stack.
 
         :param root_dir: temporary local directory
@@ -509,7 +508,7 @@ class Stack(object):
         for resource in self.resources.values():
             resource.create_data_dir(root_dir)
 
-    def export(self):
+    def export(self) -> dict:
         """Export stack as dict.
 
         :return: a dict that can be serialized as YAML to produce a template
@@ -533,7 +532,7 @@ class Stack(object):
         return result
 
     @property
-    def body(self):
+    def body(self) -> str:
         """Export stack as a CloudFormation template.
 
         :return: a valid CloudFormation template
@@ -542,18 +541,20 @@ class Stack(object):
         return yaml.dump(self.export(), Dumper=CFNYamlDumper)
 
     @client("cloudformation")
-    def create(self, client, url=None, wait: bool = False):
+    def create(
+        self,
+        client: botocore.client.Client,
+        url: Optional[str] = None,
+        wait: bool = False,
+    ) -> None:
         """Create a stack.
 
         :param client: a botocore client
-        :type client: botocore.client.Client. This parameter is handled by the
-            decorator
         param url: url of the template body in S3. When not None this suppose
             the user has uploaded the template body on S3 first at the given
             url. Use S3 to refer to the template body rather than using inline
             version allows to use template of size up to 500Ko instead of
             50Ko.
-        :type url: str | None
         :param wait: if True wait for creation completion
         """
         parameters = {
@@ -577,7 +578,7 @@ class Stack(object):
             logging.info(f"Done (status: {self.wait()})")
 
     @client("cloudformation")
-    def wait(self, client) -> str:
+    def wait(self, client: botocore.client.Client) -> str:
         status = self.state()
         while "PROGRESS" in status["StackStatus"]:
             for event in self.events(mark_as_read=True):
@@ -590,7 +591,7 @@ class Stack(object):
             logging.info(str(event))
         return status["StackStatus"]
 
-    def exists(self):
+    def exists(self) -> bool:
         """Check if a given stack exists.
 
         :return: True if it does, False otherwise
@@ -689,7 +690,7 @@ class Stack(object):
         return client.delete_change_set(ChangeSetName=name, StackName=self.name)
 
     @client("cloudformation")
-    def delete(self, client, wait: bool = False):
+    def delete(self, client: botocore.client.Client, wait: bool = False) -> None:
         """Delete a stack.
 
         Delete a stack. Note that operation is aynchron
@@ -716,7 +717,7 @@ class Stack(object):
         client: botocore.client.BaseClient,
         failed_only: bool = False,
         mark_as_read: bool = True,
-    ) -> Iterator[list[StackEvent]]:
+    ) -> Iterator[StackEvent]:
         """Return non read events.
 
         :param failed_only: return only failed events

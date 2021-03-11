@@ -1,32 +1,39 @@
 """Provide PolicyStatement class."""
 
 from __future__ import annotations
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Optional
+    from typing import Any, Optional, Union, Dict, List
 
-    PrincipalType = str | dict[str, str | list[str]]
-    ConditionType = dict[str, dict[str, str | list[str]]]
+    PrincipalType = Union[str, Dict[str, Union[str, List[str]]]]
+    ConditionType = Dict[str, Dict[str, Union[str, List[str]]]]
 
 
-@dataclass
 class PolicyStatement:
-    """Default Policy statement class.
+    """Default Policy statement class."""
 
-    :param action: actions on which the policy has effect
-    :param effect: effect of the policy (Allow, Deny ..)
-    :param resource: resource on which the policy has effect
-    :param principal: principal affected by the policy
-    :param condition: conditions for when the policy is in effect
-    """
+    def __init__(
+        self,
+        action: str | list[str],
+        effect: str = "Deny",
+        resource: Optional[str] = None,
+        principal: Optional[PrincipalType] = None,
+        condition: Optional[ConditionType] = None,
+    ) -> None:
+        """Initialize a policy statement.
 
-    action: str | list[str]
-    effect: str = "Deny"
-    resource: Optional[str] = None
-    principal: Optional[PrincipalType] = None
-    condition: Optional[ConditionType] = None
+        :param action: actions on which the policy has effect
+        :param effect: effect of the policy (Allow, Deny ..)
+        :param resource: resource on which the policy has effect
+        :param principal: principal affected by the policy
+        :param condition: conditions for when the policy is in effect
+        """
+        self.action = action
+        self.effect = effect
+        self.resource = resource
+        self.principal = principal
+        self.condition = condition
 
     @property
     def as_dict(self) -> dict[str, Any]:
@@ -44,16 +51,24 @@ class PolicyStatement:
         }
 
 
-@dataclass
 class AssumeRole(PolicyStatement):
-    """Define a sts:AssumeRole role policy statement.
+    """Define a sts:AssumeRole role policy statement."""
 
-    :param principal: principal which are allowed to assume the role
-    """
+    def __init__(
+        self, principal: PrincipalType, condition: Optional[ConditionType] = None
+    ):
+        """Initialize an AssumeRole statement.
 
-    principal: PrincipalType = field(default_factory=lambda: {"AWS": "*"})
-    action: str = field(default="sts:AssumeRole", init=False)
-    effect: str = field(default="Allow", init=False)
+        :param principal: principal which are allowed to assume the role
+        :param condition: condition to apply
+        """
+        super().__init__(
+            action="sts:AssumeRole",
+            effect="Allow",
+            resource=None,
+            principal=principal,
+            condition=condition,
+        )
 
 
 class Trust(PolicyStatement):
@@ -63,7 +78,7 @@ class Trust(PolicyStatement):
         self,
         services: Optional[list[str]] = None,
         accounts: Optional[list[str]] = None,
-        users: Optional[list[tuple(str, str)]] = None,
+        users: Optional[list[tuple[str, str]]] = None,
         condition: Optional[ConditionType] = None,
     ) -> None:
         """Initialize a trust policy statement.
@@ -73,7 +88,7 @@ class Trust(PolicyStatement):
         :param users: list of users as tuple (account number, user name)
         :param condition: condition to apply to the statement
         """
-        self.principals = {}
+        self.principals: dict[str, list[str]] = {}
 
         if services is not None:
             self.principals.setdefault("Service", [])

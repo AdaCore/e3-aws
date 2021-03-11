@@ -66,7 +66,8 @@ class Cluster(Construct):
 class ECSPassExecutionRolePolicy(ManagedPolicy):
     """ECSPassExecutionRolePolicy, see description for details."""
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize ECSPassExecutationRolePolicy."""
         super().__init__(
             name="ECSPassExecutionRolePolicy",
             description="Needed to be attached to ECSEventsRole if schedulded"
@@ -114,7 +115,7 @@ class FargateCluster(Cluster):
         )
 
     @property
-    def ecs_events_role(self) -> list[AWSObject]:
+    def ecs_events_role(self) -> Role:
         """Return ecs events role, see role description for details."""
         return Role(
             name="ECSEventsRole",

@@ -195,8 +195,7 @@ EXPECTED_RECORDER = {
                             "Fn::Join": [
                                 "",
                                 [
-                                    "arn:aws:s3:::",
-                                    "config-test-bucket",
+                                    "arn:aws:s3:::config-test-bucket",
                                     "/AWSLogs/",
                                     {"Ref": "AWS::AccountId"},
                                     "/Config/*",
@@ -215,9 +214,11 @@ EXPECTED_RECORDER = {
         "Type": "AWS::S3::BucketPolicy",
     },
     "DeliveryChannel": {
-        "Properties": {"Name": "DeliveryChannel", "S3BucketName": "config-test-bucket"},
+        "Properties": {
+            "Name": "DeliveryChannel",
+            "S3BucketName": {"Ref": "ConfigTestBucket"},
+        },
         "Type": "AWS::Config::DeliveryChannel",
-        "DependsOn": ["ConfigTestBucket"],
     },
 }
 

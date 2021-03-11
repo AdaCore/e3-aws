@@ -1,7 +1,12 @@
+from __future__ import annotations
 import abc
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from e3.aws.cfn import AWSType, GetAtt, Resource, Stack
+
+if TYPE_CHECKING:
+    from typing import Optional, Any, Iterable
 
 
 class PrincipalKind(Enum):
@@ -14,15 +19,13 @@ class PrincipalKind(Enum):
 class Principal(object):
     """Represent a principal in an IAM policy."""
 
-    def __init__(self, kind, value=None):
+    def __init__(self, kind: PrincipalKind, value: Optional[str] = None) -> None:
         """Initialize a Principal.
 
         :param kind: principal kind
-        :type kind: PrincipalKind
         :param value: string value for the principal. If kind is set
             to EVERYONE value should be None, otherwise value should
             be a string different from '*'
-        :type value: str | None
         """
         assert isinstance(kind, PrincipalKind)
         self.kind = kind
@@ -59,13 +62,18 @@ class Principal(object):
 class Statement(object, metaclass=abc.ABCMeta):
     """Statement of IAM Policy Document."""
 
-    def __init__(self, sid=None, to=None, on=None, not_on=None, apply_to=None):
+    def __init__(
+        self,
+        sid: Optional[str] = None,
+        to: Optional[list[str] | str] = None,
+        on: Optional[list[str] | str] = None,
+        not_on: Optional[list[str] | str] = None,
+        apply_to: Optional[list[Principal] | Principal] = None,
+    ):
         """Initialize a statement.
 
         :param sid: statement id (optional)
-        :type sid: str
         :param to: one or several action for the statement
-        :type to: list[str] | str | None
         :param on: resource or list of resources on which the statement apply
         :type on: list[str] | str | None
         :param not_on: resource or list of resources on which the statement
@@ -74,10 +82,10 @@ class Statement(object, metaclass=abc.ABCMeta):
         :param apply_to: list of principals that are targeted by the statement
         :type apply_to: list[Principals] | Principal | None
         """
-        self.resources = []
-        self.not_resources = []
-        self.actions = []
-        self.principals = []
+        self.resources: list[Any] = []
+        self.not_resources: list[Any] = []
+        self.actions: list[Any] = []
+        self.principals: list[Any] = []
         self.sid = sid
         self.condition = None
 
@@ -113,13 +121,11 @@ class Statement(object, metaclass=abc.ABCMeta):
             result["Condition"] = self.condition
         return result
 
-    def to(self, actions):
+    def to(self, actions: Iterable[str] | str | GetAtt) -> Statement:
         """Add action(s) targeted by statement.
 
         :param actions: one or several action for the statement
-        :type actions: collections.Iterable[str] | str | GetAtt
         :return: the modified statement
-        :rtype: Statement
         """
         if isinstance(actions, str) or isinstance(actions, GetAtt):
             self.actions.append(actions)
@@ -127,13 +133,11 @@ class Statement(object, metaclass=abc.ABCMeta):
             self.actions += actions
         return self
 
-    def on(self, resources):
+    def on(self, resources: Iterable[str | GetAtt] | str | GetAtt) -> Statement:
         """Add resource(s) on which the statement apply.
 
         :param resources: resource or list of resources
-        :type resources: list[str] | str | GetAtt
         :return: the modified statement
-        :rtype: Statement
         """
         assert not self.not_resources
         if isinstance(resources, str) or isinstance(resources, GetAtt):
@@ -141,13 +145,11 @@ class Statement(object, metaclass=abc.ABCMeta):
         self.resources += resources
         return self
 
-    def not_on(self, resources):
+    def not_on(self, resources: Iterable[str | GetAtt] | str | GetAtt) -> Statement:
         """Add resource(s) on which not to apply the statement.
 
         :param resources: resource or list of resources
-        :type resources: list[str] | str | GetAtt
         :return: the modified statement
-        :rtype: Statement
         """
         assert not self.resources
         if isinstance(resources, str) or isinstance(resources, GetAtt):
@@ -155,7 +157,7 @@ class Statement(object, metaclass=abc.ABCMeta):
         self.not_resources += resources
         return self
 
-    def apply_to(self, principals):
+    def apply_to(self, principals: list[Principal] | Principal) -> Statement:
         """Add principal that can use the statement.
 
         :param principals: principal list
