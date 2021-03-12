@@ -1,3 +1,6 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 from e3.aws.cfn import Stack, Join
 from e3.aws.cfn.arch.security import amazon_security_groups, github_security_groups
 from e3.aws.cfn.ec2 import (
@@ -25,6 +28,8 @@ from e3.aws.cfn.ec2.security import (
 from e3.aws.cfn.iam import PolicyDocument, Principal, PrincipalKind, InstanceRole, Allow
 from e3.aws.cfn.s3 import Bucket
 
+if TYPE_CHECKING:
+    from typing import Optional
 
 # Prefix lists are static name used to select a list of IPs for a given
 # AWS services. Currently Amazon only offer prefix lists for s3 and
@@ -334,15 +339,23 @@ class Fortress(Stack):
         """
         return self[self.name + "VPC"].region
 
-    def add_network_access(self, protocol, cidr_block="0.0.0.0/0"):
+    def add_network_access(
+        self,
+        protocol: str,
+        cidr_block: str = "0.0.0.0/0",
+        from_port: Optional[int] = None,
+        to_port: Optional[int] = None,
+    ) -> None:
         """Authorize some outbound protocols for internal servers.
 
         :param protocol: protocol name
-        :type protocol: str
         :param cidr_block: allowed IP range (default is all)
-        :type cird_block: str
+        :param from_port: optional starting port
+        :param to_port: optional ending port
         """
-        self[self.name + "InternalSG"].add_rule(Ipv4EgressRule(protocol, cidr_block))
+        self[self.name + "InternalSG"].add_rule(
+            Ipv4EgressRule(protocol, cidr_block, from_port=from_port, to_port=to_port)
+        )
 
     def add_s3_endpoint_access(self):
         self[self.name + "InternalSG"].add_rule(
