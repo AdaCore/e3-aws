@@ -39,7 +39,7 @@ class FargateScheduledTaskRule(Construct):
     vpc: EcsVPC
     state: str = "DISABLED"
 
-    def ecs_parameters(self, task_name) -> events.EcsParameters:
+    def ecs_parameters(self, task_name: str) -> events.EcsParameters:
         """Return ECS parameters describing the fargate task to run.
 
         :param task_name: name of the task

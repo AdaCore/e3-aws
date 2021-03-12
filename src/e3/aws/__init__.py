@@ -18,7 +18,9 @@ from e3.os.process import Run
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional
+    from typing import Any, Dict, List, Optional, Callable
+    import botocore.client
+    import botocore.stub
 
 
 class AWSSessionRunError(E3Error):
@@ -88,8 +90,8 @@ class Session(object):
         self.default_region = self.regions[0]
 
         self.force_stub = stub
-        self.clients = {}
-        self.stubbers = {}
+        self.clients: dict[str, botocore.client.Client] = {}
+        self.stubbers: dict[str, botocore.stub.Stubber] = {}
 
         self._account_alias = None
 
@@ -116,7 +118,7 @@ class Session(object):
         role_session_name: str,
         session_duration: Optional[int] = None,
         as_env_var: bool = False,
-    ) -> Dict[str]:
+    ) -> Dict[str, Any]:
         """Return credentials for ``role_arn``.
 
         :param role_arn: ARN of the role to assume
@@ -128,7 +130,10 @@ class Session(object):
             keys are translated to be compatible to update os.environ.
         """
         client = self.client("sts", region=self.regions[0])
-        arguments = {"RoleArn": role_arn, "RoleSessionName": role_session_name}
+        arguments: Dict[str, Any] = {
+            "RoleArn": role_arn,
+            "RoleSessionName": role_session_name,
+        }
         if session_duration is not None:
             arguments["DurationSeconds"] = session_duration
 
@@ -197,16 +202,13 @@ class Session(object):
 
         return self.stubbers[name][region]
 
-    def client(self, name, region=None):
+    def client(self, name: str, region: Optional[str] = None) -> botocore.client.Client:
         """Get a client.
 
         :param name: client name
-        :type name: str
         :param region: region associated with the client. If None the default
             region is taken.
-        :type region: str | None
         :return: a client instance
-        :rtype: botocore.Client
         """
         if region is None:
             region = self.default_region
@@ -303,7 +305,7 @@ class default_region(object):
         Env().aws_env.default_region = self.previous_region
 
 
-def session():
+def session() -> Callable:
     """Decorate a function to handle automatically AWS session retrieval.
 
     The function in input should take a mandatory argument called session.
@@ -370,15 +372,12 @@ def assume_role_main():
             print(f"export {k}={v}")
 
 
-def iterate(fun, key, **kwargs):
+def iterate(fun: Callable, key: str, **kwargs: Any) -> Any:
     """Create an iterator other paginate botocore function.
 
     :param fun: the function to call
-    :type fun: fun
     :param key: the key in the returned data containing the elements
-    :type key: str
     :param kwargs: parameters passed to the function
-    :type kwargs: dict
     """
     result = fun(**kwargs)
     for data in result.get(key, []):

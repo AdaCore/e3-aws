@@ -4,6 +4,7 @@ import logging
 import os
 import tempfile
 import time
+import json
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -11,6 +12,7 @@ from typing import TYPE_CHECKING
 import botocore.exceptions
 
 from e3.aws import AWSEnv, Session
+from e3.aws.troposphere import Stack as TroposphereStack
 from e3.env import Env
 from e3.fs import find, sync_tree
 from e3.main import Main
@@ -119,6 +121,11 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         )
         delete_args.set_defaults(command="delete")
 
+        show_cfn_policy_args = subs.add_parser(
+            "show-cfn-policy", help="show required policy for CFN"
+        )
+        show_cfn_policy_args.set_defaults(command="show-cfn-policy")
+
         self.regions = regions
 
         self.data_dir = data_dir
@@ -164,6 +171,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         :param Stack: the stack on which the application executes
         """
+        assert self.args is not None
         try:
             if self.args.command in ("push", "update"):
 
@@ -271,6 +279,11 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     stack.set_stack_policy(self.stack_policy_body)
                 else:
                     print("No stack policy to set")
+            elif self.args.command == "show-cfn-policy":
+                if isinstance(stack, TroposphereStack):
+                    print(json.dumps(stack.cfn_policy_document().as_dict, indent=2))
+                else:
+                    print("command supported only with troposphere stacks")
             elif self.args.command == "delete":
                 stack.delete(wait=self.args.wait_stack_creation)
 
@@ -285,6 +298,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         See parse_args arguments.
         """
         super(CFNMain, self).parse_args(args, known_args_only)
+        assert self.args is not None
         if aws_env is not None:
             self.aws_env = aws_env
         else:

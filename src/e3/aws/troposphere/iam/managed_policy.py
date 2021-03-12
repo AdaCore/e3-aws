@@ -1,58 +1,43 @@
 """Provide IAM Managed policies."""
 from __future__ import annotations
-from dataclasses import dataclass, field
-from itertools import chain
 from typing import TYPE_CHECKING
-
-from troposphere import iam, AWSObject
+from troposphere import iam, AWSObject, Ref
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
+from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 
 if TYPE_CHECKING:
-    from typing import Optional
-
     from e3.aws.troposphere import Stack
 
 
-@dataclass(frozen=True)
 class ManagedPolicy(Construct):
-    """Define a IAM Managed policy.
+    """AWS ManagedPolicy."""
 
-    :param name: name of the managed policy
-    :param roles: list of roles to which this policy is attached
-    :param description: managed_policy description
-    :param users: names (friendly names, not ARN) of users to attach the policy to
-    :param groups: names (friendly names, not ARN) of groups to attach the policy to
-    :param roles: names (friendly names, not ARN) of roles to attach the policy to
-    """
+    def __init__(
+        self, name: str, statements: list[PolicyStatement], description: str = ""
+    ) -> None:
+        """Initialize an IAM Managed policy.
 
-    name: str
-    description: Optional[str] = None
-    users: Optional[list[str]] = field(default_factory=list)
-    groups: Optional[list[str]] = field(default_factory=list)
-    roles: Optional[list[str]] = field(default_factory=list)
+        :param name: name of the managed policy
+        :param description: managed_policy description
+        :param statements: policy statement part of the policy
+        """
+        self.name = name
+        self.description = description
+        self.statements = statements
 
-    # PolicyDocument to attach to this policy
-    policy_document: PolicyDocument = field(init=False)
+    @property
+    def arn(self) -> Ref:
+        """Return managed policy arn."""
+        return Ref(name_to_id(self.name))
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return troposphere objects defining the managed policy."""
-        attr_policy = {
-            key: val
-            for key, val in {
-                "Description": self.description,
-                "Groups": self.groups,
-                "ManagedPolicyName": self.name,
-                "PolicyDocument": self.policy_document.as_dict,
-                "Roles": self.roles,
-                "Users": self.users,
-                "DependsOn": [
-                    name_to_id(entity)
-                    for entity in chain(self.users, self.groups, self.roles)
-                ],
-            }.items()
-            if val
+        params = {
+            "Description": self.description,
+            "ManagedPolicyName": self.name,
+            "PolicyDocument": PolicyDocument(statements=self.statements).as_dict,
         }
-        return [iam.ManagedPolicy(name_to_id(self.name), **attr_policy)]
+        return [iam.ManagedPolicy(name_to_id(self.name), **params)]

@@ -1,13 +1,17 @@
+from __future__ import annotations
 import abc
-
+from typing import TYPE_CHECKING
 from e3.aws.cfn import AWSType, Resource
 from e3.aws.cfn.ec2 import VPC
+
+if TYPE_CHECKING:
+    from typing import Optional
 
 
 class GroupSecurityRule(metaclass=abc.ABCMeta):
     """Security rule for EC2 Security groups."""
 
-    RULE_TYPE = None
+    RULE_TYPE: Optional[str] = None
     PROTOCOLS = {
         "ssh": {"from": 22, "to": 22, "protocol": "tcp"},
         "smtps": {"from": 465, "to": 465, "protocol": "tcp"},

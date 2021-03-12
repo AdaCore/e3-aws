@@ -1,101 +1,132 @@
 """Provide S3 buckets."""
 
 from __future__ import annotations
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 
-from troposphere import AWSObject, s3
+from troposphere import AWSObject, s3, Ref
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
-from e3.aws.troposphere.s3.policy_statement import (
-    DenyUnsecureTransport,
-    DenyBadEncryptionHeader,
-    DenyUnencryptedObjectUploads,
-    AWSConfigBucketPermissionsCheck,
-    AWSConfigBucketDelivery,
-)
 
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
 
 
-@dataclass(frozen=True)
 class Bucket(Construct):
-    """Define a S3 bucket construct with security parameters and a security policy.
+    """Define a S3 bucket construct with security parameters and a security policy."""
 
-    :param name: bucket name
-    :param enable_versioning: can be set to enable multiple versions of all
-         objects in the bucket.
-    """
+    def __init__(self, name: str, enable_versioning: bool = True):
+        """Initialize a bucket.
 
-    name: str
-    enable_versioning: bool = True
-    bucket_encryption: dict[str, list[dict[str, dict[str, str]]]] = field(
-        default_factory=lambda: {
+        :param name: bucket name
+        :param enable_versioning: can be set to enable multiple versions of all
+            objects in the bucket.
+        """
+        self.name = name
+        self.enable_versioning = enable_versioning
+
+        # Add minimal policy statements
+        self.policy_statements = [
+            # Deny any request not using https transport protocol
+            PolicyStatement(
+                action="s3:*",
+                effect="Deny",
+                resource=self.all_objects_arn,
+                principal={"AWS": "*"},
+                condition={"Bool": {"aws:SecureTransport": "false"}},
+            ),
+            # Deny to store object not encrypted with AES256 encryption
+            PolicyStatement(
+                action="s3:PutObject",
+                effect="Deny",
+                resource=self.all_objects_arn,
+                principal={"AWS": "*"},
+                condition={
+                    "StringNotEquals": {"s3:x-amz-server-side-encryption": "AES256"}
+                },
+            ),
+            # Deny to store non encrypted objects
+            # (??? do we really need that statement)
+            PolicyStatement(
+                action="s3:PutObject",
+                effect="Deny",
+                resource=self.all_objects_arn,
+                principal={"AWS": "*"},
+                condition={"Null": {"s3:x-amz-server-side-encryption": "true"}},
+            ),
+        ]
+
+        self.bucket_encryption = {
             "ServerSideEncryptionConfiguration": [
                 {"ServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}
             ]
-        },
-        init=False,
-    )
-    public_access_block_configuration: s3.PublicAccessBlockConfiguration = field(
-        default_factory=lambda: s3.PublicAccessBlockConfiguration(
-            "DefaultPublicAccessBlockConfiguration",
-            BlockPublicAcls=True,
-            BlockPublicPolicy=True,
-            IgnorePublicAcls=True,
-            RestrictPublicBuckets=True,
-        ),
-        init=False,
-    )
+        }
 
     @property
     def policy_document(self) -> PolicyDocument:
         """Return PolicyDocument to be attached to the bucket."""
-        return PolicyDocument(
-            statements=[
-                DenyUnsecureTransport(bucket=self.name),
-                DenyBadEncryptionHeader(bucket=self.name),
-                DenyUnencryptedObjectUploads(bucket=self.name),
-            ]
-        )
+        return PolicyDocument(statements=self.policy_statements)
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Construct and return a s3.Bucket and its associated s3.BucketPolicy."""
+        # Handle versioning configuration
         versioning_status = "Suspended"
         if self.enable_versioning:
             versioning_status = "Enabled"
+
+        # Block all public accesses
+        public_access_block_config = s3.PublicAccessBlockConfiguration(
+            BlockPublicAcls=True,
+            BlockPublicPolicy=True,
+            IgnorePublicAcls=True,
+            RestrictPublicBuckets=True,
+        )
+
+        # Set default bucket encryption to AES256
+        bucket_encryption = s3.BucketEncryption(
+            ServerSideEncryptionConfiguration=[
+                s3.ServerSideEncryptionRule(
+                    ServerSideEncryptionByDefault=s3.ServerSideEncryptionByDefault(
+                        SSEAlgorithm="AES256"
+                    ),
+                )
+            ]
+        )
 
         return [
             s3.Bucket(
                 name_to_id(self.name),
                 BucketName=self.name,
-                BucketEncryption=s3.BucketEncryption.from_dict(
-                    "DefautBucketEncryption", self.bucket_encryption
-                ),
-                PublicAccessBlockConfiguration=self.public_access_block_configuration,
+                BucketEncryption=bucket_encryption,
+                PublicAccessBlockConfiguration=public_access_block_config,
                 VersioningConfiguration=s3.VersioningConfiguration(
                     Status=versioning_status
                 ),
             ),
             s3.BucketPolicy(
                 name_to_id(self.name) + "Policy",
-                Bucket=self.name,
+                Bucket=self.ref,
                 PolicyDocument=self.policy_document.as_dict,
-                DependsOn=name_to_id(self.name),
             ),
         ]
+
+    @property
+    def ref(self):
+        return Ref(name_to_id(self.name))
 
     @property
     def arn(self):
         return f"arn:aws:s3:::{self.name}"
 
-    def cfn_policy_document(self, stack_name):
+    @property
+    def all_objects_arn(self):
+        return f"{self.arn}/*"
+
+    def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         return PolicyDocument(
             [
                 PolicyStatement(
@@ -115,25 +146,5 @@ class Bucket(Construct):
                     effect="Allow",
                     resource=self.arn,
                 )
-            ]
-        )
-
-
-@dataclass(frozen=True)
-class AWSConfigBucket(Bucket):
-    """Define a bucket to be used by a AWS Config DeliveryChannel.
-
-    :param name: bucket name
-    """
-
-    name: str
-
-    @property
-    def policy_document(self) -> PolicyDocument:
-        """Return PolicyDocument to be attached to the bucket."""
-        return super().policy_document + PolicyDocument(
-            statements=[
-                AWSConfigBucketPermissionsCheck(bucket=self.name),
-                AWSConfigBucketDelivery(bucket=self.name),
             ]
         )

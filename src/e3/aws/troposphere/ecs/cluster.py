@@ -9,8 +9,7 @@ from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.role import Role
 from e3.aws.troposphere.iam.managed_policy import ManagedPolicy
-from e3.aws.troposphere.iam.policy_statement import PolicyStatement
-from e3.aws.troposphere.iam.policy_document import PolicyDocument
+from e3.aws.troposphere.iam.policy_statement import PolicyStatement, Trust
 
 if TYPE_CHECKING:
     from typing import Optional
@@ -64,30 +63,22 @@ class Cluster(Construct):
         return [ecs.Cluster(name_to_id(self.name), **kwargs)]
 
 
-@dataclass(frozen=True)
 class ECSPassExecutionRolePolicy(ManagedPolicy):
     """ECSPassExecutionRolePolicy, see description for details."""
 
-    name: str = field(default="ECSPassExecutionRolePolicy", init=False)
-    description: str = field(
-        default=(
-            "Needed to be attached to ECSEventsRole if schedulded"
-            "task requires ECSTaskExecutionRole"
-        ),
-        init=False,
-    )
-
-    @property
-    def policy_document(self):
-        """Return PolicyDocument to be attached to the managed policy."""
-        return PolicyDocument(
+    def __init__(self) -> None:
+        """Initialize ECSPassExecutationRolePolicy."""
+        super().__init__(
+            name="ECSPassExecutionRolePolicy",
+            description="Needed to be attached to ECSEventsRole if schedulded"
+            "task requires ECSTaskExecutionRole",
             statements=[
                 PolicyStatement(
                     effect="Allow",
                     action=["iam:PassRole"],
                     resource=GetAtt(name_to_id("ECSTaskExecutionRole"), "Arn"),
                 )
-            ]
+            ],
         )
 
 
@@ -117,19 +108,19 @@ class FargateCluster(Cluster):
             name="ECSTaskExecutionRole",
             description="grants the Amazon ECS container agent permission to make "
             "AWS API calls on your behalf.",
-            principal={"Service": "ecs-tasks.amazonaws.com"},
+            trust=Trust(services=["ecs-tasks"]),
             managed_policy_arns=[
                 "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
             ],
         )
 
     @property
-    def ecs_events_role(self) -> list[AWSObject]:
+    def ecs_events_role(self) -> Role:
         """Return ecs events role, see role description for details."""
         return Role(
             name="ECSEventsRole",
             description="Allow CloudWatch Events service to run Amazon ECS tasks",
-            principal={"Service": "events.amazonaws.com"},
+            trust=Trust(services=["events"]),
             managed_policy_arns=[
                 "arn:aws:iam::aws:policy/service-role/"
                 "AmazonEC2ContainerServiceEventsRole",

@@ -121,7 +121,8 @@ EXPECTED_RECORDER = {
                         "aws",
                         "iam:",
                         {"Ref": "AWS::AccountId"},
-                        "role/aws-service-role/config.amazonaws.com/AWSServiceRoleForConfig",
+                        "role/aws-service-role/config.amazonaws.com/"
+                        "AWSServiceRoleForConfig",
                     ],
                 ]
             },
@@ -149,7 +150,7 @@ EXPECTED_RECORDER = {
     },
     "ConfigTestBucketPolicy": {
         "Properties": {
-            "Bucket": "config-test-bucket",
+            "Bucket": {"Ref": "ConfigTestBucket"},
             "PolicyDocument": {
                 "Version": "2012-10-17",
                 "Statement": [
@@ -194,8 +195,7 @@ EXPECTED_RECORDER = {
                             "Fn::Join": [
                                 "",
                                 [
-                                    "arn:aws:s3:::",
-                                    "config-test-bucket",
+                                    "arn:aws:s3:::config-test-bucket",
                                     "/AWSLogs/",
                                     {"Ref": "AWS::AccountId"},
                                     "/Config/*",
@@ -212,12 +212,13 @@ EXPECTED_RECORDER = {
             },
         },
         "Type": "AWS::S3::BucketPolicy",
-        "DependsOn": "ConfigTestBucket",
     },
     "DeliveryChannel": {
-        "Properties": {"Name": "DeliveryChannel", "S3BucketName": "config-test-bucket"},
+        "Properties": {
+            "Name": "DeliveryChannel",
+            "S3BucketName": {"Ref": "ConfigTestBucket"},
+        },
         "Type": "AWS::Config::DeliveryChannel",
-        "DependsOn": ["ConfigTestBucket"],
     },
 }
 

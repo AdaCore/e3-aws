@@ -8,21 +8,22 @@ from troposphere import AWSObject, iam, Tags
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
-from e3.aws.troposphere.iam.policy_statement import AssumeRole
+from e3.aws.troposphere.iam.policy_statement import AssumeRole, Trust
 
 if TYPE_CHECKING:
     from typing import Optional
     from e3.aws.troposphere import Stack
-    from e3.aws.troposphere.iam.policy_document import PrincipalType
+    from e3.aws.troposphere.iam.policy_statement import PrincipalType
 
 
-@dataclass(frozen=True)
+@dataclass
 class Role(Construct):
     """Define IAM role with an attached assume_role policy document.
 
     :param name: role name
     :param description: role description
-    :param principal: principal which are allowed to assume this role
+    :param trust: trust policy. It can be either a principal, a Trust statement or
+        a policy document
     :param managed_policy_arns: list of ARNs of IAM managed policies to attach
         to the role
     :param max_session_duration: the maximum session duration (in seconds) that
@@ -32,19 +33,20 @@ class Role(Construct):
 
     name: str
     description: str
-    principal: PrincipalType
+    trust: PrincipalType | Trust | PolicyDocument
     managed_policy_arns: Optional[list[str]] = None
     max_session_duration: Optional[int] = None
     tags: dict[str, str] = field(default_factory=lambda: {})
 
-    _assume_role_policy_document: PolicyDocument = field(
-        default=PolicyDocument([]), init=False
-    )
-
     @property
-    def assume_role_policy_document(self) -> PolicyDocument:
-        """Return PolicyDocument to be attached to the bucket."""
-        return PolicyDocument(statements=[AssumeRole(principal=self.principal)])
+    def trust_policy(self) -> PolicyDocument:
+        """Return the trust policy for the role."""
+        if isinstance(self.trust, Trust):
+            return PolicyDocument(statements=[self.trust])
+        elif isinstance(self.trust, PolicyDocument):
+            return self.trust
+        else:
+            return PolicyDocument(statements=[AssumeRole(principal=self.trust)])
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return troposphere objects defining the role."""
@@ -55,7 +57,7 @@ class Role(Construct):
             "Description": self.description,
             "ManagedPolicyArns": self.managed_policy_arns,
             "MaxSessionDuration": self.max_session_duration,
-            "AssumeRolePolicyDocument": self.assume_role_policy_document.as_dict,
+            "AssumeRolePolicyDocument": self.trust_policy.as_dict,
             "Tags": Tags({"Name": self.name, **self.tags}),
         }.items():
             if val is not None:
