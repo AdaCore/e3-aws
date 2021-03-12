@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from troposphere import AWSObject, iam, Tags
+from troposphere import AWSObject, iam, Tags, GetAtt
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -47,6 +47,10 @@ class Role(Construct):
             return self.trust
         else:
             return PolicyDocument(statements=[AssumeRole(principal=self.trust)])
+
+    @property
+    def arn(self):
+        return GetAtt(name_to_id(self.name), "Arn")
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return troposphere objects defining the role."""
