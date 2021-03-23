@@ -51,6 +51,30 @@ class PolicyStatement:
         }
 
 
+class Allow(PolicyStatement):
+    def __init__(
+        self,
+        action: str | list[str],
+        resource: Optional[str] = None,
+        principal: Optional[PrincipalType] = None,
+        condition: Optional[ConditionType] = None,
+    ) -> None:
+        """Initialize an Allow policy statement.
+
+        :param action: actions on which the policy has effect
+        :param resource: resource on which the policy has effect
+        :param principal: principal affected by the policy
+        :param condition: conditions for when the policy is in effect
+        """
+        return super().__init__(
+            action=action,
+            effect="Allow",
+            resource=resource,
+            principal=principal,
+            condition=condition,
+        )
+
+
 class AssumeRole(PolicyStatement):
     """Define a sts:AssumeRole role policy statement."""
 

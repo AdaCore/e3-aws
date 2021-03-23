@@ -6,7 +6,7 @@ from troposphere import iam, AWSObject, Ref
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
-from e3.aws.troposphere.iam.policy_statement import PolicyStatement
+from e3.aws.troposphere.iam.policy_statement import PolicyStatement, Allow
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
@@ -41,3 +41,20 @@ class ManagedPolicy(Construct):
             "PolicyDocument": PolicyDocument(statements=self.statements).as_dict,
         }
         return [iam.ManagedPolicy(name_to_id(self.name), **params)]
+
+    def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
+        return PolicyDocument(
+            statements=[
+                Allow(
+                    action=[
+                        "iam:GetPolicy",
+                        "iam:CreatePolicy",
+                        "iam:ListPolicyVersions",
+                        "iam:DeletePolicy",
+                        "iam:CreatePolicyVersion",
+                        "iam:DeletePolicyVersion",
+                    ],
+                    resource=f"arn:aws:iam::%(account)s:policy/{self.name}",
+                )
+            ]
+        )

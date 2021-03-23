@@ -3,12 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from troposphere import AWSObject, iam, Tags
+from troposphere import AWSObject, iam, Tags, GetAtt
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
-from e3.aws.troposphere.iam.policy_statement import AssumeRole, Trust
+from e3.aws.troposphere.iam.policy_statement import AssumeRole, Trust, Allow
 
 if TYPE_CHECKING:
     from typing import Optional
@@ -48,6 +48,10 @@ class Role(Construct):
         else:
             return PolicyDocument(statements=[AssumeRole(principal=self.trust)])
 
+    @property
+    def arn(self):
+        return GetAtt(name_to_id(self.name), "Arn")
+
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return troposphere objects defining the role."""
         attr = {}
@@ -64,3 +68,19 @@ class Role(Construct):
                 attr[key] = val
 
         return [iam.Role(name_to_id(self.name), **attr)]
+
+    def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
+        return PolicyDocument(
+            statements=[
+                Allow(
+                    action=[
+                        "iam:GetRole",
+                        "iam:CreateRole",
+                        "iam:AttachRolePolicy",
+                        "iam:DetachRolePolicy",
+                        "iam:DeleteRole",
+                    ],
+                    resource=f"arn:aws:iam::%(account)s:role/{self.name}",
+                )
+            ]
+        )
