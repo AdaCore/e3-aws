@@ -1,6 +1,7 @@
 """Provide IAM construct tests."""
 
 from e3.aws.troposphere.iam.role import Role
+from e3.aws.troposphere.iam.policy_statement import Allow
 from e3.aws.troposphere import Stack
 
 EXPECTED_ROLE = {
@@ -44,3 +45,13 @@ def test_role(stack: Stack) -> None:
         )
     )
     assert stack.export()["Resources"] == EXPECTED_ROLE
+
+
+def test_statement() -> None:
+    """Test an IAM policy statement creation."""
+    statement = Allow(action="s3:putObject", resource="*")
+    assert statement.as_dict == {
+        "Action": "s3:putObject",
+        "Effect": "Allow",
+        "Resource": "*",
+    }
