@@ -29,6 +29,7 @@ EXPECTED_TEMPLATE = {
             "Description": "this is a test",
             "ProtocolType": "HTTP",
             "Name": "testapi",
+            "DisableExecuteApiEndpoint": "false",
         },
         "Type": "AWS::ApiGatewayV2::Api",
     },

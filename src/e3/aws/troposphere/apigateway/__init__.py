@@ -2,14 +2,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
-from troposphere import apigatewayv2, Ref, logs, GetAtt, awslambda, Sub
+from troposphere import apigatewayv2, route53, Ref, logs, GetAtt, awslambda, Sub
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 from troposphere import AWSObject
+from troposphere.certificatemanager import Certificate, DomainValidationOption
 import json
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
+    from typing import Optional
 
 
 class HttpApi(Construct):
@@ -21,6 +23,8 @@ class HttpApi(Construct):
         route_list: list[tuple[str, str]],
         burst_limit: int = 10,
         rate_limit: int = 10,
+        domain_name: Optional[str] = None,
+        hosted_zone_id: Optional[str] = None,
     ):
         """Initialize an HTTP API.
 
@@ -38,6 +42,13 @@ class HttpApi(Construct):
         :param burst_limit: maximum concurrent requests at a given time
             (exceeding that limit will cause API Gateway to return 429)
         :param rate_limit: maximum number of requests per seconds
+        :param domain_name: if domain_name is not None then associate the API
+            with a given domain name. In that case a certificate is
+            automatically created for that domain name. Note that if a domain
+            name is specified then the default endpoint (execute-api) is
+            disabled.
+        :param hosted_zone_id: id of the hosted zone that contains domain_name.
+            This parameter is required if domain_name is not None
         """
         self.name = name
         self.description = description
@@ -45,6 +56,14 @@ class HttpApi(Construct):
         self.route_list = route_list
         self.burst_limit = burst_limit
         self.rate_limit = rate_limit
+        self.domain_name = domain_name
+        self.disable_execute_api_endpoint: bool = False
+        if self.domain_name is not None:
+            self.disable_execute_api_endpoint = True
+            assert (
+                hosted_zone_id is not None
+            ), "hosted zone id required when domain_name is not None"
+        self.hosted_zone_id = hosted_zone_id
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         """Get policy needed by CloudFormation."""
@@ -145,6 +164,81 @@ class HttpApi(Construct):
         )
         return result
 
+    def declare_domain(
+        self, domain_name: str, hosted_zone_id: str, stage_name: str
+    ) -> list[AWSObject]:
+        """Declare a custom domain for one of the API stage.
+
+        Note that when a custom domain is created then a certificate is automatically
+        created for that domain.
+
+        :param domain_name: domain name
+        :param hosted_zone_id: hosted zone in which the domain belongs to
+        :param stage_name: stage that should be associated with that domain
+        :return: a list of AWSObject
+        """
+        result = []
+        certificate_id = name_to_id(self.name + domain_name + "Certificate")
+        certificate = Certificate(
+            certificate_id,
+            DomainName=domain_name,
+            DomainValidationOptions=[
+                DomainValidationOption(
+                    DomainName=domain_name, HostedZoneId=hosted_zone_id
+                )
+            ],
+            ValidationMethod="DNS",
+        )
+        result.append(certificate)
+        domain = apigatewayv2.DomainName(
+            name_to_id(self.name + domain_name + "Domain"),
+            DomainName=domain_name,
+            DomainNameConfigurations=[
+                apigatewayv2.DomainNameConfiguration(CertificateArn=Ref(certificate_id))
+            ],
+        )
+        result.append(domain)
+        result.append(
+            apigatewayv2.ApiMapping(
+                name_to_id(self.name + domain_name + "ApiMapping"),
+                DomainName=domain_name,
+                ApiId=self.ref,
+                Stage=self.stage_ref(stage_name),
+            )
+        )
+        result.append(
+            route53.RecordSetType(
+                name_to_id(self.name + domain_name + "DNS"),
+                Name=domain_name,
+                Type="A",
+                HostedZoneId=hosted_zone_id,
+                AliasTarget=route53.AliasTarget(
+                    DNSName=GetAtt(
+                        name_to_id(self.name + domain_name + "Domain"),
+                        "RegionalDomainName",
+                    ),
+                    HostedZoneId=GetAtt(
+                        name_to_id(self.name + domain_name + "Domain"),
+                        "RegionalHostedZoneId",
+                    ),
+                    EvaluateTargetHealth=False,
+                ),
+            )
+        )
+        return result
+
+    @property
+    def ref(self) -> Ref:
+        """Return ref to the Gateway API."""
+        return Ref(name_to_id(self.name))
+
+    def stage_ref(self, stage_name: str) -> Ref:
+        """Return ref to one of the Gateway API stage.
+
+        :param stage_name: the stage name
+        """
+        return Ref(name_to_id(self.name) + name_to_id(stage_name) + "Stage")
+
     def resources(self, stack: Stack) -> list[AWSObject]:
         # API logical id
         logical_id = name_to_id(self.name)
@@ -159,6 +253,7 @@ class HttpApi(Construct):
             "Description": self.description,
             "ProtocolType": "HTTP",
             "Name": self.name,
+            "DisableExecuteApiEndpoint": self.disable_execute_api_endpoint,
         }
         result.append(apigatewayv2.Api(name_to_id(self.name), **api_params))
 
@@ -184,6 +279,15 @@ class HttpApi(Construct):
         for method, route in self.route_list:
             result += self.declare_route(
                 method=method, route=route, integration=Ref(logical_id + "Integration")
+            )
+
+        # Declare the domain
+        if self.domain_name is not None:
+            assert self.hosted_zone_id is not None
+            result += self.declare_domain(
+                domain_name=self.domain_name,
+                hosted_zone_id=self.hosted_zone_id,
+                stage_name="$default",
             )
 
         return result
