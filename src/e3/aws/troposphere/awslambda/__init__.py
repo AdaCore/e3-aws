@@ -32,6 +32,7 @@ class Function(Construct):
         code_version: Optional[int] = None,
         timeout: int = 3,
         runtime: Optional[str] = None,
+        memory_size: Optional[int] = None,
     ):
         """Initialize an AWS lambda function.
 
@@ -44,6 +45,8 @@ class Function(Construct):
         :param code_version: code version
         :param timeout: maximum execution time (default: 3s)
         :param runtime: runtime to use
+        :param memory_size: the amount of memory available to the function at
+            runtime. The value can be any multiple of 1 MB.
         """
         self.name = name
         self.description = description
@@ -54,6 +57,7 @@ class Function(Construct):
         self.runtime = runtime
         self.role = role
         self.handler = handler
+        self.memory_size = memory_size
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         return PolicyDocument(
@@ -120,6 +124,9 @@ class Function(Construct):
         if self.handler is not None:
             params["Handler"] = self.handler
 
+        if self.memory_size is not None:
+            params["MemorySize"] = self.memory_size
+
         return [awslambda.Function(name_to_id(self.name), **params)]
 
     def invoke_permission(
@@ -166,6 +173,7 @@ class Py38Function(Function):
         requirement_file: Optional[str] = None,
         code_version: Optional[int] = None,
         timeout: int = 3,
+        memory_size: Optional[int] = None,
     ):
         """Initialize an AWS lambda function using Python 3.8 runtime.
 
@@ -179,6 +187,8 @@ class Py38Function(Function):
             and packaged along with the lambda code
         :param code_version: code version
         :param timeout: maximum execution time (default: 3s)
+        :param memory_size: the amount of memory available to the function at
+            runtime. The value can be any multiple of 1 MB.
         """
         super().__init__(
             name=name,
@@ -190,6 +200,7 @@ class Py38Function(Function):
             code_version=code_version,
             timeout=timeout,
             runtime="python3.8",
+            memory_size=memory_size,
         )
         self.code_dir = code_dir
         self.requirement_file = requirement_file
