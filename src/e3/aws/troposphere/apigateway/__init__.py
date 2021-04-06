@@ -194,14 +194,14 @@ class HttpApi(Construct):
             name_to_id(self.name + domain_name + "Domain"),
             DomainName=domain_name,
             DomainNameConfigurations=[
-                apigatewayv2.DomainNameConfiguration(CertificateArn=Ref(certificate_id))
+                apigatewayv2.DomainNameConfiguration(CertificateArn=certificate.ref())
             ],
         )
         result.append(domain)
         result.append(
             apigatewayv2.ApiMapping(
                 name_to_id(self.name + domain_name + "ApiMapping"),
-                DomainName=domain_name,
+                DomainName=domain.ref(),
                 ApiId=self.ref,
                 Stage=self.stage_ref(stage_name),
             )
