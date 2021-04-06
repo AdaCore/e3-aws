@@ -2,20 +2,24 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
-from troposphere import awslambda, GetAtt, Ref
+from troposphere import awslambda, GetAtt, Ref, Sub
 
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
+from e3.aws.troposphere.iam.role import Role
 from e3.sys import python_script
 from e3.os.process import Run
 from e3.fs import sync_tree, rm
 from e3.archive import create_archive
 import os
+import logging
 
 if TYPE_CHECKING:
     from typing import Optional, Union
     from troposphere import AWSObject
     from e3.aws.troposphere import Stack
+
+logger = logging.getLogger("e3.aws.troposphere.awslambda")
 
 
 class Function(Construct):
@@ -27,7 +31,7 @@ class Function(Construct):
         description: str,
         code_bucket: Optional[str],
         code_key: Optional[str],
-        role: Union[str, GetAtt],
+        role: Union[str, GetAtt, Role],
         handler: Optional[str] = None,
         code_version: Optional[int] = None,
         timeout: int = 3,
@@ -60,28 +64,37 @@ class Function(Construct):
         self.memory_size = memory_size
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
-        return PolicyDocument(
-            [
+        statements = [
+            PolicyStatement(
+                action=[
+                    # Needed by CloudFormation to handle the function lifecycle
+                    "lambda:CreateFunction",
+                    "lambda:GetFunction",
+                    "lambda:DeleteFunction",
+                    "lambda:UpdateFunctionCode",
+                    "lambda:UpdateFunctionConfiguration",
+                    # Needed by resources referencing the function
+                    "lambda:GetFunctionConfiguration",
+                ],
+                effect="Allow",
+                resource=f"arn:aws:lambda:::function:{self.name}*",
+            )
+        ]
+        if isinstance(self.role, GetAtt):
+            logger.warning(f"cannot compute needed iam:PassRole for lambda {self.name}")
+        else:
+            if isinstance(self.role, Role):
+                role_arn = f"arn:aws:iam::%(account)s:policy/{self.role.name}"
+            else:
+                role_arn = self.role
+
+            # Allow user to pass role to the lambda
+            statements.append(
                 PolicyStatement(
-                    action=[
-                        # Needed by CloudFormation to handle the function lifecycle
-                        "lambda:CreateFunction",
-                        "lambda:GetFunction",
-                        "lambda:DeleteFunction",
-                        "lambda:UpdateFunctionCode",
-                        "lambda:UpdateFunctionConfiguration",
-                        # Needed by resources referencing the function
-                        "lambda:GetFunctionConfiguration",
-                    ],
-                    effect="Allow",
-                    resource=f"arn:aws:lambda:::function:{self.name}*",
-                ),
-                # Allow user to pass role to the lambda
-                PolicyStatement(
-                    action=["iam:PassRole"], effect="Allow", resource=self.role
-                ),
-            ]
-        )
+                    action=["iam:PassRole"], effect="Allow", resource=role_arn
+                )
+            )
+        return PolicyDocument(statements=statements)
 
     @property
     def arn(self) -> GetAtt:
@@ -110,11 +123,16 @@ class Function(Construct):
         if self.code_version is not None:
             code_params["S3ObjectVersion"] = str(self.code_version)
 
+        if isinstance(self.role, Role):
+            role = self.role.arn
+        else:
+            role = self.role
+
         params = {
             "Code": awslambda.Code(**code_params),
             "Timeout": self.timeout,
             "Description": self.description,
-            "Role": self.role,
+            "Role": role,
             "FunctionName": self.name,
         }
 
@@ -128,6 +146,29 @@ class Function(Construct):
             params["MemorySize"] = self.memory_size
 
         return [awslambda.Function(name_to_id(self.name), **params)]
+
+    @staticmethod
+    def lambda_log_group(lambda_name: str) -> Sub:
+        """Return logroup arn for a given lambda.
+
+        :param lambda_name: the lambda name
+        """
+        return Sub(
+            "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/"
+            + lambda_name
+        )
+
+    @staticmethod
+    def lambda_log_streams(lambda_name: str) -> Sub:
+        """Return arn that matches all logstreams for a lambda log group.
+
+        :param lambda_name: the lambda name
+        """
+        return Sub(
+            "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/"
+            + lambda_name
+            + ":*"
+        )
 
     def invoke_permission(
         self,
@@ -167,7 +208,7 @@ class Py38Function(Function):
         self,
         name: str,
         description: str,
-        role: str | GetAtt,
+        role: str | GetAtt | Role,
         code_dir: str,
         handler: str,
         requirement_file: Optional[str] = None,
