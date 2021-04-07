@@ -1,8 +1,11 @@
 from __future__ import annotations
 import json
+import os
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.awslambda import Py38Function
-from e3.aws.troposphere.apigateway import HttpApi
+from e3.aws.troposphere.apigateway import HttpApi, GET, POST
+
+TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
 EXPECTED_TEMPLATE = {
     "Mypylambda": {
@@ -127,8 +130,8 @@ EXPECTED_TEMPLATE = {
 }
 
 
-def test_awslambda(stack: Stack) -> None:
-    """Test config recorder creation."""
+def test_http_api(stack: Stack) -> None:
+    """Test basic HTTP API."""
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
 
@@ -145,10 +148,37 @@ def test_awslambda(stack: Stack) -> None:
             name="testapi",
             description="this is a test",
             lambda_arn=lambda_fun.ref,
-            route_list=[("GET", "/api1"), ("POST", "/api2")],
+            route_list=[GET(route="/api1"), POST(route="/api2")],
         )
     )
-    with open("/tmp/nico.json", "w") as fd:
-        fd.write(json.dumps(stack.export()["Resources"], indent=2))
 
     assert stack.export()["Resources"] == EXPECTED_TEMPLATE
+
+
+def test_http_api_custom_domain(stack: Stack) -> None:
+    """Test basic HTTP API with custom domain."""
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+
+    lambda_fun = Py38Function(
+        name="mypylambda",
+        description="this is a test",
+        role="somearn",
+        code_dir="my_code_dir",
+        handler="app.main",
+    )
+    stack.add(lambda_fun)
+    stack.add(
+        HttpApi(
+            name="testapi",
+            description="this is a test",
+            lambda_arn=lambda_fun.ref,
+            domain_name="api.example.com",
+            hosted_zone_id="ABCDEFG",
+            route_list=[GET(route="/api1"), POST(route="/api2")],
+        )
+    )
+    with open(os.path.join(TEST_DIR, "apigateway_test_custom_domain.json")) as fd:
+        expected = json.load(fd)
+
+    assert stack.export()["Resources"] == expected
