@@ -254,6 +254,14 @@ class Py38Function(Function):
             code_key=f"{stack.s3_key}{self.name}_lambda.zip",
         )
 
+    def populate_package_dir(self, package_dir: str) -> None:
+        """Copy user code into lambda package directory.
+
+        :param package_dir: directory in which the package content is put
+        """
+        # Add lambda code
+        sync_tree(self.code_dir, package_dir, delete=False)
+
     def create_data_dir(self, root_dir: str) -> None:
         """Create data to be pushed to bucket used by cloudformation for resources."""
         # Create directory specific to that lambda
@@ -268,8 +276,8 @@ class Py38Function(Function):
             )
             assert p.status == 0
 
-        # Add lambda code
-        sync_tree(self.code_dir, package_dir, delete=False)
+        # Copy user code
+        self.populate_package_dir(package_dir=package_dir)
 
         # Create an archive
         create_archive(
