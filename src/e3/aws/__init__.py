@@ -6,7 +6,12 @@ import json
 import logging
 import os
 import re
+import requests
+import requests.auth
+import urllib.parse
 
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
 from botocore.stub import Stubber
 from uuid import uuid4
 
@@ -404,3 +409,73 @@ def name_to_id(name: str) -> str:
     resource_id = re.sub(r"[^a-zA-Z0-9]", "", re.sub(r"(-[a-z])", replacement, name))
     resource_id = resource_id[0].upper() + resource_id[1:]
     return resource_id
+
+
+class IAMAuth(requests.auth.AuthBase):
+    """Authorizer for the requests framework that use AWS Signature V4 protocol."""
+
+    def __init__(
+        self, session: Session, role: Optional[str] = None, region: Optional[str] = None
+    ):
+        """Initialize authorizer.
+
+        :param session: an aws session
+        :param role: if not None role to assume
+        :param region: if None use default region (from session) otherwise use it as
+            region
+        """
+        self.session = session
+        self.role = role
+        if region is None:
+            self.region = self.session.default_region
+        else:
+            self.region = region
+
+    def __call__(self, request: requests.PreparedRequest) -> requests.PreparedRequest:
+        """See requests framework."""
+        # The code does not implement the signature v4 protocol. It reuses parts of
+        # botocore to do so. Botocore does not provide a generic interface to sign
+        # a given request. So the following code create a temporary AWSRequest object
+        # with the same parameters as the user request, sign it and then extract
+        # the signature (i.e: the headers) that is re-injected into the user request.
+        session = self.session
+        if self.role is not None:
+            session = self.session.assume_role(self.role, "iamauthsession")
+
+        credentials = session.session.get_credentials().get_frozen_credentials()
+
+        # Split back the url in order to be able to call AWSRequest
+        aws_headers = dict(request.headers)
+        key_to_delete = []
+        for key in aws_headers:
+            if key.lower() in ("accept", "accept-encoding", "connection"):
+                key_to_delete.append(key)
+
+        for key in key_to_delete:
+            del aws_headers[key]
+
+        parsed_url = urllib.parse.urlparse(request.url)
+        aws_params = {
+            str(k): ",".join(v)
+            for k, v in urllib.parse.parse_qs(str(parsed_url.query)).items()
+        }
+        aws_url = urllib.parse.urlunparse(
+            (
+                str(parsed_url.scheme),
+                str(parsed_url.netloc),
+                str(parsed_url.path),
+                str(parsed_url.params),
+                "",
+                "",
+            )
+        )
+
+        # Compute the headers for the request
+        aws_request = AWSRequest(
+            method=request.method, url=aws_url, params=aws_params, headers=aws_headers,
+        )
+        SigV4Auth(credentials, "execute-api", self.region).add_auth(aws_request)
+
+        # Update request headers
+        request.headers.update(aws_request.headers)
+        return request

@@ -1,4 +1,5 @@
 from __future__ import annotations
+from enum import Enum
 from typing import TYPE_CHECKING
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -14,13 +15,71 @@ if TYPE_CHECKING:
     from typing import Optional
 
 
+class AuthorizationType(Enum):
+    """Allowed authorization types for ApiGateway routes."""
+
+    NONE = "NONE"
+    JWT = "JWT"
+    IAM = "AWS_IAM"
+    CUSTOM = "CUSTOM"
+
+
+# Declare some constants to make declarations more concise.
+NO_AUTH = AuthorizationType.NONE
+JWT_AUTH = AuthorizationType.JWT
+IAM_AUTH = AuthorizationType.IAM
+CUSTOM_AUTH = AuthorizationType.CUSTOM
+
+
+class Route:
+    """API Gateway route definition."""
+
+    def __init__(
+        self, method: str, route: str, auth: AuthorizationType = NO_AUTH
+    ) -> None:
+        """Initialize an API Gateway route definition.
+
+        :param method: the https method
+        :param route: the route (should start with a "/")
+        :param auth: the authorization type associated with the route
+        """
+        assert route.startswith("/"), "route path should starts with a /"
+        self.method = method
+        self.route = route
+        self.auth = auth
+
+
+class GET(Route):
+    """An API Gateway GET route."""
+
+    def __init__(self, route: str, auth: AuthorizationType = NO_AUTH) -> None:
+        """Initialize a GET route.
+
+        :param route: the route (should start with a "/")
+        :param auth: the authorization type associated with the route
+        """
+        super().__init__(method="GET", route=route, auth=auth)
+
+
+class POST(Route):
+    """An API Gateway POST route."""
+
+    def __init__(self, route: str, auth: AuthorizationType = NO_AUTH) -> None:
+        """Initialize a POST route.
+
+        :param route: the route (should start with a "/")
+        :param auth: the authorization type associated with the route
+        """
+        super().__init__(method="POST", route=route, auth=auth)
+
+
 class HttpApi(Construct):
     def __init__(
         self,
         name: str,
         description: str,
         lambda_arn: str | GetAtt | Ref,
-        route_list: list[tuple[str, str]],
+        route_list: list[Route],
         burst_limit: int = 10,
         rate_limit: int = 10,
         domain_name: Optional[str] = None,
@@ -122,26 +181,22 @@ class HttpApi(Construct):
             StageName=stage_name,
         )
 
-    def declare_route(
-        self, method: str, route: str, integration: Ref | str
-    ) -> list[AWSObject]:
+    def declare_route(self, route: Route, integration: Ref | str) -> list[AWSObject]:
         """Declare a route.
 
-        :param method: the https method to use (GET, POST, ...)
-        :param route: the route (starting with /)
+        :param route: the route definition
         :param integration: arn of the integration to use for this route
         :return: a list of AWSObjects to be added to the stack
         """
-        assert route.startswith("/")
         result = []
         api_id = name_to_id(self.name)
-        id_prefix = name_to_id(self.name + method + route)
+        id_prefix = name_to_id(self.name + route.method + route.route)
         result.append(
             apigatewayv2.Route(
                 id_prefix + "Route",
                 ApiId=Ref(api_id),
-                AuthorizationType="NONE",
-                RouteKey=f"{method} {route}",
+                AuthorizationType=route.auth.value,
+                RouteKey=f"{route.method} {route.route}",
                 Target=Sub(
                     "integrations/${integration}",
                     dict_values={"integration": integration},
@@ -158,7 +213,10 @@ class HttpApi(Construct):
                 SourceArn=Sub(
                     "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:"
                     "${api}/$default/${route_arn}",
-                    dict_values={"api": Ref(api_id), "route_arn": f"{method}{route}"},
+                    dict_values={
+                        "api": Ref(api_id),
+                        "route_arn": f"{route.method}{route.route}",
+                    },
                 ),
             )
         )
@@ -194,14 +252,14 @@ class HttpApi(Construct):
             name_to_id(self.name + domain_name + "Domain"),
             DomainName=domain_name,
             DomainNameConfigurations=[
-                apigatewayv2.DomainNameConfiguration(CertificateArn=Ref(certificate_id))
+                apigatewayv2.DomainNameConfiguration(CertificateArn=certificate.ref())
             ],
         )
         result.append(domain)
         result.append(
             apigatewayv2.ApiMapping(
                 name_to_id(self.name + domain_name + "ApiMapping"),
-                DomainName=domain_name,
+                DomainName=domain.ref(),
                 ApiId=self.ref,
                 Stage=self.stage_ref(stage_name),
             )
@@ -276,9 +334,9 @@ class HttpApi(Construct):
         )
 
         # Declare the routes
-        for method, route in self.route_list:
+        for route in self.route_list:
             result += self.declare_route(
-                method=method, route=route, integration=Ref(logical_id + "Integration")
+                route=route, integration=Ref(logical_id + "Integration"),
             )
 
         # Declare the domain
