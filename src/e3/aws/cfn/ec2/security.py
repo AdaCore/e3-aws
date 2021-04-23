@@ -1,7 +1,7 @@
 from __future__ import annotations
 import abc
 from typing import TYPE_CHECKING
-from e3.aws.cfn import AWSType, Resource
+from e3.aws.cfn import AWSType, GetAtt, Resource
 from e3.aws.cfn.ec2 import VPC
 
 if TYPE_CHECKING:
@@ -139,6 +139,11 @@ class SecurityGroup(Resource):
             self.egress.append(rule)
         else:
             raise AssertionError("a security group rule is expected")
+
+    @property
+    def group_id(self):
+        """Return SecurityGroup GroupId."""
+        return GetAtt(self.name, "GroupId")
 
     @property
     def properties(self):

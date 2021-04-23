@@ -17,6 +17,7 @@ from e3.aws.cfn.ec2 import (
     SubnetRouteTableAssociation,
     VPC,
     VPCEndpoint,
+    VPCInterfaceEndpoint,
     VPCGatewayAttachment,
 )
 from e3.aws.cfn.ec2.security import (
@@ -243,13 +244,15 @@ class Fortress(Stack):
         description=None,
         vpc_cidr_block="10.10.0.0/16",
         private_cidr_block="10.10.0.0/17",
-        public_cidr_block="10.10.128.0/17",
+        public_cidr_block="10.10.128.0/18",
+        aws_endpoints_cidr_block="10.10.192.0/18",
     ):
         """Create a VPC Fortress.
 
         This create a vpc with a public and a private subnet. Servers in the
-        private subnet are only accessible through a bastion machine declare
-        in the public subnet.
+        private subnet are only accessible through a bastion machine declared
+        in the public subnet. An additional subnet is created to host AWS
+        services endpoints network interfaces.
 
         :param name: stack name
         :type name: str
@@ -270,10 +273,13 @@ class Fortress(Stack):
         :param public_cidr_block: ip ranges (subset of vpc_cidr_block) used
             for public subnet
         :type public_cidr_block: str
+        :param aws_endpoints_cidr_block: ip ranges (subset of vpc_cidr_block) used
+            for aws endpoints
+        :type aws_endpoints_cidr_block: str
         """
         super().__init__(name, description)
 
-        # Create VPC along with the two subnets
+        # Create VPC along with the three subnets
         self.add(VPCStack(self.name + "VPC", vpc_cidr_block))
         self.vpc.add_subnet(
             self.name + "PublicNet", public_cidr_block, is_public=True, use_nat=True
@@ -281,6 +287,7 @@ class Fortress(Stack):
         self.vpc.add_subnet(
             self.name + "PrivateNet", private_cidr_block, nat_to=self.name + "PublicNet"
         )
+        self.vpc.add_subnet(self.name + "AWSEndpointsNet", aws_endpoints_cidr_block)
 
         self.amazon_groups = {}
         self.github_groups = {}
@@ -312,8 +319,14 @@ class Fortress(Stack):
                 SecurityGroup(
                     self.name + "InternalSG",
                     self.vpc.vpc,
-                    description="Allow ssh inside VPC",
-                    rules=[Ipv4IngressRule("ssh", self.public_subnet.cidr_block)],
+                    description=(
+                        "Allow ssh inside VPC and allow https "
+                        "to VPC endpoints subnet"
+                    ),
+                    rules=[
+                        Ipv4IngressRule("ssh", self.public_subnet.cidr_block),
+                        Ipv4EgressRule("https", self.aws_endpoints_subnet.cidr_block),
+                    ],
                 )
             )
         else:
@@ -322,9 +335,25 @@ class Fortress(Stack):
                 SecurityGroup(
                     self.name + "InternalSG",
                     self.vpc.vpc,
-                    description="Do not allow ssh inside VPC",
+                    description=(
+                        "Do not allow ssh inside VPC but allow https "
+                        "to the VPC endpoints subnet."
+                    ),
+                    rules=[
+                        Ipv4EgressRule("https", self.aws_endpoints_subnet.cidr_block)
+                    ],
                 )
             )
+
+        # Create security group for endpoints
+        self.add(
+            SecurityGroup(
+                self.name + "InterfaceEndpointsSG",
+                self.vpc.vpc,
+                description=("Allow https from the private subnet"),
+                rules=[Ipv4IngressRule("https", self.private_subnet.cidr_block)],
+            )
+        )
 
         ir = InstanceRole(self.name + "PrivServerInstanceRole")
         ir.add_policy(internal_server_policy)
@@ -338,6 +367,36 @@ class Fortress(Stack):
         :rtype: str
         """
         return self[self.name + "VPC"].region
+
+    def add_secret_access(self, secret_arn: str) -> None:
+        """Give read access to a given secret.
+
+        :param secret_name: arn identifying the secret to give access to
+        """
+        endpoint_name = f"{self.name}SecretsManagerEndPoint"
+        if endpoint_name not in self:
+            self.add(
+                VPCInterfaceEndpoint(
+                    name=endpoint_name,
+                    service="secretsmanager",
+                    vpc=self.vpc,
+                    subnet=self.aws_endpoints_subnet.subnet,
+                    policy_document=PolicyDocument(),
+                    security_group=self.aws_endpoints_security_group,
+                )
+            )
+        self.secretsmanager_endpoint.policy_document.append(
+            Allow(
+                to=[
+                    "secretsmanager:GetResourcePolicy",
+                    "secretsmanager:GetSecretValue",
+                    "secretsmanager:DescribeSecret",
+                    "secretsmanager:ListSecretVersionIds",
+                ],
+                on=[secret_arn],
+                apply_to=Principal(PrincipalKind.EVERYONE),
+            )
+        )
 
     def add_network_access(
         self,
@@ -503,6 +562,22 @@ class Fortress(Stack):
     @property
     def private_subnet(self):
         return self.vpc[self.name + "PrivateNet"]
+
+    @property
+    def aws_endpoints_subnet(self):
+        return self.vpc[self.name + "AWSEndpointsNet"]
+
+    @property
+    def internal_security_group(self):
+        return self[self.name + "InternalSG"]
+
+    @property
+    def aws_endpoints_security_group(self):
+        return self[self.name + "InterfaceEndpointsSG"]
+
+    @property
+    def secretsmanager_endpoint(self):
+        return self[self.name + "SecretsManagerEndPoint"]
 
     @property
     def public_subnet(self):

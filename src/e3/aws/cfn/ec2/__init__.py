@@ -1,12 +1,17 @@
+from __future__ import annotations
+
 import abc
 from email.mime.multipart import MIMEMultipart
 from email.contentmanager import raw_data_manager
 from email.message import EmailMessage
+from typing import TYPE_CHECKING
 
 from e3.aws.cfn import Resource, AWSType, GetAtt, Base64, Join, Ref, Sub
 from e3.aws.cfn.iam import PolicyDocument
 from e3.aws.ec2.ami import AMI
 
+if TYPE_CHECKING:
+    from e3.aws.cfn.ec2.security import SecurityGroup
 
 CFN_INIT_STARTUP_SCRIPT = """#!/bin/sh
 sed -i 's/scripts-user$/[scripts-user, always]/' /etc/cloud/cloud.cfg
@@ -696,6 +701,49 @@ class VPCEndpoint(Resource):
             ),
             "PolicyDocument": self.policy_document.properties,
             "RouteTableIds": [rt.ref for rt in self.route_tables],
+        }
+
+
+class VPCInterfaceEndpoint(Resource):
+    def __init__(
+        self,
+        name: str,
+        service: str,
+        subnet: Subnet,
+        vpc: VPC,
+        policy_document: PolicyDocument,
+        security_group: SecurityGroup,
+    ):
+        """Initialize a VPC interface endpoint.
+
+        :param name: logical name in the stack of the entity
+        :param service: name of the service to connect
+        :param vpc: VPC in which the endpoint is attached to
+        :param subnet: The subnet in which to create an endpoint network
+            interface.
+        :param policy_document: policy document attached to the endpoint.
+        :param security_group: security group to associate with the endpoint
+            network interface
+        """
+        super().__init__(name, kind=AWSType.EC2_VPC_ENDPOINT)
+        self.service = service
+        self.vpc = vpc
+        self.subnet = subnet
+        self.policy_document = policy_document
+        self.security_group = security_group
+
+    @property
+    def properties(self):
+        return {
+            "VpcId": self.subnet.vpc.ref,
+            "ServiceName": Join(
+                ["com.amazonaws.", Ref("AWS::Region"), "." + self.service]
+            ),
+            "PolicyDocument": self.policy_document.properties,
+            "PrivateDnsEnabled": "true",
+            "VpcEndpointType": "Interface",
+            "SubnetIds": [self.subnet.ref],
+            "SecurityGroupIds": [self.security_group.group_id],
         }
 
 
