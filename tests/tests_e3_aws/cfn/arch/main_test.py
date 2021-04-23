@@ -89,6 +89,9 @@ def test_create_fortress(enable_github, requests_mock):
         # Allow access to mybucket through a s3 endpoint
         f.private_subnet.add_bucket_access(["mybucket", f["Bucket2"]])
 
+        # Allow access to a secret throught a secretsmanager endpoint
+        f.add_secret_access("arn_secret")
+
         # allow https
         f.add_network_access("https")
         f.add_private_server(
@@ -132,6 +135,9 @@ def test_create_fortress_no_bastion():
 
         # Allow access to mybucket through a s3 endpoint
         f.private_subnet.add_bucket_access(["mybucket", f["Bucket2"]])
+
+        # Allow access to a secret throught a secretsmanager endpoint
+        f.add_secret_access("arn_secret")
 
         # allow https
         f.add_network_access("https")
