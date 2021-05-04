@@ -27,7 +27,7 @@ jobs:
       - name: Run Tox
         run: tox
         env:
-            TOXENV: py${{ matrix.python-version}}-ci-xdist-cov-codecov
+            TOXENV: py${{ matrix.python-version}}-cov-codecov
 
   security:
     runs-on: ubuntu-latest
