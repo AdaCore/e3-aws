@@ -12,7 +12,7 @@ from coverage.files import PathAliases
 from tempfile import NamedTemporaryFile
 
 
-def fix_paths(site_pkg_dir, cov_data_file):
+def fix_paths(site_pkg_dir: str, cov_data_file: str) -> None:
     site_pkg_dir = os.path.abspath(site_pkg_dir)
 
     paths = PathAliases()

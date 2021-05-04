@@ -92,7 +92,7 @@ class Bucket(Construct):
                 s3.ServerSideEncryptionRule(
                     ServerSideEncryptionByDefault=s3.ServerSideEncryptionByDefault(
                         SSEAlgorithm="AES256"
-                    ),
+                    )
                 )
             ]
         )

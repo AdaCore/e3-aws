@@ -12,6 +12,7 @@ from e3.aws.cfn.main import CFNMain
 
 if TYPE_CHECKING:
     from typing import Tuple
+    from _pytest.monkeypatch import MonkeyPatch
 
 DEFAULT_S3_ANSWER = {
     "ResponseMetadata": {"HTTPStatusCode": 200, "RetryAttempts": 1},
@@ -20,9 +21,9 @@ DEFAULT_S3_ANSWER = {
 }
 
 
-def test_cfn_main():
+def test_cfn_main() -> None:
     class MyCFNMain(CFNMain):
-        def create_stack(self):
+        def create_stack(self) -> Stack:
             return Stack(name="teststack")
 
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
@@ -47,9 +48,9 @@ def test_cfn_main():
             m.execute(args=["push", "--no-wait"], aws_env=aws_env)
 
 
-def test_cfn_main_multiple_stacks():
+def test_cfn_main_multiple_stacks() -> None:
     class MyCFNMain(CFNMain):
-        def create_stack(self):
+        def create_stack(self) -> list[Stack]:
             return [Stack(name="first-stack"), Stack(name="second-stack")]
 
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
@@ -90,7 +91,7 @@ def test_cfn_main_multiple_stacks():
     ],
 )
 def test_cfn_main_push_existing_stack(
-    status: Tuple[str, str, int], monkeypatch
+    status: Tuple[str, str, int], monkeypatch: MonkeyPatch
 ) -> None:
     """Test pushing an already existing stack.
 
@@ -177,9 +178,9 @@ def test_cfn_main_push_existing_stack(
             assert m.execute(args=["update", "--no-wait"], aws_env=aws_env) == status[2]
 
 
-def test_cfn_main_s3():
+def test_cfn_main_s3() -> None:
     class MyCFNMain(CFNMain):
-        def create_stack(self):
+        def create_stack(self) -> Stack:
             return Stack(name="teststack")
 
     os.mkdir("data")

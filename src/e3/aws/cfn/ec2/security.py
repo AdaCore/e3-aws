@@ -5,14 +5,14 @@ from e3.aws.cfn import AWSType, Resource
 from e3.aws.cfn.ec2 import VPC
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from typing import Any, Optional
 
 
 class GroupSecurityRule(metaclass=abc.ABCMeta):
     """Security rule for EC2 Security groups."""
 
     RULE_TYPE: Optional[str] = None
-    PROTOCOLS = {
+    PROTOCOLS: dict[str | int, dict[str, int | str]] = {
         "ssh": {"from": 22, "to": 22, "protocol": "tcp"},
         "smtps": {"from": 465, "to": 465, "protocol": "tcp"},
         "https": {"from": 443, "to": 443, "protocol": "tcp"},
@@ -24,25 +24,25 @@ class GroupSecurityRule(metaclass=abc.ABCMeta):
     }
 
     def __init__(
-        self, protocol, target, from_port=None, to_port=None, description=None
+        self,
+        protocol: str | int,
+        target: Any,
+        from_port: Optional[int] = None,
+        to_port: Optional[int] = None,
+        description: Optional[str] = None,
     ):
         """Initialize a security rule.
 
         :param protocol: either an ip protocol name or int (see AWS
             documentation) or a protocol defined in PROTOCOLS. For the
             later port range are set automatically
-        :type protocol: str | int
         :param target: correspond to destination (Egress rules) or source
             (Ingress rule). The nature of the object is determined by the
             class used. See documenation for each subclass of
             GroupSecurityRule.
-        :type target: T
         :param from_port: optional starting port
-        :type from_port: int | None
         :param to_port: optional ending port
-        :type to_port: int | None
         :param description: optional description
-        :type description: str | None
         """
         self.target = target
         if protocol in self.PROTOCOLS:
@@ -91,15 +91,15 @@ class IngressRule(GroupSecurityRule, metaclass=abc.ABCMeta):
 
 
 class Ipv4EgressRule(EgressRule):
-    RULE_TYPE = "CidrIp"
+    RULE_TYPE: str = "CidrIp"
 
 
 class PrefixListEgressRule(EgressRule):
-    RULE_TYPE = "DestinationPrefixListId"
+    RULE_TYPE: str = "DestinationPrefixListId"
 
 
 class Ipv4IngressRule(IngressRule):
-    RULE_TYPE = "CidrIp"
+    RULE_TYPE: str = "CidrIp"
 
 
 class SecurityGroup(Resource):
@@ -127,11 +127,10 @@ class SecurityGroup(Resource):
             for rule in rules:
                 self.add_rule(rule)
 
-    def add_rule(self, rule):
+    def add_rule(self, rule: GroupSecurityRule) -> None:
         """Add a rule to the security group.
 
         :param rule: the rule to add
-        :type rule: e3.aws.cfn.ec2.security.GroupSecurityRule
         """
         if isinstance(rule, IngressRule):
             self.ingress.append(rule)

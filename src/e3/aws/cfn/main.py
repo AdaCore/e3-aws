@@ -18,7 +18,7 @@ from e3.fs import find, sync_tree
 from e3.main import Main
 
 if TYPE_CHECKING:
-    from typing import List, Union
+    from typing import List, Optional, Tuple, Union
     from e3.aws.cfn import Stack
 
 
@@ -27,21 +27,18 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
     def __init__(
         self,
-        regions,
-        default_profile="default",
-        data_dir=None,
-        s3_bucket=None,
-        s3_key="",
-        assume_role=None,
+        regions: list[str],
+        default_profile: str = "default",
+        data_dir: Optional[str] = None,
+        s3_bucket: Optional[str] = None,
+        s3_key: str = "",
+        assume_role: Optional[Tuple[str, str]] = None,
     ):
         """Initialize main.
 
         :param regions: list of regions on which we can operate
-        :type regions: list[str]
         :param default_profile: default AWS profile to use to create the stack
-        :type default_region: str
         :param data_dir: directory containing files used by cfn-init
-        :type data_dir: str | None
         :param s3_bucket: if defined S3 will be used as a proxy for resources.
             Template body will be uploaded to S3 before calling operation on
             it. This change the body limit from 50Ko to 500Ko. Additionally if
@@ -50,10 +47,8 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         :param s3_key: if s3_bucket is defined, then all uploaded resources
             will be stored under a subkey of s3_key. If not defined the root
             of the bucket is used.
-        :type: str
         :param assume_role: tuple containing the two values that are passed
             to Session.assume_role()
-        :type assume_role: str
         """
         super(CFNMain, self).__init__(platform_args=False)
         self.argument_parser.add_argument(
@@ -292,7 +287,12 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             logging.error(str(e))
             return 1
 
-    def execute(self, args=None, known_args_only=False, aws_env=None):
+    def execute(
+        self,
+        args: Optional[List[str]] = None,
+        known_args_only: bool = False,
+        aws_env: Optional[Session] = None,
+    ) -> int:
         """Execute application and return exit status.
 
         See parse_args arguments.

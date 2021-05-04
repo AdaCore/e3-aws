@@ -44,12 +44,12 @@ class AWSSessionRunError(E3Error):
         self.process = process
 
 
-class Session(object):
+class Session:
     """Handle AWS session and clients."""
 
     def __init__(
         self,
-        regions: Optional[List] = None,
+        regions: Optional[list[str]] = None,
         stub: bool = False,
         profile: Optional[str] = None,
         credentials: Optional[Dict] = None,
@@ -183,18 +183,15 @@ class Session(object):
 
         return self._identity
 
-    def stub(self, name, region=None):
+    def stub(self, name: str, region: Optional[str] = None) -> botocore.stub.Stubber:
         """Return stub for a given client.
 
         Note that if the client does not exist yet it will be created.
 
         :param name: client name
-        :type name: str
         :param region: region associated with the client. If None the default
             region is taken.
-        :type region: str | None
         :return: the stub instance
-        :rtype: botocore.stub.Stubber
         """
         if not self.force_stub:
             return None
@@ -270,32 +267,33 @@ class Session(object):
 class AWSEnv(Session):
     """Handle AWS session and clients."""
 
-    def __init__(self, regions=None, stub=False, profile=None):
+    def __init__(
+        self,
+        regions: Optional[list[str]] = None,
+        stub: bool = False,
+        profile: Optional[str] = None,
+    ):
         """Initialize an AWS session.
 
         Once intialized AWS environment can be accessed from Env().aws_env
 
         :param regions: list of regions to work on. The first region is
             considered as the default region.
-        :type regions: list[str]
         :param stub: if True clients are necessarily stubbed
-        :type stub: bool
         :param profile: profile name
-        :type profile: str | None
         """
         super().__init__(regions=regions, stub=stub, profile=profile)
         env = Env()
         env.aws_env = self
 
 
-class default_region(object):
+class default_region:
     """Context manager used to set a default region."""
 
-    def __init__(self, region):
+    def __init__(self, region: str):
         """Initialize context manager.
 
         :param region: default region
-        :type region: str
         """
         aws_env = Env().aws_env
 
@@ -472,7 +470,7 @@ class IAMAuth(requests.auth.AuthBase):
 
         # Compute the headers for the request
         aws_request = AWSRequest(
-            method=request.method, url=aws_url, params=aws_params, headers=aws_headers,
+            method=request.method, url=aws_url, params=aws_params, headers=aws_headers
         )
         SigV4Auth(credentials, "execute-api", self.region).add_auth(aws_request)
 

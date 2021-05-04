@@ -4,16 +4,19 @@ import pytest
 from e3.aws import AWSEnv, AWSSessionRunError
 from datetime import datetime
 
-# from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from _pytest.capture import CaptureFixture
 
 
-def test_run(capfd) -> None:
+def test_run(capfd: CaptureFixture) -> None:
     """Test AWS session run method."""
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
     stubber = aws_env.stub("sts")
 
     # 2 calls to cli_cmd are made in this test
-    for it in range(2):
+    for _ in range(2):
         stubber.add_response(
             "assume_role",
             {
