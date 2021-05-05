@@ -243,7 +243,7 @@ class Fortress(Stack):
         description=None,
         vpc_cidr_block="10.10.0.0/16",
         private_cidr_block="10.10.0.0/17",
-        public_cidr_block="10.10.128.0/18",
+        public_cidr_block="10.10.128.0/17",
     ):
         """Create a VPC Fortress.
 
