@@ -194,19 +194,17 @@ class CFNYamlDumper(yaml.Dumper):
         return True
 
 
-class Resource(object):
+class Resource:
     """A CloudFormation resource."""
 
     # List of valid attribute names
     ATTRIBUTES: Iterable[str] = ()
 
-    def __init__(self, name, kind):
+    def __init__(self, name: str, kind: AWSType):
         """Initialize a resource.
 
         :param name: name of the resource (alphanumeric)
-        :type name: str
         :param kind: resource kind
-        :type kind: e3.aws.cfn.types.AWSType
         """
         assert isinstance(kind, AWSType), (
             "resource kind should be an AWSType: found %s" % kind
@@ -222,7 +220,7 @@ class Resource(object):
             self.region = Env().aws_env.default_region
         else:
             self.region = "invalid-region"
-        self.metadata = {}
+        self.metadata: dict = {}
 
     def getatt(self, name):
         """Return an attribute reference.
@@ -264,7 +262,7 @@ class Resource(object):
         """
         result = {"Type": self.kind.value, "Properties": self.properties}
         if self.depends is not None:
-            result["DependsOn"] = self.depends
+            result["DependsOn"] = self.depends  # type: ignore
         if self.metadata:
             result["Metadata"] = self.metadata
         return result
@@ -463,14 +461,12 @@ class Stack(object):
         self.uuid = str(uuid.uuid1(clock_seq=int(1000 * time.time())))
         self.latest_read_event: Optional[StackEvent] = None
 
-    def add(self, element):
+    def add(self, element: Stack | Resource) -> Stack:
         """Add a resource or merge a stack.
 
         :param element: if a resource add the resource to the stack. If a stack
             merge its resources into the current stack.
-        :type element: Stack | Resources
         :return: the current stack
-        :rtype: Stack
         """
         assert isinstance(element, Resource) or isinstance(element, Stack), (
             "a resource or a stack is expected. got %s" % element
