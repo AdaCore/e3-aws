@@ -184,7 +184,7 @@ class Deny(Statement):
     EFFECT = "Deny"
 
 
-class PolicyDocument(object):
+class PolicyDocument:
     """IAM Policy Document."""
 
     def __init__(self):
