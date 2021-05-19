@@ -336,7 +336,8 @@ class HttpApi(Construct):
         # Declare the routes
         for route in self.route_list:
             result += self.declare_route(
-                route=route, integration=Ref(logical_id + "Integration"),
+                route=route,
+                integration=Ref(logical_id + "Integration"),
             )
 
         # Declare the domain
