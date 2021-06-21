@@ -37,6 +37,8 @@ class Role(Construct):
     managed_policy_arns: Optional[list[str]] = None
     max_session_duration: Optional[int] = None
     tags: dict[str, str] = field(default_factory=lambda: {})
+    path: str = "/"
+    boundary: Optional[str] = None
 
     @property
     def trust_policy(self) -> PolicyDocument:
@@ -63,6 +65,8 @@ class Role(Construct):
             "MaxSessionDuration": self.max_session_duration,
             "AssumeRolePolicyDocument": self.trust_policy.as_dict,
             "Tags": Tags({"Name": self.name, **self.tags}),
+            "Path": self.path,
+            "PermissionsBoundary": self.boundary,
         }.items():
             if val is not None:
                 attr[key] = val

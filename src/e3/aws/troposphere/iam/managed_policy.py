@@ -16,17 +16,23 @@ class ManagedPolicy(Construct):
     """AWS ManagedPolicy."""
 
     def __init__(
-        self, name: str, statements: list[PolicyStatement], description: str = ""
+        self,
+        name: str,
+        statements: list[PolicyStatement],
+        description: str = "",
+        path: str = "/",
     ) -> None:
         """Initialize an IAM Managed policy.
 
         :param name: name of the managed policy
         :param description: managed_policy description
         :param statements: policy statement part of the policy
+        :param path: resource path (either / or a string starting and ending with /)
         """
         self.name = name
         self.description = description
         self.statements = statements
+        self.path = path
 
     @property
     def arn(self) -> Ref:
@@ -39,6 +45,7 @@ class ManagedPolicy(Construct):
             "Description": self.description,
             "ManagedPolicyName": self.name,
             "PolicyDocument": PolicyDocument(statements=self.statements).as_dict,
+            "Path": self.path,
         }
         return [iam.ManagedPolicy(name_to_id(self.name), **params)]
 
