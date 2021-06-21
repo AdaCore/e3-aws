@@ -25,6 +25,7 @@ EXPECTED_FARGATE_CLUSTER = {
             "Description": "Needed to be attached to ECSEventsRole if scheduldedtask "
             "requires ECSTaskExecutionRole",
             "ManagedPolicyName": "ECSPassExecutionRolePolicy",
+            "Path": "/",
             "PolicyDocument": {
                 "Version": "2012-10-17",
                 "Statement": [
@@ -46,6 +47,7 @@ EXPECTED_FARGATE_CLUSTER = {
             "ManagedPolicyArns": [
                 "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
             ],
+            "Path": "/",
             "AssumeRolePolicyDocument": {
                 "Version": "2012-10-17",
                 "Statement": [
@@ -69,6 +71,7 @@ EXPECTED_FARGATE_CLUSTER = {
                 "AmazonEC2ContainerServiceEventsRole",
                 {"Ref": "ECSPassExecutionRolePolicy"},
             ],
+            "Path": "/",
             "AssumeRolePolicyDocument": {
                 "Version": "2012-10-17",
                 "Statement": [

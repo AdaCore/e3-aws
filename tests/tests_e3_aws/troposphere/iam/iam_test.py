@@ -10,6 +10,7 @@ EXPECTED_ROLE = {
             "RoleName": "TestRole",
             "Description": "TestRole description",
             "MaxSessionDuration": 7200,
+            "Path": "/",
             "AssumeRolePolicyDocument": {
                 "Version": "2012-10-17",
                 "Statement": [
