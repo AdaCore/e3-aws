@@ -13,21 +13,29 @@ from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 
 
 if TYPE_CHECKING:
+    from typing import Optional
     from e3.aws.troposphere import Stack
 
 
 class Bucket(Construct):
     """Define a S3 bucket construct with security parameters and a security policy."""
 
-    def __init__(self, name: str, enable_versioning: bool = True):
+    def __init__(
+        self,
+        name: str,
+        enable_versioning: bool = True,
+        lifecycle_rules: Optional[list[s3.LifecycleRule]] = None,
+    ):
         """Initialize a bucket.
 
         :param name: bucket name
         :param enable_versioning: can be set to enable multiple versions of all
             objects in the bucket.
+        :param lifecycle_rules: lifecycle rules for bucket objects
         """
         self.name = name
         self.enable_versioning = enable_versioning
+        self.lifecycle_rules = lifecycle_rules
 
         # Add minimal policy statements
         self.policy_statements = [
@@ -97,16 +105,27 @@ class Bucket(Construct):
             ]
         )
 
-        return [
-            s3.Bucket(
-                name_to_id(self.name),
-                BucketName=self.name,
-                BucketEncryption=bucket_encryption,
-                PublicAccessBlockConfiguration=public_access_block_config,
-                VersioningConfiguration=s3.VersioningConfiguration(
-                    Status=versioning_status
-                ),
+        lifecycle_config = None
+        if self.lifecycle_rules:
+            lifecycle_config = s3.LifecycleConfiguration(
+                name_to_id(self.name) + "LifeCycleConfig", Rules=self.lifecycle_rules
+            )
+
+        attr = {}
+        for key, val in {
+            "BucketName": self.name,
+            "BucketEncryption": bucket_encryption,
+            "PublicAccessBlockConfiguration": public_access_block_config,
+            "VersioningConfiguration": s3.VersioningConfiguration(
+                Status=versioning_status
             ),
+            "LifecycleConfiguration": lifecycle_config,
+        }.items():
+            if val is not None:
+                attr[key] = val
+
+        return [
+            s3.Bucket(name_to_id(self.name), **attr),
             s3.BucketPolicy(
                 name_to_id(self.name) + "Policy",
                 Bucket=self.ref,
