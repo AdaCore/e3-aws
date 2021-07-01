@@ -149,6 +149,50 @@
     },
     "Type": "AWS::Lambda::Permission"
   },
+  "TestapiGETapi3Route": {
+    "Properties": {
+      "ApiId": {
+        "Ref": "Testapi"
+      },
+      "AuthorizationType": "JWT",
+      "RouteKey": "GET /api3",
+      "Target": {
+        "Fn::Sub": [
+          "integrations/${integration}",
+          {
+            "integration": {
+              "Ref": "TestapiIntegration"
+            }
+          }
+        ]
+      },
+      "AuthorizerId": {
+        "Ref": "Testauthorizer"
+      }
+    },
+    "Type": "AWS::ApiGatewayV2::Route"
+  },
+  "TestapiGETapi3LambdaPermission": {
+    "Properties": {
+      "Action": "lambda:InvokeFunction",
+      "FunctionName": {
+        "Ref": "Mypylambda"
+      },
+      "Principal": "apigateway.amazonaws.com",
+      "SourceArn": {
+        "Fn::Sub": [
+          "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/$default/${route_arn}",
+          {
+            "api": {
+              "Ref": "Testapi"
+            },
+            "route_arn": "GET/api3"
+          }
+        ]
+      }
+    },
+    "Type": "AWS::Lambda::Permission"
+  },
   "TestapiapiexamplecomCertificate": {
     "Properties": {
       "DomainName": "api.example.com",
@@ -211,5 +255,24 @@
       }
     },
     "Type": "AWS::Route53::RecordSet"
+  },
+  "Testauthorizer": {
+    "Properties": {
+      "ApiId": {
+        "Ref": "Testapi"
+      },
+      "AuthorizerType": "JWT",
+      "Name": "testauthorizer",
+      "IdentitySource": [
+        "$request.header.Authorization"
+      ],
+      "JwtConfiguration": {
+        "Audience": [
+          "testaudience"
+        ],
+        "Issuer": "https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_test"
+      }
+    },
+    "Type": "AWS::ApiGatewayV2::Authorizer"
   }
 }
