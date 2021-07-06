@@ -30,7 +30,9 @@ class Repository(Construct):
         return [
             ecr.Repository(
                 name_to_id(self.name),
-                ImageScanningConfiguration={"scanOnPush": "true"},
+                ImageScanningConfiguration=ecr.ImageScanningConfiguration(
+                    ScanOnPush=True
+                ),
                 ImageTagMutability="IMMUTABLE",
                 RepositoryName=self.name,
                 Tags=Tags({"Name": self.name, **self.tags}),

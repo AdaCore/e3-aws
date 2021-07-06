@@ -6,7 +6,7 @@ from e3.aws.troposphere.ecr.repository import Repository
 EXPECTED_REPOSITORY = {
     "TestRepository": {
         "Properties": {
-            "ImageScanningConfiguration": {"scanOnPush": "true"},
+            "ImageScanningConfiguration": {"ScanOnPush": True},
             "ImageTagMutability": "IMMUTABLE",
             "RepositoryName": "test-repository",
             "Tags": [{"Key": "Name", "Value": "test-repository"}],
