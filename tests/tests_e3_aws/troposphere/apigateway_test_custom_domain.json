@@ -25,7 +25,7 @@
       "Description": "this is a test",
       "ProtocolType": "HTTP",
       "Name": "testapi",
-      "DisableExecuteApiEndpoint": "true"
+      "DisableExecuteApiEndpoint": true
     },
     "Type": "AWS::ApiGatewayV2::Api"
   },
@@ -43,10 +43,10 @@
       "ApiId": {
         "Ref": "Testapi"
       },
-      "AutoDeploy": "true",
+      "AutoDeploy": true,
       "Description": "stage $default",
       "DefaultRouteSettings": {
-        "DetailedMetricsEnabled": "true",
+        "DetailedMetricsEnabled": true,
         "ThrottlingBurstLimit": 10,
         "ThrottlingRateLimit": 10
       },
@@ -207,7 +207,7 @@
             "RegionalHostedZoneId"
           ]
         },
-        "EvaluateTargetHealth": "false"
+        "EvaluateTargetHealth": false
       }
     },
     "Type": "AWS::Route53::RecordSet"

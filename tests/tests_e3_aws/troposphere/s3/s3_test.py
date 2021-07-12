@@ -13,10 +13,10 @@ EXPECTED_BUCKET = {
                 ]
             },
             "PublicAccessBlockConfiguration": {
-                "BlockPublicAcls": "true",
-                "BlockPublicPolicy": "true",
-                "IgnorePublicAcls": "true",
-                "RestrictPublicBuckets": "true",
+                "BlockPublicAcls": True,
+                "BlockPublicPolicy": True,
+                "IgnorePublicAcls": True,
+                "RestrictPublicBuckets": True,
             },
             "VersioningConfiguration": {"Status": "Enabled"},
         },

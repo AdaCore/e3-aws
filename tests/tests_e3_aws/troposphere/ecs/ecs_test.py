@@ -93,8 +93,8 @@ EXPECTED_ECS_VPC = {
     "TestVpc": {
         "Properties": {
             "CidrBlock": "10.0.0.0/16",
-            "EnableDnsHostnames": "true",
-            "EnableDnsSupport": "true",
+            "EnableDnsHostnames": True,
+            "EnableDnsSupport": True,
             "Tags": [{"Key": "Name", "Value": "test-vpc"}],
         },
         "Type": "AWS::EC2::VPC",
@@ -173,7 +173,7 @@ EXPECTED_ECS_VPC = {
     },
     "TestVpcCloudwatchLogsEndpoint": {
         "Properties": {
-            "PrivateDnsEnabled": "true",
+            "PrivateDnsEnabled": True,
             "SecurityGroupIds": [{"Ref": "TestVpcSecurityGroup"}],
             "ServiceName": "com.amazonaws.eu-west-1.logs",
             "SubnetIds": [{"Ref": "TestVpcSubnet"}],
@@ -184,7 +184,7 @@ EXPECTED_ECS_VPC = {
     },
     "TestVpcSTSEndpoint": {
         "Properties": {
-            "PrivateDnsEnabled": "true",
+            "PrivateDnsEnabled": True,
             "SecurityGroupIds": [{"Ref": "TestVpcSecurityGroup"}],
             "ServiceName": "com.amazonaws.eu-west-1.sts",
             "SubnetIds": [{"Ref": "TestVpcSubnet"}],
@@ -210,7 +210,7 @@ EXPECTED_ECS_VPC = {
                     }
                 ],
             },
-            "PrivateDnsEnabled": "true",
+            "PrivateDnsEnabled": True,
             "SecurityGroupIds": [{"Ref": "TestVpcSecurityGroup"}],
             "ServiceName": "com.amazonaws.eu-west-1.ecr.dkr",
             "SubnetIds": [{"Ref": "TestVpcSubnet"}],
@@ -236,7 +236,7 @@ EXPECTED_ECS_VPC = {
                     }
                 ],
             },
-            "PrivateDnsEnabled": "true",
+            "PrivateDnsEnabled": True,
             "SecurityGroupIds": [{"Ref": "TestVpcSecurityGroup"}],
             "ServiceName": "com.amazonaws.eu-west-1.ecr.api",
             "SubnetIds": [{"Ref": "TestVpcSubnet"}],
@@ -259,7 +259,7 @@ EXPECTED_FARGATE_TASK_DEFINITION = {
                         "LogDriver": "awslogs",
                         "Options": {
                             "awslogs-group": "test-log-group",
-                            "awslogs-create-group": "true",
+                            "awslogs-create-group": True,
                             "awslogs-region": "eu-west-1",
                             "awslogs-stream-prefix": "test-prefix",
                         },
@@ -300,7 +300,7 @@ def test_fargate_task_definition(stack: Stack) -> None:
             LogDriver="awslogs",
             Options={
                 "awslogs-group": "test-log-group",
-                "awslogs-create-group": "true",
+                "awslogs-create-group": True,
                 "awslogs-region": "eu-west-1",
                 "awslogs-stream-prefix": "test-prefix",
             },

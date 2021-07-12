@@ -110,8 +110,8 @@ EXPECTED_RECORDER = {
         "Properties": {
             "Name": "ConfigRecorder",
             "RecordingGroup": {
-                "AllSupported": "true",
-                "IncludeGlobalResourceTypes": "true",
+                "AllSupported": True,
+                "IncludeGlobalResourceTypes": True,
             },
             "RoleARN": {
                 "Fn::Join": [
@@ -139,10 +139,10 @@ EXPECTED_RECORDER = {
                 ]
             },
             "PublicAccessBlockConfiguration": {
-                "BlockPublicAcls": "true",
-                "BlockPublicPolicy": "true",
-                "IgnorePublicAcls": "true",
-                "RestrictPublicBuckets": "true",
+                "BlockPublicAcls": True,
+                "BlockPublicPolicy": True,
+                "IgnorePublicAcls": True,
+                "RestrictPublicBuckets": True,
             },
             "VersioningConfiguration": {"Status": "Enabled"},
         },
