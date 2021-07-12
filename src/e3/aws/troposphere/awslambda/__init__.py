@@ -175,7 +175,7 @@ class Function(Construct):
         name_suffix: str,
         service: str,
         source_arn: str,
-        source_account: Optional[str],
+        source_account: Optional[str] = None,
     ) -> awslambda.Permission:
         """Create a Lambda Permission object for a given service.
 
