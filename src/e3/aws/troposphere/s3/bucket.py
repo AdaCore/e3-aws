@@ -4,16 +4,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 
-from troposphere import AWSObject, s3, Ref
+from troposphere import AccountId, AWSObject, s3, Ref
 
 from e3.aws import name_to_id
+from e3.aws.troposphere.awslambda import Function
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
+from e3.aws.troposphere.sns import Topic
 
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from typing import Any, Optional, Tuple
     from e3.aws.troposphere import Stack
 
 
@@ -36,6 +38,9 @@ class Bucket(Construct):
         self.name = name
         self.enable_versioning = enable_versioning
         self.lifecycle_rules = lifecycle_rules
+        self.lambda_configurations: list[Tuple[dict[str, Any], Function, str]] = []
+        self.topic_configurations: list[Tuple[dict[str, Any], Topic, str]] = []
+        self.depends_on: list[str] = []
 
         # Add minimal policy statements
         self.policy_statements = [
@@ -79,9 +84,77 @@ class Bucket(Construct):
         """Return PolicyDocument to be attached to the bucket."""
         return PolicyDocument(statements=self.policy_statements)
 
+    def add_notification_configuration(
+        self,
+        event: str,
+        target: Function | Topic,
+        permission_suffix: str,
+        s3_filter: Optional[s3.Filter] = None,
+    ) -> None:
+        """Add a configuration to bucket notification rules.
+
+        :param event: the S3 bucket event for which to invoke the Lambda function
+        :param function: function to invoke when the specified event type occurs
+        :param permission_suffix: a name suffix for permissions or policy objects
+        :param s3_filter: the filtering rules that determine which objects invoke
+            the AWS Lambda function
+        """
+        params = {"Event": event}
+        if s3_filter:
+            params["Filter"] = s3_filter
+
+        if isinstance(target, Topic):
+            params["Topic"] = target.arn
+            self.topic_configurations.append((params, target, permission_suffix))
+        else:
+            params["Function"] = target.arn
+            self.lambda_configurations.append((params, target, permission_suffix))
+
+    @property
+    def notification_setup(
+        self,
+    ) -> Tuple[s3.NotificationConfiguration, list[AWSObject]]:
+        """Return notifcation configuration and associated resources."""
+        notification_resources = []
+        notification_config = None
+        if self.lambda_configurations or self.topic_configurations:
+            notification_config = s3.NotificationConfiguration(
+                name_to_id(self.name + "NotifConfig"),
+                LambdaConfigurations=[
+                    s3.LambdaConfigurations(**lambda_params)
+                    for lambda_params, _, _ in self.lambda_configurations
+                ],
+                TopicConfigurations=[
+                    s3.TopicConfigurations(**topic_params)
+                    for topic_params, _, _ in self.topic_configurations
+                ],
+            )
+            # Add Permission invoke for lambdas
+            for _, function, suffix in self.lambda_configurations:
+                notification_resources.append(
+                    function.invoke_permission(
+                        name_suffix=suffix,
+                        service="s3",
+                        source_arn=self.arn,
+                        source_account=AccountId,
+                    )
+                )
+            # Add policy allowing to publish to topics
+            for _, topic, suffix in self.topic_configurations:
+                topic_policy = topic.allow_publish_policy(
+                    service="s3",
+                    name_suffix=suffix,
+                    condition={"ArnLike": {"aws:SourceArn": self.arn}},
+                )
+                notification_resources.append(topic_policy)
+                self.depends_on.append(topic_policy)
+
+        return notification_config, notification_resources
+
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Construct and return a s3.Bucket and its associated s3.BucketPolicy."""
         # Handle versioning configuration
+        optional_resources = []
         versioning_status = "Suspended"
         if self.enable_versioning:
             versioning_status = "Enabled"
@@ -111,6 +184,9 @@ class Bucket(Construct):
                 name_to_id(self.name) + "LifeCycleConfig", Rules=self.lifecycle_rules
             )
 
+        notification_config, notification_resources = self.notification_setup
+        optional_resources.extend(notification_resources)
+
         attr = {}
         for key, val in {
             "BucketName": self.name,
@@ -120,8 +196,10 @@ class Bucket(Construct):
                 Status=versioning_status
             ),
             "LifecycleConfiguration": lifecycle_config,
+            "NotificationConfiguration": notification_config,
+            "DependsOn": self.depends_on,
         }.items():
-            if val is not None:
+            if val:
                 attr[key] = val
 
         return [
@@ -131,6 +209,7 @@ class Bucket(Construct):
                 Bucket=self.ref,
                 PolicyDocument=self.policy_document.as_dict,
             ),
+            *optional_resources,
         ]
 
     @property
