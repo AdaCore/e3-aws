@@ -8,8 +8,9 @@ from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement, Allow
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # all: no cover
     from e3.aws.troposphere import Stack
+    from typing import Any
 
 
 class ManagedPolicy(Construct):
@@ -21,6 +22,7 @@ class ManagedPolicy(Construct):
         statements: list[PolicyStatement],
         description: str = "",
         path: str = "/",
+        **kwargs: Any,
     ) -> None:
         """Initialize an IAM Managed policy.
 
@@ -28,11 +30,13 @@ class ManagedPolicy(Construct):
         :param description: managed_policy description
         :param statements: policy statement part of the policy
         :param path: resource path (either / or a string starting and ending with /)
+        :param kwargs: troposphere additional attributes (Condition, DependsOn ...)
         """
         self.name = name
         self.description = description
         self.statements = statements
         self.path = path
+        self.kwargs = kwargs
 
     @property
     def arn(self) -> Ref:
@@ -46,6 +50,7 @@ class ManagedPolicy(Construct):
             "ManagedPolicyName": self.name,
             "PolicyDocument": PolicyDocument(statements=self.statements).as_dict,
             "Path": self.path,
+            **self.kwargs,
         }
         return [iam.ManagedPolicy(name_to_id(self.name), **params)]
 

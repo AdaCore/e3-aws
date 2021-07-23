@@ -5,8 +5,11 @@ from e3.aws import cfn, name_to_id
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # all: no cover
     from typing import Optional, Union
+    from troposphere import And, Condition, Equals, If, Not, Or
+
+    ConditionFunction = Union[And, Condition, Equals, If, Not, Or]
 
 
 class Construct(ABC):
@@ -98,6 +101,14 @@ class Stack(cfn.Stack):
         self.template.add_resource(resources)
 
         return self
+
+    def add_condition(self, condition_name: str, condition: ConditionFunction) -> None:
+        """Add condition to stack template.
+
+        :param condition_name: name of the condition to add
+        :param condition: condition to add
+        """
+        self.template.add_condition(condition_name, condition)
 
     def cfn_policy_document(self) -> PolicyDocument:
         """Return stack necessary policy document for CloudFormation."""
