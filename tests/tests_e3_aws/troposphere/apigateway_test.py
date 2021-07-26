@@ -3,7 +3,7 @@ import json
 import os
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.awslambda import Py38Function
-from e3.aws.troposphere.apigateway import HttpApi, GET, POST
+from e3.aws.troposphere.apigateway import JWT_AUTH, HttpApi, GET, POST
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -168,17 +168,27 @@ def test_http_api_custom_domain(stack: Stack) -> None:
         handler="app.main",
     )
     stack.add(lambda_fun)
-    stack.add(
-        HttpApi(
-            name="testapi",
-            description="this is a test",
-            lambda_arn=lambda_fun.ref,
-            domain_name="api.example.com",
-            hosted_zone_id="ABCDEFG",
-            route_list=[GET(route="/api1"), POST(route="/api2")],
-        )
+    http_api = HttpApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        domain_name="api.example.com",
+        hosted_zone_id="ABCDEFG",
+        route_list=[
+            GET(route="/api1"),
+            POST(route="/api2"),
+            GET("/api3", auth=JWT_AUTH, authorizer_name="testauthorizer"),
+        ],
     )
+    http_api.add_jwt_authorizer(
+        name="testauthorizer",
+        audience=["testaudience"],
+        issuer="https://cognito-idp.eu-west-1.amazonaws.com/eu-west-1_test",
+    )
+    stack.add(http_api)
+
     with open(os.path.join(TEST_DIR, "apigateway_test_custom_domain.json")) as fd:
         expected = json.load(fd)
 
+    print(stack.export()["Resources"])
     assert stack.export()["Resources"] == expected

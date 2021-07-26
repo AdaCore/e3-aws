@@ -12,7 +12,7 @@ import json
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
-    from typing import Optional
+    from typing import Any, Optional
 
 
 class AuthorizationType(Enum):
@@ -35,45 +35,72 @@ class Route:
     """API Gateway route definition."""
 
     def __init__(
-        self, method: str, route: str, auth: AuthorizationType = NO_AUTH
+        self,
+        method: str,
+        route: str,
+        auth: AuthorizationType = NO_AUTH,
+        authorizer_name: Optional[str] = None,
     ) -> None:
         """Initialize an API Gateway route definition.
 
         :param method: the https method
         :param route: the route (should start with a "/")
         :param auth: the authorization type associated with the route
+        :param authorizer_name: the name of the authorizer to use
+            (used only when using JWT_AUTH)
         """
         assert route.startswith("/"), "route path should starts with a /"
         self.method = method
         self.route = route
         self.auth = auth
+        self.authorizer_name = authorizer_name
 
 
 class GET(Route):
     """An API Gateway GET route."""
 
-    def __init__(self, route: str, auth: AuthorizationType = NO_AUTH) -> None:
+    def __init__(
+        self,
+        route: str,
+        auth: AuthorizationType = NO_AUTH,
+        authorizer_name: Optional[str] = None,
+    ) -> None:
         """Initialize a GET route.
 
         :param route: the route (should start with a "/")
         :param auth: the authorization type associated with the route
+        :param authorizer_name: the name of the authorizer to use
+            (used only when using JWT_AUTH)
         """
-        super().__init__(method="GET", route=route, auth=auth)
+        super().__init__(
+            method="GET", route=route, auth=auth, authorizer_name=authorizer_name
+        )
 
 
 class POST(Route):
     """An API Gateway POST route."""
 
-    def __init__(self, route: str, auth: AuthorizationType = NO_AUTH) -> None:
+    def __init__(
+        self,
+        route: str,
+        auth: AuthorizationType = NO_AUTH,
+        authorizer_name: Optional[str] = None,
+    ) -> None:
         """Initialize a POST route.
 
         :param route: the route (should start with a "/")
         :param auth: the authorization type associated with the route
+        :param authorizer_name: the name of the authorizer to use
+            (used only when using JWT_AUTH)
         """
-        super().__init__(method="POST", route=route, auth=auth)
+        super().__init__(
+            method="POST", route=route, auth=auth, authorizer_name=authorizer_name
+        )
 
 
 class HttpApi(Construct):
+    """HTTP API support."""
+
     def __init__(
         self,
         name: str,
@@ -123,6 +150,28 @@ class HttpApi(Construct):
                 hosted_zone_id is not None
             ), "hosted zone id required when domain_name is not None"
         self.hosted_zone_id = hosted_zone_id
+        self.authorizers: dict[str, Any] = {}
+
+    def add_jwt_authorizer(
+        self, name: str, audience: list[str], issuer: str, header: str = "Authorization"
+    ) -> None:
+        """Declare a JWT authorizer.
+
+        :param name: authorizer name
+        :param audience: a list of accepted audience. For most cases this is the list
+            of accepted Cognito client ids.
+        :param issuer: the base domain of the entity provider. If Cognito is used this
+            is https://cognito-idp.{region}.amazonaws.com/{userPoolId}
+        """
+        self.authorizers[name] = {
+            "ApiId": self.ref,
+            "AuthorizerType": "JWT",
+            "Name": name,
+            "IdentitySource": [f"$request.header.{header}"],
+            "JwtConfiguration": apigatewayv2.JWTConfiguration(
+                Audience=audience, Issuer=issuer
+            ),
+        }
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         """Get policy needed by CloudFormation."""
@@ -189,20 +238,20 @@ class HttpApi(Construct):
         :return: a list of AWSObjects to be added to the stack
         """
         result = []
-        api_id = name_to_id(self.name)
         id_prefix = name_to_id(self.name + route.method + route.route)
-        result.append(
-            apigatewayv2.Route(
-                id_prefix + "Route",
-                ApiId=Ref(api_id),
-                AuthorizationType=route.auth.value,
-                RouteKey=f"{route.method} {route.route}",
-                Target=Sub(
-                    "integrations/${integration}",
-                    dict_values={"integration": integration},
-                ),
-            )
-        )
+
+        route_params = {
+            "ApiId": self.ref,
+            "AuthorizationType": route.auth.value,
+            "RouteKey": f"{route.method} {route.route}",
+            "Target": Sub(
+                "integrations/${integration}", dict_values={"integration": integration}
+            ),
+        }
+        if route.authorizer_name:
+            route_params["AuthorizerId"] = Ref(name_to_id(route.authorizer_name))
+
+        result.append(apigatewayv2.Route(id_prefix + "Route", **route_params))
 
         result.append(
             awslambda.Permission(
@@ -214,7 +263,7 @@ class HttpApi(Construct):
                     "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:"
                     "${api}/$default/${route_arn}",
                     dict_values={
-                        "api": Ref(api_id),
+                        "api": self.ref,
                         "route_arn": f"{route.method}{route.route}",
                     },
                 ),
@@ -336,8 +385,7 @@ class HttpApi(Construct):
         # Declare the routes
         for route in self.route_list:
             result += self.declare_route(
-                route=route,
-                integration=Ref(logical_id + "Integration"),
+                route=route, integration=Ref(logical_id + "Integration")
             )
 
         # Declare the domain
@@ -348,5 +396,9 @@ class HttpApi(Construct):
                 hosted_zone_id=self.hosted_zone_id,
                 stage_name="$default",
             )
+
+        # Declare the authorizers
+        for auth_name, auth_params in self.authorizers.items():
+            result.append(apigatewayv2.Authorizer(name_to_id(auth_name), **auth_params))
 
         return result
