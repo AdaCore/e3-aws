@@ -40,7 +40,7 @@ AWS_IP_RANGES = {
     ],
 }
 
-GITHUB_API_RANGE = {"git": ["127.0.0.1/24"]}
+GITHUB_API_RANGE = {"git": ["127.0.0.0/24", "2a0a:a440::/29"]}
 
 
 @pytest.mark.parametrize("enable_github", [True, False])
