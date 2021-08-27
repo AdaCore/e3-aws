@@ -1,3 +1,5 @@
+from ipaddress import AddressValueError, IPv4Network, IPv6Network
+import logging
 import requests
 from e3.aws.cfn.ec2.security import Ipv4EgressRule, SecurityGroup
 
@@ -85,6 +87,13 @@ def github_security_groups(name, vpc, protocol):
     sg = SecurityGroup(sg_name, vpc, description="Allow access to github")
     sgs[sg_name] = sg
     for ip_range in ip_ranges:
+        try:
+            IPv4Network(ip_range)
+        except AddressValueError:
+            IPv6Network(ip_range)
+            logging.info(f"Skipping IPv6 range {ip_range} for github access SG")
+            continue
+
         if len(sg.egress + sg.ingress) == limit:
             i += 1
             sg_name = name + str(i)
