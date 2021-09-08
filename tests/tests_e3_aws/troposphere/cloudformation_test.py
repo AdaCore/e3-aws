@@ -20,13 +20,16 @@ EXPECTED_TEMPLATE = {
             "StackSetName": "stack-set-test",
             "StackInstancesGroup": [
                 {
-                    "DeploymentTargets": {"OrganizationalUnitIds": ["test-ou"]},
+                    "DeploymentTargets": {
+                        "OrganizationalUnitIds": ["test-ou"],
+                        "Accounts": ["000000000000"],
+                    },
                     "Regions": ["eu-west-1"],
                 }
             ],
             "TemplateURL": (
-                "https://cfn_bucket.s3.amazonaws.com/"
-                "templates/stack-set-test-template.yaml"
+                "https://cfn_bucket.s3.amazonaws.com/templates/"
+                "stack-set-test-template.yaml"
             ),
         },
         "Type": "AWS::CloudFormation::StackSet",
@@ -44,6 +47,7 @@ def test_stackset(stack: Stack) -> None:
         description="this is a test",
         regions=["eu-west-1"],
         ous=["test-ou"],
+        accounts=["000000000000"],
     )
 
     stack_set.add(

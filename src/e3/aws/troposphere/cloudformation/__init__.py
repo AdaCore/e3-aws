@@ -22,6 +22,7 @@ class StackSet(Construct):
         name: str,
         description: str,
         regions: list[str],
+        accounts: Optional[list[str]] = None,
         ous: Optional[list[str]] = None,
     ):
         """Initialize a CloudFormation service managed stack set.
@@ -29,14 +30,17 @@ class StackSet(Construct):
         :param name: stack set name
         :param description: stack set description
         :param regions: list of regions where to deploy stack set stack instances
+        :param accounts: Accounts for which to create stack instances in
+            the specified regions.
         :param ous: OrganizationalUnitIds for which to create stack instances
-            in the specified Regions.
+            in the specified regions.
         """
         self.name = name
         self.description = description
         self.stack = Stack(stack_name=f"{self.name}-stack", cfn_role_arn="stackset")
         self.template_filename = f"{self.name}-template.yaml"
         self.regions = regions
+        self.accounts = accounts
         self.organizational_units = ous
 
     def add(self, element: AWSObject | Construct | Stack) -> None:
@@ -70,7 +74,8 @@ class StackSet(Construct):
                 StackInstancesGroup=[
                     cloudformation.StackInstances(
                         DeploymentTargets=cloudformation.DeploymentTargets(
-                            OrganizationalUnitIds=self.organizational_units
+                            OrganizationalUnitIds=self.organizational_units,
+                            Accounts=self.accounts,
                         ),
                         Regions=self.regions,
                     )
