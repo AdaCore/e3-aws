@@ -368,6 +368,32 @@ class Fortress(Stack):
         """
         return self[self.name + "VPC"].region
 
+    def add_lambda_access(self, lambda_arns):
+        """Add a lambda interface endpoint with permissions to invoke given lambdas.
+
+        :param lambda_arns: arn identifying the lambda to give access to
+        :type lambda_arns: list[str]
+        """
+        endpoint_name = f"{self.name}LambdaEndPoint"
+        if endpoint_name not in self:
+            self.add(
+                VPCInterfaceEndpoint(
+                    name=endpoint_name,
+                    service="lambda",
+                    vpc=self.vpc,
+                    subnet=self.aws_endpoints_subnet.subnet,
+                    policy_document=PolicyDocument(),
+                    security_group=self.aws_endpoints_security_group,
+                )
+            )
+        self.lambda_endpoint.policy_document.append(
+            Allow(
+                to=["lambda:InvokeFunction"],
+                on=lambda_arns,
+                apply_to=Principal(PrincipalKind.EVERYONE),
+            )
+        )
+
     def add_secret_access(self, secret_arn):
         """Give read access to a given secret.
 
@@ -579,6 +605,10 @@ class Fortress(Stack):
     @property
     def secretsmanager_endpoint(self):
         return self[self.name + "SecretsManagerEndPoint"]
+
+    @property
+    def lambda_endpoint(self):
+        return self[self.name + "LambdaEndPoint"]
 
     @property
     def public_subnet(self):

@@ -92,6 +92,9 @@ def test_create_fortress(enable_github, requests_mock):
         # Allow access to a secret throught a secretsmanager endpoint
         f.add_secret_access("arn_secret")
 
+        # Allow access to lambdas throught lambda endpoints
+        f.add_secret_access(["arn_lambda_1", "arn_lambda_2"])
+
         # allow https
         f.add_network_access("https")
         f.add_private_server(
