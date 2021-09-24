@@ -1,4 +1,5 @@
 from __future__ import annotations
+from itertools import chain
 from typing import TYPE_CHECKING
 
 from e3.aws.cfn import Stack, Join
@@ -389,7 +390,9 @@ class Fortress(Stack):
         self.lambda_endpoint.policy_document.append(
             Allow(
                 to=["lambda:InvokeFunction"],
-                on=lambda_arns,
+                on=chain.from_iterable(
+                    ((lambda_arn, lambda_arn + ":*") for lambda_arn in lambda_arns)
+                ),
                 apply_to=Principal(PrincipalKind.EVERYONE),
             )
         )
