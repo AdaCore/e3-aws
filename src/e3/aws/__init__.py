@@ -102,19 +102,25 @@ class Session:
 
         self._identity = None
 
-    def assume_role(self, role_arn: str, role_session_name: str) -> Session:
+    def assume_role(
+        self,
+        role_arn: str,
+        role_session_name: str,
+        session_duration: Optional[int] = None,
+    ) -> Session:
         """Return a session with ``role_arn`` credentials.
 
         :param role_arn: ARN of the role to assume
-        :type role_arn: str
         :param role_session_name: a name to associate with the created
             session
-        :type role_session_name: str
-
+        :param session_duration: session duration in seconds or None for
+            default
         :return: a Session instance
         :rtype: Session
         """
-        credentials = self.assume_role_get_credentials(role_arn, role_session_name)
+        credentials = self.assume_role_get_credentials(
+            role_arn, role_session_name, session_duration=session_duration
+        )
         return Session(regions=self.regions, credentials=credentials)
 
     def assume_role_get_credentials(
