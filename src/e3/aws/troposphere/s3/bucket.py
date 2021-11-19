@@ -12,10 +12,11 @@ from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 from e3.aws.troposphere.sns import Topic
+from e3.aws.troposphere.sqs import Queue
 
 
 if TYPE_CHECKING:
-    from typing import Any, Optional, Tuple
+    from typing import Optional, Tuple
     from e3.aws.troposphere import Stack
 
 
@@ -38,8 +39,9 @@ class Bucket(Construct):
         self.name = name
         self.enable_versioning = enable_versioning
         self.lifecycle_rules = lifecycle_rules
-        self.lambda_configurations: list[Tuple[dict[str, Any], Function, str]] = []
-        self.topic_configurations: list[Tuple[dict[str, Any], Topic, str]] = []
+        self.lambda_configurations: list[Tuple[dict[str, str], Function, str]] = []
+        self.topic_configurations: list[Tuple[dict[str, str], Topic, str]] = []
+        self.queue_configurations: list[Tuple[dict[str, str], Queue, str]] = []
         self.depends_on: list[str] = []
 
         # Add minimal policy statements
@@ -87,7 +89,7 @@ class Bucket(Construct):
     def add_notification_configuration(
         self,
         event: str,
-        target: Function | Topic,
+        target: Function | Topic | Queue | str,
         permission_suffix: str,
         s3_filter: Optional[s3.Filter] = None,
     ) -> None:
@@ -106,9 +108,12 @@ class Bucket(Construct):
         if isinstance(target, Topic):
             params["Topic"] = target.arn
             self.topic_configurations.append((params, target, permission_suffix))
-        else:
+        if isinstance(target, Function):
             params["Function"] = target.arn
             self.lambda_configurations.append((params, target, permission_suffix))
+        elif isinstance(target, Queue):
+            params["Queue"] = target.arn
+            self.queue_configurations.append((params, target, permission_suffix))
 
     @property
     def notification_setup(
@@ -117,17 +122,15 @@ class Bucket(Construct):
         """Return notifcation configuration and associated resources."""
         notification_resources = []
         notification_config = None
-        if self.lambda_configurations or self.topic_configurations:
-            notification_config = s3.NotificationConfiguration(
-                name_to_id(self.name + "NotifConfig"),
-                LambdaConfigurations=[
-                    s3.LambdaConfigurations(**lambda_params)
-                    for lambda_params, _, _ in self.lambda_configurations
-                ],
-                TopicConfigurations=[
-                    s3.TopicConfigurations(**topic_params)
-                    for topic_params, _, _ in self.topic_configurations
-                ],
+        params = {}
+        if self.lambda_configurations:
+            params.update(
+                {
+                    "LambdaConfigurations": [
+                        s3.LambdaConfigurations(**lambda_params)
+                        for lambda_params, _, _ in self.lambda_configurations
+                    ],
+                }
             )
             # Add Permission invoke for lambdas
             for _, function, suffix in self.lambda_configurations:
@@ -139,6 +142,15 @@ class Bucket(Construct):
                         source_account=AccountId,
                     )
                 )
+        if self.topic_configurations:
+            params.update(
+                {
+                    "TopicConfigurations": [
+                        s3.TopicConfigurations(**topic_params)
+                        for topic_params, _, _ in self.topic_configurations
+                    ],
+                }
+            )
             # Add policy allowing to publish to topics
             for _, topic, suffix in self.topic_configurations:
                 topic_policy = topic.allow_publish_policy(
@@ -148,6 +160,29 @@ class Bucket(Construct):
                 )
                 notification_resources.append(topic_policy)
                 self.depends_on.append(topic_policy)
+        if self.queue_configurations:
+            params.update(
+                {
+                    "QueueConfigurations": [
+                        s3.QueueConfigurations(**queue_params)
+                        for queue_params, _, _ in self.queue_configurations
+                    ]
+                }
+            )
+            for _, queue, suffix in self.queue_configurations:
+
+                queue_policy = queue.allow_service_to_write(
+                    service="s3",
+                    name_suffix=suffix,
+                    condition={"ArnLike": {"aws:SourceArn": self.arn}},
+                )
+                notification_resources.append(queue_policy)
+                self.depends_on.append(queue_policy)
+
+        if params:
+            notification_config = s3.NotificationConfiguration(
+                name_to_id(self.name + "NotifConfig"), **params
+            )
 
         return notification_config, notification_resources
 

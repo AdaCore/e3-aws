@@ -14,18 +14,22 @@ if TYPE_CHECKING:
     from e3.aws.troposphere.iam.policy_statement import ConditionType
 
 
-class SQS(Construct):
+class Queue(Construct):
     """A SQS Topic."""
 
     def __init__(
-        self, name: str, fifo: bool = False, dlq_name: Optional[str] = None
+        self,
+        name: str,
+        fifo: bool = False,
+        visibility_timeout: int = 30,
+        dlq_name: Optional[str] = None,
     ) -> None:
         """Initialize a SQS.
 
         :param name: topic name
         """
         self.name = name
-        self.attr = {"QueueName": name, "VisibilityTimeout": 30}
+        self.attr = {"QueueName": name, "VisibilityTimeout": visibility_timeout}
 
         if fifo:
             self.attr.update(
