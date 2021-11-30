@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 import argparse
+import boto3
 import botocore.session
 import json
 import logging
@@ -209,6 +210,18 @@ class Session:
             self.client(name, region)
 
         return self.stubbers[name][region]
+
+    def to_boto3(self) -> boto3.Session:
+        """Return boto3 session initialized from current botocore session."""
+        credentials = self.session.get_credentials()
+        frozen_credentials = credentials.get_frozen_credentials()
+        return boto3.Session(
+            aws_access_key_id=frozen_credentials.access_key,
+            aws_secret_access_key=frozen_credentials.secret_key,
+            aws_session_token=frozen_credentials.token,
+            region_name=self.default_region,
+            profile_name=self.profile,
+        )
 
     def client(self, name: str, region: Optional[str] = None) -> botocore.client.Client:
         """Get a client.
