@@ -4,10 +4,11 @@ import pytest
 
 from botocore.stub import ANY
 from e3.aws import AWSEnv, default_region
-from e3.aws.cfn.arch import Fortress
+from e3.aws.cfn.arch import Fortress, AWSFortressError
 from e3.aws.cfn.iam import Allow, Policy, PolicyDocument
 from e3.aws.cfn.s3 import Bucket
 from e3.aws.ec2.ami import AMI
+from e3.aws.cfn.ec2.security import SecurityGroup
 
 AWS_IP_RANGES = {
     "syncToken": "1600978876",
@@ -147,3 +148,39 @@ def test_create_fortress_no_bastion():
         f.add_private_server(AMI("ami-1234"), ["server1", "server2"])
 
         assert f.body
+
+
+def test_create_fortress_with_too_much_sgs():
+    aws_env = AWSEnv(regions=["us-east-1"], stub=True)
+    with default_region("us-east-1"):
+        stub = aws_env.stub("ec2", region="us-east-1")
+        stub.add_response(
+            "describe_images",
+            {
+                "Images": [
+                    {"ImageId": "ami-1234", "RootDeviceName": "/dev/sda1", "Tags": []}
+                ]
+            },
+            {"ImageIds": ANY},
+        )
+
+        d = PolicyDocument().append(
+            Allow(
+                to="s3:GetObject",
+                on=["arn:aws:s3:::mybucket", "arn:aws:s3:::mybucket/*"],
+            )
+        )
+        p = Policy("InternalPolicy", d)
+        f = Fortress("myfortress", bastion_ami=None, internal_server_policy=p)
+
+        # Adding 16 extra security groups should raise an exception (The maximum
+        # number of security groups is 16 and there is a default InternalSG)
+        sg_groups = [SecurityGroup(name=f"sg{id}", vpc=f.vpc.vpc) for id in range(16)]
+        with pytest.raises(AWSFortressError):
+            f.add_private_server(
+                AMI("ami-1234"),
+                ["server1"],
+                amazon_access=False,
+                github_access=False,
+                extra_groups=sg_groups,
+            )

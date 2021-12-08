@@ -42,6 +42,12 @@ PREFIX_LISTS = {
 }
 
 
+class AWSFortressError(Exception):
+    """Error raised when Fortress configuration fails."""
+
+    pass
+
+
 class SubnetStack(Stack):
     """Create a subnet with a route table."""
 
@@ -545,6 +551,12 @@ class Fortress(Stack):
             github_access=github_access,
             extra_groups=extra_groups,
         )
+        nb_sg_groups = len(groups)
+        if nb_sg_groups > 16:
+            raise AWSFortressError(
+                f"Number of security groups is {nb_sg_groups} and exceeds the maximum "
+                "number of 16 security groups allowed per network interface."
+            )
 
         for name in names:
             if not is_template:
