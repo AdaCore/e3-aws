@@ -34,56 +34,69 @@ def test_select():
     """Test AMI.select."""
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
     stub = aws_env.stub("ec2", region="us-east-1")
+
+    Images = {
+        "Images": [
+            {
+                "ImageId": "ami-1",
+                "RootDeviceName": "/dev/sda1",
+                "Tags": [
+                    {"Key": "platform", "Value": "x86_64-linux"},
+                    {"Key": "os_version", "Value": "suse11"},
+                    {"Key": "timestamp", "Value": "4"},
+                ],
+            },
+            {
+                "ImageId": "ami-2",
+                "RootDeviceName": "/dev/sda1",
+                "Tags": [
+                    {"Key": "platform", "Value": "x86_64-linux"},
+                    {"Key": "os_version", "Value": "suse11"},
+                    {"Key": "timestamp", "Value": "5"},
+                ],
+            },
+            {
+                "ImageId": "ami-3",
+                "RootDeviceName": "/dev/sda1",
+                "Tags": [
+                    {"Key": "platform", "Value": "x86_64-linux"},
+                    {"Key": "os_version", "Value": "suse11"},
+                    {"Key": "timestamp", "Value": "1"},
+                ],
+            },
+            {
+                "ImageId": "ami-4",
+                "RootDeviceName": "/dev/sda1",
+                "Tags": [
+                    {"Key": "platform", "Value": "x86_64-linux"},
+                    {"Key": "timestamp", "Value": "1"},
+                ],
+            },
+            {
+                "ImageId": "ami-1234",
+                "RootDeviceName": "/dev/sda1",
+                "Tags": [
+                    {"Key": "platform", "Value": "x86_64-linux"},
+                    {"Key": "os_version", "Value": "ubuntu16.04"},
+                    {"Key": "timestamp", "Value": "1"},
+                ],
+            },
+            {
+                "ImageId": "ami-5",
+                "RootDeviceName": "/dev/sda1",
+                "Tags": [
+                    {"Key": "platform", "Value": "x86_64-linux"},
+                    {"Key": "os_version", "Value": "suse11"},
+                    {"Key": "timestamp", "Value": "5"},
+                    {"Key": "kind", "Value": "build"},
+                ],
+            },
+        ]
+    }
+
     stub.add_response(
         "describe_images",
-        {
-            "Images": [
-                {
-                    "ImageId": "ami-1",
-                    "RootDeviceName": "/dev/sda1",
-                    "Tags": [
-                        {"Key": "platform", "Value": "x86_64-linux"},
-                        {"Key": "os_version", "Value": "suse11"},
-                        {"Key": "timestamp", "Value": "4"},
-                    ],
-                },
-                {
-                    "ImageId": "ami-2",
-                    "RootDeviceName": "/dev/sda1",
-                    "Tags": [
-                        {"Key": "platform", "Value": "x86_64-linux"},
-                        {"Key": "os_version", "Value": "suse11"},
-                        {"Key": "timestamp", "Value": "5"},
-                    ],
-                },
-                {
-                    "ImageId": "ami-3",
-                    "RootDeviceName": "/dev/sda1",
-                    "Tags": [
-                        {"Key": "platform", "Value": "x86_64-linux"},
-                        {"Key": "os_version", "Value": "suse11"},
-                        {"Key": "timestamp", "Value": "1"},
-                    ],
-                },
-                {
-                    "ImageId": "ami-4",
-                    "RootDeviceName": "/dev/sda1",
-                    "Tags": [
-                        {"Key": "platform", "Value": "x86_64-linux"},
-                        {"Key": "timestamp", "Value": "1"},
-                    ],
-                },
-                {
-                    "ImageId": "ami-1234",
-                    "RootDeviceName": "/dev/sda1",
-                    "Tags": [
-                        {"Key": "platform", "Value": "x86_64-linux"},
-                        {"Key": "os_version", "Value": "ubuntu16.04"},
-                        {"Key": "timestamp", "Value": "1"},
-                    ],
-                },
-            ]
-        },
+        Images,
         {
             "Filters": [
                 {"Name": "tag-key", "Values": ["platform"]},
@@ -93,10 +106,25 @@ def test_select():
             "Owners": ["self"],
         },
     )
+    stub.add_response(
+        "describe_images",
+        Images,
+        {
+            "Filters": [
+                {"Name": "tag-key", "Values": ["platform"]},
+                {"Name": "tag-key", "Values": ["timestamp"]},
+                {"Name": "tag-key", "Values": ["os_version"]},
+                {"Name": "tag-key", "Values": ["kind"]},
+            ],
+            "Owners": ["self"],
+        },
+    )
 
     with default_region("us-east-1"):
         ami = AMI.select(platform="x86_64-linux", os_version="suse11")
         assert ami.id == "ami-2"
+        ami = AMI.select(platform="x86_64-linux", os_version="suse11", kind="build")
+        assert ami.id == "ami-5"
 
 
 def test_session_without_args():

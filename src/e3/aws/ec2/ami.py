@@ -60,6 +60,10 @@ class AMI(EC2Element):
         return self.tags.get("platform", "unknown")
 
     @property
+    def kind(self):
+        return self.tags.get("kind", "unknown")
+
+    @property
     def is_windows(self):
         return "windows" in self.data.get("Platform", "unknown")
 
@@ -112,16 +116,28 @@ class AMI(EC2Element):
 
     @classmethod
     @session()
-    def find(cls, platform=None, os_version=None, region=None, session=None, **kwargs):
+    def find(
+        cls,
+        platform=None,
+        os_version=None,
+        kind=None,
+        region=None,
+        session=None,
+        **kwargs
+    ):
         """Find AMIs.
 
-        Only AMIs with platform, timestamps and os_version tags are considered.
+        Only AMIs with platform, timestamps, os_version are considered.
+
+        If kind is not None only consider AMIs also having a kind tag.
 
         :param platform: platform to match. If None all platforms are matched
         :type platform: str | None
         :param os_version: os_version to match. If None all os_versions are
             matched
         :type os_version: str | None
+        :param kind: kind to match. If None all regions are matched
+        :type kind: str | None
         :param region: region to match. If None all regions are matched
         :type region: str | None
         :param kwargs: additional filters on tags. parameter name if the tag
@@ -137,6 +153,9 @@ class AMI(EC2Element):
             {"Name": "tag-key", "Values": ["timestamp"]},
             {"Name": "tag-key", "Values": ["os_version"]},
         ]
+        if kind is not None:
+            filters.append({"Name": "tag-key", "Values": ["kind"]})
+
         all_images = AMI.ls(filters=filters, session=session)
 
         tag_filters = dict(kwargs)
@@ -144,9 +163,14 @@ class AMI(EC2Element):
             tag_filters["platform"] = platform
         if os_version is not None:
             tag_filters["os_version"] = os_version
+        if kind is not None:
+            tag_filters["kind"] = kind
 
         for ami in all_images:
-            key = (ami.region, ami.platform, ami.os_version)
+            key_l = [ami.region, ami.platform, ami.os_version]
+            if kind is not None:
+                key_l.append(ami.kind)
+            key = tuple(key_l)
 
             if region is not None and not re.match(region, ami.region):
                 continue
@@ -167,13 +191,17 @@ class AMI(EC2Element):
 
     @classmethod
     @session()
-    def select(cls, platform, os_version, region=None, session=None, **kwargs):
-        """Select one AMI based on platform and os_version.
+    def select(
+        cls, platform, os_version, kind=None, region=None, session=None, **kwargs
+    ):
+        """Select one AMI based on platform, os_version and kind.
 
         :param platform: platform name
         :type platform: str
         :param os_version: OS version
         :type os_version: str
+        :param kind: kind
+        :type kind: str
         :param region: region name or None (default region)
         :type region: str | None
         :return: one AMI
@@ -181,16 +209,22 @@ class AMI(EC2Element):
         """
         if region is None:
             region = session.default_region
+
+        kind_filter = kind + "$" if kind is not None else None
         result = AMI.find(
             platform=platform + "$",
             os_version=os_version + "$",
+            kind=kind_filter,
             region=region,
             session=session,
             **kwargs
         )
-        assert len(result) == 1, "cannot find AMI %s (%s) in region %s %s" % (
+        assert (
+            len(result) == 1
+        ), "cannot find AMI %s (%s) of kind (%s) in region %s %s" % (
             platform,
             os_version,
+            kind,
             region,
             kwargs,
         )

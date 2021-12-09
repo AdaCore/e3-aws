@@ -11,8 +11,8 @@ IP_RANGES_URL = "https://ip-ranges.amazonaws.com/ip-ranges.json"
 def amazon_security_groups(name, vpc):
     """Create a dict of security group authorizing access to aws services.
 
-    As the number of rules per security group is limited to 50,
-    we create blocks of 50 rules.
+    As the number of rules per security group is limited to 60,
+    we create blocks of 60 rules.
 
     :param vpc: vpc in which to create the group
     :type vpc: VPC
@@ -37,13 +37,16 @@ def amazon_security_groups(name, vpc):
         if select_region(k) and "ip_prefix" in k and k["service"] == "AMAZON"
     }
 
-    # Sustract the list of ip ranges corresponding to EC2 instances
-    ec2_ip_ranges = {
+    # Substract the list of ip ranges corresponding to services
+    # that we do no need to access to or that we access through VPC
+    # endpoints to limit the number of security groups and rules.
+    services_used = ("AMAZON", "S3")
+    removable_ip_ranges = {
         k["ip_prefix"]
         for k in ip_ranges
-        if select_region(k) and "ip_prefix" in k and k["service"] == "EC2"
+        if select_region(k) and "ip_prefix" in k and k["service"] not in services_used
     }
-    amazon_ip_ranges -= ec2_ip_ranges
+    amazon_ip_ranges -= removable_ip_ranges
 
     # Authorize https on the resulting list of ip ranges
     sgs = {}
