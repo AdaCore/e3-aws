@@ -4,11 +4,16 @@ from e3.aws.troposphere.s3.bucket import Bucket
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.awslambda import Py38Function
 from e3.aws.troposphere.sns import Topic
+from e3.aws.troposphere.sqs import Queue
 
 EXPECTED_TEMPLATE = {
     "TestTopic": {
         "Properties": {"TopicName": "test-topic", "Subscription": []},
         "Type": "AWS::SNS::Topic",
+    },
+    "TestQueue": {
+        "Properties": {"QueueName": "test-queue", "VisibilityTimeout": 30},
+        "Type": "AWS::SQS::Queue",
     },
     "Mypylambda": {
         "Properties": {
@@ -50,10 +55,16 @@ EXPECTED_TEMPLATE = {
                 "TopicConfigurations": [
                     {"Event": "s3:ObjectCreated:*", "Topic": {"Ref": "TestTopic"}}
                 ],
+                "QueueConfigurations": [
+                    {
+                        "Event": "s3:ObjectCreated:*",
+                        "Queue": {"Fn::GetAtt": ["TestQueue", "Arn"]},
+                    }
+                ],
             },
         },
         "Type": "AWS::S3::Bucket",
-        "DependsOn": ["TestTopicPolicyTpUpload"],
+        "DependsOn": ["TestTopicPolicyTpUpload", "TestQueuePolicyFileEvent"],
     },
     "TestBucketPolicy": {
         "Properties": {
@@ -123,6 +134,26 @@ EXPECTED_TEMPLATE = {
         },
         "Type": "AWS::SNS::TopicPolicy",
     },
+    "TestQueuePolicyFileEvent": {
+        "Properties": {
+            "PolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sqs:SendMessage",
+                        "Condition": {
+                            "ArnLike": {"aws:SourceArn": "arn:aws:s3:::test-bucket"}
+                        },
+                        "Effect": "Allow",
+                        "Principal": {"Service": "s3.amazonaws.com"},
+                        "Resource": {"Fn::GetAtt": ["TestQueue", "Arn"]},
+                    }
+                ],
+                "Version": "2012-10-17",
+            },
+            "Queues": [{"Ref": "TestQueue"}],
+        },
+        "Type": "AWS::SQS::QueuePolicy",
+    },
 }
 
 
@@ -132,6 +163,7 @@ def test_bucket(stack: Stack) -> None:
     stack.s3_key = "templates/"
 
     topic_test = Topic(name="test-topic")
+    queue_test = Queue(name="test-queue")
     lambda_test = Py38Function(
         name="mypylambda",
         description="this is a test",
@@ -142,6 +174,7 @@ def test_bucket(stack: Stack) -> None:
 
     stack.add(topic_test)
     stack.add(lambda_test)
+    stack.add(queue_test)
 
     bucket = Bucket(name="test-bucket")
     bucket.add_notification_configuration(
@@ -149,6 +182,9 @@ def test_bucket(stack: Stack) -> None:
     )
     bucket.add_notification_configuration(
         event="s3:ObjectCreated:*", target=lambda_test, permission_suffix="TpUpload"
+    )
+    bucket.add_notification_configuration(
+        event="s3:ObjectCreated:*", target=queue_test, permission_suffix="FileEvent"
     )
     stack.add(bucket)
 
