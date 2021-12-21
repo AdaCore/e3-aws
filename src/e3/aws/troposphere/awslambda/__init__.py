@@ -29,9 +29,10 @@ class Function(Construct):
         self,
         name: str,
         description: str,
-        code_bucket: Optional[str],
-        code_key: Optional[str],
         role: Union[str, GetAtt, Role],
+        code_bucket: Optional[str] = None,
+        code_key: Optional[str] = None,
+        code_zipfile: Optional[str] = None,
         handler: Optional[str] = None,
         code_version: Optional[int] = None,
         timeout: int = 3,
@@ -42,9 +43,11 @@ class Function(Construct):
 
         :param name: function name
         :param description: a description of the function
+        :param role: role to be asssumed during lambda execution
         :param code_bucket: bucket in which code for the function is found
         :param code_key: key in the previous bucket where the code is stored
-        :param role: role to be asssumed during lambda execution
+        :param code_zipfile: inline code. it is needed when lambda code depends
+            on stack informations only known at deployement.
         :param handler: handler name (i.e: entry point)
         :param code_version: code version
         :param timeout: maximum execution time (default: 3s)
@@ -56,6 +59,7 @@ class Function(Construct):
         self.description = description
         self.code_bucket = code_bucket
         self.code_key = code_key
+        self.code_zipfile = code_zipfile
         self.code_version = code_version
         self.timeout = timeout
         self.runtime = runtime
@@ -107,21 +111,27 @@ class Function(Construct):
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
-        assert isinstance(self.code_bucket, str)
-        assert isinstance(self.code_key, str)
         return self.lambda_resources(
             code_bucket=self.code_bucket, code_key=self.code_key
         )
 
-    def lambda_resources(self, code_bucket: str, code_key: str) -> list[AWSObject]:
+    def lambda_resources(
+        self, code_bucket: Optional[str], code_key: Optional[str]
+    ) -> list[AWSObject]:
         """Return resource associated with the construct.
 
         :param code_bucket: bucket in which the lambda code is located
         :param code_key: location of the code in the bucket
         """
-        code_params = {"S3Bucket": code_bucket, "S3Key": code_key}
-        if self.code_version is not None:
-            code_params["S3ObjectVersion"] = str(self.code_version)
+        # If code_bucket and code_key not provided use zipfile if
+        # provided.
+        if code_bucket is not None and code_key is not None:
+            code_params = {"S3Bucket": code_bucket, "S3Key": code_key}
+            if self.code_version is not None:
+                code_params["S3ObjectVersion"] = str(self.code_version)
+        else:
+            assert self.code_zipfile is not None
+            code_params = {"ZipFile": self.code_zipfile}
 
         if isinstance(self.role, Role):
             role = self.role.arn
