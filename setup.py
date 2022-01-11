@@ -15,5 +15,10 @@ setup(
     package_dir={"": "src"},
     install_requires=("boto3", "botocore", "pyyaml", "troposphere", "e3-core"),
     namespace_packages=["e3"],
-    entry_points={"console_scripts": ["e3-aws-assume-role = e3.aws:assume_role_main"]},
+    entry_points={
+        "e3.event.handler": [
+            "s3-boto3 = e3.aws.handler.s3:S3Handler",
+        ],
+        "console_scripts": ["e3-aws-assume-role = e3.aws:assume_role_main"],
+    },
 )
