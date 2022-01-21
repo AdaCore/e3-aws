@@ -1,6 +1,7 @@
 """Provide S3 buckets."""
 
 from __future__ import annotations
+from enum import Enum
 from typing import TYPE_CHECKING
 
 
@@ -18,6 +19,14 @@ from e3.aws.troposphere.sqs import Queue
 if TYPE_CHECKING:
     from typing import Optional, Tuple
     from e3.aws.troposphere import Stack
+    from e3.aws.troposphere.iam.policy_statement import ConditionType
+
+
+class EncryptionAlgorithm(Enum):
+    """Provide an Enum to describe encryption algorithms."""
+
+    AES256 = "AES256"
+    KMS = "kms:aws"
 
 
 class Bucket(Construct):
@@ -28,6 +37,10 @@ class Bucket(Construct):
         name: str,
         enable_versioning: bool = True,
         lifecycle_rules: Optional[list[s3.LifecycleRule]] = None,
+        default_bucket_encryption: Optional[
+            EncryptionAlgorithm
+        ] = EncryptionAlgorithm.AES256,
+        authorized_encryptions: Optional[list[EncryptionAlgorithm]] = None,
     ):
         """Initialize a bucket.
 
@@ -35,10 +48,18 @@ class Bucket(Construct):
         :param enable_versioning: can be set to enable multiple versions of all
             objects in the bucket.
         :param lifecycle_rules: lifecycle rules for bucket objects
+        :param default_bucket_encryption: type of the default bucket encryption.
+        :param authorized_encryptions: types of the server side encryptions
+            to authorize.
         """
         self.name = name
         self.enable_versioning = enable_versioning
         self.lifecycle_rules = lifecycle_rules
+        self.default_bucket_encryption = default_bucket_encryption
+        if authorized_encryptions is None:
+            self.authorized_encryptions = [EncryptionAlgorithm.AES256]
+        else:
+            self.authorized_encryptions = authorized_encryptions
         self.lambda_configurations: list[Tuple[dict[str, str], Function, str]] = []
         self.topic_configurations: list[Tuple[dict[str, str], Topic, str]] = []
         self.queue_configurations: list[Tuple[dict[str, str], Queue, str]] = []
@@ -53,33 +74,54 @@ class Bucket(Construct):
                 resource=self.all_objects_arn,
                 principal={"AWS": "*"},
                 condition={"Bool": {"aws:SecureTransport": "false"}},
-            ),
-            # Deny to store object not encrypted with AES256 encryption
-            PolicyStatement(
-                action="s3:PutObject",
-                effect="Deny",
-                resource=self.all_objects_arn,
-                principal={"AWS": "*"},
-                condition={
-                    "StringNotEquals": {"s3:x-amz-server-side-encryption": "AES256"}
-                },
-            ),
-            # Deny to store non encrypted objects
-            # (??? do we really need that statement)
-            PolicyStatement(
-                action="s3:PutObject",
-                effect="Deny",
-                resource=self.all_objects_arn,
-                principal={"AWS": "*"},
-                condition={"Null": {"s3:x-amz-server-side-encryption": "true"}},
-            ),
+            )
         ]
 
-        self.bucket_encryption = {
-            "ServerSideEncryptionConfiguration": [
-                {"ServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}
+        assert (
+            self.authorized_encryptions
+        ), "At least one authorized s3 encryption should be provided"
+
+        # The one element case is needed for retrocompatibility
+        # with stacks deployed with older versions of e3-aws
+        condition: ConditionType
+        if len(self.authorized_encryptions) == 1:
+            condition = {
+                "StringNotEquals": {
+                    "s3:x-amz-server-side-encryption": self.authorized_encryptions[
+                        0
+                    ].value
+                }
+            }
+        else:
+            condition = {
+                "ForAllValues:StringNotEquals": {
+                    "s3:x-amz-server-side-encryption": [
+                        enc.value for enc in self.authorized_encryptions
+                    ]
+                }
+            }
+
+        self.policy_statements.extend(
+            [
+                # Deny to store object not encrypted with AES256 encryption
+                PolicyStatement(
+                    action="s3:PutObject",
+                    effect="Deny",
+                    resource=self.all_objects_arn,
+                    principal={"AWS": "*"},
+                    condition=condition,
+                ),
+                # Deny to store non encrypted objects
+                # (??? do we really need that statement)
+                PolicyStatement(
+                    action="s3:PutObject",
+                    effect="Deny",
+                    resource=self.all_objects_arn,
+                    principal={"AWS": "*"},
+                    condition={"Null": {"s3:x-amz-server-side-encryption": "true"}},
+                ),
             ]
-        }
+        )
 
     @property
     def policy_document(self) -> PolicyDocument:
@@ -129,7 +171,7 @@ class Bucket(Construct):
                     "LambdaConfigurations": [
                         s3.LambdaConfigurations(**lambda_params)
                         for lambda_params, _, _ in self.lambda_configurations
-                    ],
+                    ]
                 }
             )
             # Add Permission invoke for lambdas
@@ -148,7 +190,7 @@ class Bucket(Construct):
                     "TopicConfigurations": [
                         s3.TopicConfigurations(**topic_params)
                         for topic_params, _, _ in self.topic_configurations
-                    ],
+                    ]
                 }
             )
             # Add policy allowing to publish to topics
@@ -203,15 +245,17 @@ class Bucket(Construct):
         )
 
         # Set default bucket encryption to AES256
-        bucket_encryption = s3.BucketEncryption(
-            ServerSideEncryptionConfiguration=[
-                s3.ServerSideEncryptionRule(
-                    ServerSideEncryptionByDefault=s3.ServerSideEncryptionByDefault(
-                        SSEAlgorithm="AES256"
+        bucket_encryption = None
+        if self.default_bucket_encryption:
+            bucket_encryption = s3.BucketEncryption(
+                ServerSideEncryptionConfiguration=[
+                    s3.ServerSideEncryptionRule(
+                        ServerSideEncryptionByDefault=s3.ServerSideEncryptionByDefault(
+                            SSEAlgorithm=self.default_bucket_encryption.value
+                        )
                     )
-                )
-            ]
-        )
+                ]
+            )
 
         lifecycle_config = None
         if self.lifecycle_rules:
