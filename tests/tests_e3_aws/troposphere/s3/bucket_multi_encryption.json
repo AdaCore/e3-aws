@@ -46,7 +46,7 @@
                             "ForAllValues:StringNotEquals": {
                                 "s3:x-amz-server-side-encryption": [
                                     "AES256",
-                                    "kms:aws"
+                                    "aws:kms"
                                 ]
                             }
                         }

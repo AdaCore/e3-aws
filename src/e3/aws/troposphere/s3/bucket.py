@@ -26,7 +26,7 @@ class EncryptionAlgorithm(Enum):
     """Provide an Enum to describe encryption algorithms."""
 
     AES256 = "AES256"
-    KMS = "kms:aws"
+    KMS = "aws:kms"
 
 
 class Bucket(Construct):
