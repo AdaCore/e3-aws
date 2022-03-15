@@ -1,21 +1,25 @@
 from __future__ import annotations
+
+from datetime import datetime
+import logging
+import os
 from typing import TYPE_CHECKING
-from e3.aws import name_to_id
-from e3.aws.troposphere import Construct
+
+from e3.archive import create_archive
+from e3.fs import sync_tree, rm
+from e3.os.process import Run
+from e3.sys import python_script
 from troposphere import awslambda, GetAtt, Ref, Sub
 
+from e3.aws import name_to_id
+from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 from e3.aws.troposphere.iam.role import Role
-from e3.sys import python_script
-from e3.os.process import Run
-from e3.fs import sync_tree, rm
-from e3.archive import create_archive
-import os
-import logging
+from e3.aws.util.ecr import build_and_push_image
 
 if TYPE_CHECKING:
-    from typing import Optional, Union
+    from typing import Any, Optional, Union
     from troposphere import AWSObject
     from e3.aws.troposphere import Stack
 
@@ -121,35 +125,45 @@ class Function(Construct):
         )
 
     def lambda_resources(
-        self, code_bucket: Optional[str], code_key: Optional[str]
+        self,
+        code_bucket: Optional[str] = None,
+        code_key: Optional[str] = None,
+        image_uri: Optional[str] = None,
     ) -> list[AWSObject]:
         """Return resource associated with the construct.
 
         :param code_bucket: bucket in which the lambda code is located
         :param code_key: location of the code in the bucket
+        :param image_uri: URI of a container image in the Amazon ECR registry
         """
         # If code_bucket and code_key not provided use zipfile if
         # provided.
+
+        params: dict[str, Any] = {}
         if code_bucket is not None and code_key is not None:
             code_params = {"S3Bucket": code_bucket, "S3Key": code_key}
             if self.code_version is not None:
                 code_params["S3ObjectVersion"] = str(self.code_version)
-        else:
-            assert self.code_zipfile is not None
+        elif self.code_zipfile is not None:
             code_params = {"ZipFile": self.code_zipfile}
+        elif image_uri:
+            code_params = {"ImageUri": image_uri}
+            params["PackageType"] = "Image"
 
         if isinstance(self.role, Role):
             role = self.role.arn
         else:
             role = self.role
 
-        params = {
-            "Code": awslambda.Code(**code_params),
-            "Timeout": self.timeout,
-            "Description": self.description,
-            "Role": role,
-            "FunctionName": self.name,
-        }
+        params.update(
+            {
+                "Code": awslambda.Code(**code_params),
+                "Timeout": self.timeout,
+                "Description": self.description,
+                "Role": role,
+                "FunctionName": self.name,
+            }
+        )
 
         if self.runtime is not None:
             params["Runtime"] = self.runtime
@@ -219,6 +233,65 @@ class Function(Construct):
             params["SourceAccount"] = source_account
 
         return awslambda.Permission(name_to_id(self.name + name_suffix), **params)
+
+
+class DockerFunction(Function):
+    """Lambda using a Docker image."""
+
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        role: str | GetAtt | Role,
+        source_dir: str,
+        repository_name: str,
+        image_tag: str,
+        timeout: int = 3,
+        memory_size: Optional[int] = None,
+    ):
+        """Initialize an AWS lambda function using a Docker image.
+
+        :param name: function name
+        :param description: a description of the function
+        :param role: role to be asssumed during lambda execution
+        :param source_dir: directory containing Dockerfile and dependencies
+        :param repository_name: ECR repository name
+        :param image_tag: docker image version
+        :param timeout: maximum execution time (default: 3s)
+        :param memory_size: the amount of memory available to the function at
+            runtime. The value can be any multiple of 1 MB.
+        """
+        super().__init__(
+            name=name,
+            description=description,
+            role=role,
+            timeout=timeout,
+            memory_size=memory_size,
+        )
+        self.source_dir: str = source_dir
+        self.repository_name: str = repository_name
+        timestamp = datetime.utcnow().strftime("%Y-%m-%d-%H-%M-%S-%f")
+        self.image_tag: str = f"{image_tag}-{timestamp}"
+        self.image_uri: Optional[str] = None
+
+    def resources(self, stack: Stack) -> list[AWSObject]:
+        """Compute AWS resources for the construct.
+
+        Build and push the Docker image to ECR repository.
+        Only push ECR image if stack is to be deployed.
+        """
+        if stack.dry_run:
+            self.image_uri = "<dry_run_image_uri>"
+        else:
+            assert stack.deploy_session is not None
+            self.image_uri = build_and_push_image(
+                self.source_dir,
+                self.repository_name,
+                self.image_tag,
+                stack.deploy_session,
+            )
+
+        return self.lambda_resources(image_uri=self.image_uri)
 
 
 class Py38Function(Function):
