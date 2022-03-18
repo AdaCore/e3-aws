@@ -155,7 +155,9 @@ class S3WebsiteDistribution(Construct):
                 HttpVersion="http2",
                 Origins=[origin],
                 ViewerCertificate=cloudfront.ViewerCertificate(
-                    AcmCertificateArn=self.certificate_arn, SslSupportMethod="sni-only"
+                    AcmCertificateArn=self.certificate_arn,
+                    SslSupportMethod="sni-only",
+                    MinimumProtocolVersion="TLSv1.2_2021",
                 ),
             ),
         )
