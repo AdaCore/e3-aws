@@ -66,8 +66,11 @@ class Cluster(Construct):
 class ECSPassExecutionRolePolicy(ManagedPolicy):
     """ECSPassExecutionRolePolicy, see description for details."""
 
-    def __init__(self) -> None:
-        """Initialize ECSPassExecutationRolePolicy."""
+    def __init__(self, path: str) -> None:
+        """Initialize ECSPassExecutationRolePolicy.
+
+        :param path: path for the managed policy
+        """
         super().__init__(
             name="ECSPassExecutionRolePolicy",
             description="Needed to be attached to ECSEventsRole if schedulded"
@@ -79,6 +82,7 @@ class ECSPassExecutionRolePolicy(ManagedPolicy):
                     resource=GetAtt(name_to_id("ECSTaskExecutionRole"), "Arn"),
                 )
             ],
+            path=path,
         )
 
 
@@ -87,11 +91,13 @@ class FargateCluster(Cluster):
     """Define a FargateCluster construct.
 
     :param name: a string that you use to identify your cluster
+    :param path: path for IAM resources
     :param tags: The metadata that you apply to the cluster to help you categorize and
         organize them
     """
 
     name: str
+    path: str = "/"
     capacity_providers: Optional[list[str]] = field(default_factory=lambda: ["FARGATE"])
     cluster_settings: Optional[list[dict[str, str]]] = field(
         default_factory=lambda: [{"Name": "containerInsights", "Value": "enabled"}]
@@ -104,6 +110,8 @@ class FargateCluster(Cluster):
     @property
     def ecs_task_execution_role(self) -> Role:
         """Return ecs task execution role, see role description for details."""
+        # For unknown reason if path is provided for this role it cannot be
+        # use by ECS task definitions.
         return Role(
             name="ECSTaskExecutionRole",
             description="grants the Amazon ECS container agent permission to make "
@@ -126,6 +134,7 @@ class FargateCluster(Cluster):
                 "AmazonEC2ContainerServiceEventsRole",
                 Ref(name_to_id("ECSPassExecutionRolePolicy")),
             ],
+            path=self.path,
         )
 
     def resources(self, stack: Stack) -> list[AWSObject]:
@@ -135,7 +144,7 @@ class FargateCluster(Cluster):
         """
         return (
             super().resources(stack=stack)
-            + ECSPassExecutionRolePolicy().resources(stack=stack)
+            + ECSPassExecutionRolePolicy(path=self.path).resources(stack=stack)
             + self.ecs_task_execution_role.resources(stack=stack)
             + self.ecs_events_role.resources(stack=stack)
         )
