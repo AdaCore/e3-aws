@@ -8,12 +8,14 @@ from troposphere import AWSObject, events, GetAtt, Ref
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
+from e3.aws.troposphere.ec2 import VPC
 from e3.aws.troposphere.ecs.cluster import FargateCluster
 from e3.aws.troposphere.ecs.vpc import EcsVPC
 
 if TYPE_CHECKING:
 
     from e3.aws.troposphere import Stack
+    from typing import Union
 
 
 @dataclass(frozen=True)
@@ -36,7 +38,7 @@ class FargateScheduledTaskRule(Construct):
     name: str
     schedule_expression: str
     task_names: list[str]
-    vpc: EcsVPC
+    vpc: Union[EcsVPC, VPC]
     state: str = "DISABLED"
 
     def ecs_parameters(self, task_name: str) -> events.EcsParameters:
