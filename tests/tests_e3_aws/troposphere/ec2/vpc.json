@@ -1,0 +1,405 @@
+{
+    "TestVPCIgw": {
+        "Type": "AWS::EC2::InternetGateway"
+    },
+    "TestVPCIgwAttachement": {
+        "Properties": {
+            "InternetGatewayId": {
+                "Ref": "TestVPCIgw"
+            },
+            "VpcId": {
+                "Ref": "TestVPC"
+            }
+        },
+        "Type": "AWS::EC2::VPCGatewayAttachment"
+    },
+    "TestVPCIgwRouteTable": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPC"
+            }
+        },
+        "Type": "AWS::EC2::RouteTable"
+    },
+    "TestVPCIgwRoute": {
+        "Properties": {
+            "RouteTableId": {
+                "Ref": "TestVPCIgwRouteTable"
+            },
+            "DestinationCidrBlock": "0.0.0.0/0",
+            "GatewayId": {
+                "Ref": "TestVPCIgw"
+            }
+        },
+        "Type": "AWS::EC2::Route"
+    },
+    "TestVPC0": {
+        "Properties": {
+            "RouteTableId": {
+                "Ref": "TestVPCIgwRouteTable"
+            },
+            "SubnetId": {
+                "Ref": "TestVPCSubnet"
+            }
+        },
+        "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "TestVPC": {
+        "Properties": {
+            "CidrBlock": "10.0.0.0/16",
+            "EnableDnsHostnames": true,
+            "EnableDnsSupport": true,
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestVPC"
+                }
+            ]
+        },
+        "Type": "AWS::EC2::VPC"
+    },
+    "TestVPCSubnet": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPC"
+            },
+            "CidrBlock": "10.0.64.0/18",
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestVPCSubnet"
+                }
+            ]
+        },
+        "Type": "AWS::EC2::Subnet"
+    },
+    "TestVPCSecurityGroup": {
+        "Properties": {
+            "GroupDescription": "TestVPC main security group",
+            "SecurityGroupEgress": [],
+            "SecurityGroupIngress": [],
+            "VpcId": {
+                "Ref": "TestVPC"
+            },
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestVPCSecurityGroup"
+                }
+            ]
+        },
+        "Type": "AWS::EC2::SecurityGroup"
+    },
+    "TestVPCEndpointsEgress": {
+        "Properties": {
+            "DestinationSecurityGroupId": {
+                "Ref": "TestVPCVpcEndpointsSubnetSecurityGroup"
+            },
+            "FromPort": "443",
+            "ToPort": "443",
+            "IpProtocol": "tcp",
+            "GroupId": {
+                "Ref": "TestVPCSecurityGroup"
+            }
+        },
+        "Type": "AWS::EC2::SecurityGroupEgress"
+    },
+    "TestVPCS3RouteTable": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPC"
+            }
+        },
+        "Type": "AWS::EC2::RouteTable"
+    },
+    "TestVPCS3RouteTableAssoc": {
+        "Properties": {
+            "RouteTableId": {
+                "Ref": "TestVPCS3RouteTable"
+            },
+            "SubnetId": {
+                "Ref": "TestVPCSubnet"
+            }
+        },
+        "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "TestVPCS3Endpoint": {
+        "Properties": {
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": "*",
+                        "Action": [
+                            "s3:PutObject",
+                            "s3:GetObject"
+                        ],
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Principal": "*",
+                        "Action": "s3:ListBucket",
+                        "Resource": "*"
+                    }
+                ]
+            },
+            "RouteTableIds": [
+                {
+                    "Ref": "TestVPCS3RouteTable"
+                }
+            ],
+            "ServiceName": "com.amazonaws.eu-west-1.s3",
+            "VpcEndpointType": "Gateway",
+            "VpcId": {
+                "Ref": "TestVPC"
+            }
+        },
+        "Type": "AWS::EC2::VPCEndpoint"
+    },
+    "TestVPCS3Egress": {
+        "Properties": {
+            "DestinationPrefixListId": "pl-6da54004",
+            "FromPort": "443",
+            "ToPort": "443",
+            "IpProtocol": "tcp",
+            "GroupId": {
+                "Ref": "TestVPCSecurityGroup"
+            }
+        },
+        "Type": "AWS::EC2::SecurityGroupEgress"
+    },
+    "TestVPCVpcEndpointsSubnetSubnet": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPC"
+            },
+            "CidrBlock": "10.0.128.0/18",
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestVPC-vpc-endpoints-subnetSubnet"
+                }
+            ]
+        },
+        "Type": "AWS::EC2::Subnet"
+    },
+    "TestVPCVpcEndpointsSubnetSecurityGroup": {
+        "Properties": {
+            "GroupDescription": "TestVPC-vpc-endpoints-subnet vpc endpoints security group",
+            "SecurityGroupEgress": [],
+            "SecurityGroupIngress": [],
+            "VpcId": {
+                "Ref": "TestVPC"
+            }
+        },
+        "Type": "AWS::EC2::SecurityGroup"
+    },
+    "TestVPCVpcEndpointsSubnetDefaultEgress": {
+        "Properties": {
+            "CidrIp": "10.0.128.0/18",
+            "IpProtocol": "-1",
+            "GroupId": {
+                "Ref": "TestVPCVpcEndpointsSubnetSecurityGroup"
+            }
+        },
+        "Type": "AWS::EC2::SecurityGroupEgress"
+    },
+    "TestVPCVpcEndpointsSubnetEgressTestVPCSecurityGroup": {
+        "Properties": {
+            "DestinationSecurityGroupId": {
+                "Ref": "TestVPCSecurityGroup"
+            },
+            "FromPort": "443",
+            "ToPort": "443",
+            "IpProtocol": "tcp",
+            "GroupId": {
+                "Ref": "TestVPCVpcEndpointsSubnetSecurityGroup"
+            }
+        },
+        "Type": "AWS::EC2::SecurityGroupEgress"
+    },
+    "TestVPCVpcEndpointsSubnetIngressTestVPCSecurityGroup": {
+        "Properties": {
+            "SourceSecurityGroupId": {
+                "Ref": "TestVPCSecurityGroup"
+            },
+            "FromPort": "443",
+            "ToPort": "443",
+            "IpProtocol": "tcp",
+            "GroupId": {
+                "Ref": "TestVPCVpcEndpointsSubnetSecurityGroup"
+            }
+        },
+        "Type": "AWS::EC2::SecurityGroupIngress"
+    },
+    "LogsEndpoint": {
+        "Properties": {
+            "PrivateDnsEnabled": true,
+            "SecurityGroupIds": [
+                {
+                    "Ref": "TestVPCVpcEndpointsSubnetSecurityGroup"
+                }
+            ],
+            "ServiceName": "com.amazonaws.eu-west-1.logs",
+            "SubnetIds": [
+                {
+                    "Ref": "TestVPCVpcEndpointsSubnetSubnet"
+                }
+            ],
+            "VpcEndpointType": "Interface",
+            "VpcId": {
+                "Ref": "TestVPC"
+            },
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": "*",
+                        "Action": [
+                            "logs:CreateLogStream",
+                            "logs:CreateLogGroup",
+                            "logs:PutLogEvents"
+                        ],
+                        "Resource": "*"
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::EC2::VPCEndpoint"
+    },
+    "EcrapiEndpoint": {
+        "Properties": {
+            "PrivateDnsEnabled": true,
+            "SecurityGroupIds": [
+                {
+                    "Ref": "TestVPCVpcEndpointsSubnetSecurityGroup"
+                }
+            ],
+            "ServiceName": "com.amazonaws.eu-west-1.ecr.api",
+            "SubnetIds": [
+                {
+                    "Ref": "TestVPCVpcEndpointsSubnetSubnet"
+                }
+            ],
+            "VpcEndpointType": "Interface",
+            "VpcId": {
+                "Ref": "TestVPC"
+            },
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": "*",
+                        "Action": [
+                            "ecr:BatchGetImage",
+                            "ecr:GetAuthorizationToken",
+                            "ecr:GetDownloadUrlForLayer"
+                        ],
+                        "Resource": "*"
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::EC2::VPCEndpoint"
+    },
+    "EcrdkrEndpoint": {
+        "Properties": {
+            "PrivateDnsEnabled": true,
+            "SecurityGroupIds": [
+                {
+                    "Ref": "TestVPCVpcEndpointsSubnetSecurityGroup"
+                }
+            ],
+            "ServiceName": "com.amazonaws.eu-west-1.ecr.dkr",
+            "SubnetIds": [
+                {
+                    "Ref": "TestVPCVpcEndpointsSubnetSubnet"
+                }
+            ],
+            "VpcEndpointType": "Interface",
+            "VpcId": {
+                "Ref": "TestVPC"
+            },
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": "*",
+                        "Action": [
+                            "ecr:BatchGetImage",
+                            "ecr:GetAuthorizationToken",
+                            "ecr:GetDownloadUrlForLayer"
+                        ],
+                        "Resource": "*"
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::EC2::VPCEndpoint"
+    },
+    "StsEndpoint": {
+        "Properties": {
+            "PrivateDnsEnabled": true,
+            "SecurityGroupIds": [
+                {
+                    "Ref": "TestVPCVpcEndpointsSubnetSecurityGroup"
+                }
+            ],
+            "ServiceName": "com.amazonaws.eu-west-1.sts",
+            "SubnetIds": [
+                {
+                    "Ref": "TestVPCVpcEndpointsSubnetSubnet"
+                }
+            ],
+            "VpcEndpointType": "Interface",
+            "VpcId": {
+                "Ref": "TestVPC"
+            }
+        },
+        "Type": "AWS::EC2::VPCEndpoint"
+    },
+    "SecretsmanagerEndpoint": {
+        "Properties": {
+            "PrivateDnsEnabled": true,
+            "SecurityGroupIds": [
+                {
+                    "Ref": "TestVPCVpcEndpointsSubnetSecurityGroup"
+                }
+            ],
+            "ServiceName": "com.amazonaws.eu-west-1.secretsmanager",
+            "SubnetIds": [
+                {
+                    "Ref": "TestVPCVpcEndpointsSubnetSubnet"
+                }
+            ],
+            "VpcEndpointType": "Interface",
+            "VpcId": {
+                "Ref": "TestVPC"
+            },
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": "*",
+                        "Action": [
+                            "secretsmanager:GetResourcePolicy",
+                            "secretsmanager:GetSecretValue",
+                            "secretsmanager:DescribeSecret",
+                            "secretsmanager:ListSecretVersionIds"
+                        ],
+                        "Resource": [
+                            "this_is_a_secret_arn"
+                        ]
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::EC2::VPCEndpoint"
+    }
+}
