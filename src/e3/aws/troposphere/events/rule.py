@@ -31,6 +31,8 @@ class FargateScheduledTaskRule(Construct):
     :param task_names: List of tasks to schedule
     :param vpc: VPC used to run the scheduled task
     :param state: state of the rule (DISABLED | ENABLED)
+    :param assign_public_ip: Whether the task's elastic network interface
+        receives a public IP address (DISABLED | ENABLED)
     """
 
     description: str
@@ -40,6 +42,7 @@ class FargateScheduledTaskRule(Construct):
     task_names: list[str]
     vpc: Union[EcsVPC, VPC]
     state: str = "DISABLED"
+    assign_public_ip: str = "DISABLED"
 
     def ecs_parameters(self, task_name: str) -> events.EcsParameters:
         """Return ECS parameters describing the fargate task to run.
@@ -50,7 +53,7 @@ class FargateScheduledTaskRule(Construct):
             LaunchType="FARGATE",
             NetworkConfiguration=events.NetworkConfiguration(
                 AwsVpcConfiguration=events.AwsVpcConfiguration(
-                    AssignPublicIp="DISABLED",
+                    AssignPublicIp=self.assign_public_ip,
                     SecurityGroups=[Ref(self.vpc.security_group)],
                     Subnets=[Ref(self.vpc.subnet)],
                 )
