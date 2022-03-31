@@ -38,6 +38,7 @@ class Function(Construct):
         timeout: int = 3,
         runtime: Optional[str] = None,
         memory_size: Optional[int] = None,
+        ephemeral_storage_size: Optional[int] = None,
     ):
         """Initialize an AWS lambda function.
 
@@ -54,6 +55,9 @@ class Function(Construct):
         :param runtime: runtime to use
         :param memory_size: the amount of memory available to the function at
             runtime. The value can be any multiple of 1 MB.
+        :param ephemeral_storage_size: The size of the function’s /tmp directory
+            in MB. The default value is 512, but can be any whole number between
+            512 and 10240 MB
         """
         self.name = name
         self.description = description
@@ -66,6 +70,7 @@ class Function(Construct):
         self.role = role
         self.handler = handler
         self.memory_size = memory_size
+        self.ephemeral_storage_size = ephemeral_storage_size
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         statements = [
@@ -155,6 +160,11 @@ class Function(Construct):
         if self.memory_size is not None:
             params["MemorySize"] = self.memory_size
 
+        if self.ephemeral_storage_size is not None:
+            params["EphemeralStorage"] = awslambda.EphemeralStorage(
+                Size=self.ephemeral_storage_size
+            )
+
         return [awslambda.Function(name_to_id(self.name), **params)]
 
     @staticmethod
@@ -225,6 +235,7 @@ class Py38Function(Function):
         code_version: Optional[int] = None,
         timeout: int = 3,
         memory_size: Optional[int] = None,
+        ephemeral_storage_size: Optional[int] = None,
     ):
         """Initialize an AWS lambda function using Python 3.8 runtime.
 
@@ -240,6 +251,9 @@ class Py38Function(Function):
         :param timeout: maximum execution time (default: 3s)
         :param memory_size: the amount of memory available to the function at
             runtime. The value can be any multiple of 1 MB.
+        :param ephemeral_storage_size: The size of the function’s /tmp directory
+            in MB. The default value is 512, but can be any whole number between
+            512 and 10240 MB
         """
         super().__init__(
             name=name,
@@ -252,6 +266,7 @@ class Py38Function(Function):
             timeout=timeout,
             runtime="python3.8",
             memory_size=memory_size,
+            ephemeral_storage_size=ephemeral_storage_size,
         )
         self.code_dir = code_dir
         self.requirement_file = requirement_file
