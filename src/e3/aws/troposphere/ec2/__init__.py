@@ -21,17 +21,37 @@ class InternetGateway(Construct):
     traffic from given subnets to the gateway.
     """
 
-    def __init__(self, name_prefix: str, vpc: ec2.vpc, subnets: list[ec2.subnet]):
+    def __init__(
+        self,
+        name_prefix: str,
+        vpc: ec2.vpc,
+        subnets: Optional[list[ec2.subnet]] = None,
+        route_table: Optional[ec2.RouteTable] = None,
+    ):
         """Initialize InternetGateway construct.
 
         :param name_prefix: prefix for cloudformation resource names
         :param vpc: VPC to attach to InternetGateway
         :param subnets: subnets from wich traffic should be routed to the internet
-            gateway.
+            gateway. Only needed if a route table is not provided. If provided a
+            route table is created and associated to these subnets.
+        :param route_table: Add route to internet gateway to this route. If no
+            route is provided, one is created.
         """
         self.vpc = vpc
         self.subnets = subnets
         self.name_prefix = name_prefix
+        self._route_table = route_table
+        self.add_route_table_to_stack = route_table is None
+
+    @property
+    def route_table(self):
+        """Return route table to which the route to IGW is added."""
+        if self._route_table is None:
+            self._route_table = ec2.RouteTable(
+                name_to_id(f"{self.name_prefix}-igw-route-table"), VpcId=Ref(self.vpc)
+            )
+        return self._route_table
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return resources associated with the construct."""
@@ -41,24 +61,30 @@ class InternetGateway(Construct):
             InternetGatewayId=Ref(igw),
             VpcId=Ref(self.vpc),
         )
-        route_table = ec2.RouteTable(
-            name_to_id(f"{self.name_prefix}-igw-route-table"), VpcId=Ref(self.vpc)
-        )
         route = ec2.Route(
             name_to_id(f"{self.name_prefix}-igw-route"),
-            RouteTableId=Ref(route_table),
+            RouteTableId=Ref(self.route_table),
             DestinationCidrBlock="0.0.0.0/0",
             GatewayId=Ref(igw),
         )
-        route_table_associations = (
-            ec2.SubnetRouteTableAssociation(
-                name_to_id(f"{self.name_prefix}-{num}"),
-                RouteTableId=Ref(route_table),
-                SubnetId=Ref(subnet),
+        result = [igw, attachement, route]
+
+        # If a new route table has to be created associate it with provided subnets
+        if self.add_route_table_to_stack:
+            result.append(self.route_table)
+            assert self.subnets is not None
+            result.extend(
+                [
+                    ec2.SubnetRouteTableAssociation(
+                        name_to_id(f"{self.name_prefix}-{num}"),
+                        RouteTableId=Ref(self.route_table),
+                        SubnetId=Ref(subnet),
+                    )
+                    for subnet, num in zip(self.subnets, range(len(self.subnets)))
+                ]
             )
-            for subnet, num in zip(self.subnets, range(len(self.subnets)))
-        )
-        return [igw, attachement, route_table, route, *route_table_associations]
+
+        return result
 
 
 class VPCEndpointsSubnet(Construct):
@@ -270,6 +296,7 @@ class VPC(Construct):
         self._vpc: Optional[ec2.VPC] = None
         self._subnet: Optional[ec2.Subnet] = None
         self._security_group: Optional[ec2.SecurityGroup] = None
+        self._route_table: Optional[ec2.RouteTable] = None
 
         self.vpc_endpoints_subnet = VPCEndpointsSubnet(
             name=f"{self.name}-vpc-endpoints-subnet",
@@ -360,18 +387,20 @@ class VPC(Construct):
         )
 
     @property
-    def s3_route_table(self) -> ec2.RouteTable:
-        """Return a route table for s3 endpoint."""
-        return ec2.RouteTable(
-            name_to_id(f"{self.name}S3RouteTable"), VpcId=Ref(self.vpc)
-        )
+    def route_table(self) -> ec2.RouteTable:
+        """Return a route table for the main subnet."""
+        if self._route_table is None:
+            self._route_table = ec2.RouteTable(
+                name_to_id(f"{self.name}RouteTable"), VpcId=Ref(self.vpc)
+            )
+        return self._route_table
 
     @property
-    def s3_route_table_assoc(self) -> ec2.SubnetRouteTableAssociation:
-        """Return route table association."""
+    def route_table_assoc(self) -> ec2.SubnetRouteTableAssociation:
+        """Return association of route table to the main subnet."""
         return ec2.SubnetRouteTableAssociation(
-            name_to_id(f"{self.name}S3RouteTableAssoc"),
-            RouteTableId=Ref(self.s3_route_table),
+            name_to_id(f"{self.name}RouteTableAssoc"),
+            RouteTableId=Ref(self.route_table),
             SubnetId=Ref(self.subnet),
         )
 
@@ -385,7 +414,7 @@ class VPC(Construct):
         return ec2.VPCEndpoint(
             name_to_id(f"{self.name}S3Endpoint"),
             PolicyDocument=self.s3_endpoint_policy_document.as_dict,
-            RouteTableIds=[Ref(self.s3_route_table)],
+            RouteTableIds=[Ref(self.route_table)],
             ServiceName=f"com.amazonaws.{self.region}.s3",
             VpcEndpointType="Gateway",
             VpcId=Ref(self.vpc),
@@ -397,20 +426,20 @@ class VPC(Construct):
         if self.internet_gateway:
             result.extend(
                 InternetGateway(
-                    name_prefix=self.name, vpc=self.vpc, subnets=[self.subnet]
+                    name_prefix=self.name, vpc=self.vpc, route_table=self.route_table
                 ).resources(stack)
             )
         result.extend(
-            [self.vpc, self.subnet, self.security_group, self.endpoints_egress_rule]
+            [
+                self.vpc,
+                self.subnet,
+                self.security_group,
+                self.endpoints_egress_rule,
+                self.route_table,
+                self.route_table_assoc,
+            ]
         )
         if self.s3_endpoint_policy_document:
-            result.extend(
-                [
-                    self.s3_route_table,
-                    self.s3_route_table_assoc,
-                    self.s3_vpc_endpoint,
-                    self.s3_egress_rule,
-                ]
-            )
+            result.extend([self.s3_vpc_endpoint, self.s3_egress_rule])
         result.extend(self.vpc_endpoints_subnet.resources(stack))
         return result

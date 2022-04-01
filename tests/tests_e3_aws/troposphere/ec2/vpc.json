@@ -13,18 +13,10 @@
         },
         "Type": "AWS::EC2::VPCGatewayAttachment"
     },
-    "TestVPCIgwRouteTable": {
-        "Properties": {
-            "VpcId": {
-                "Ref": "TestVPC"
-            }
-        },
-        "Type": "AWS::EC2::RouteTable"
-    },
     "TestVPCIgwRoute": {
         "Properties": {
             "RouteTableId": {
-                "Ref": "TestVPCIgwRouteTable"
+                "Ref": "TestVPCRouteTable"
             },
             "DestinationCidrBlock": "0.0.0.0/0",
             "GatewayId": {
@@ -32,17 +24,6 @@
             }
         },
         "Type": "AWS::EC2::Route"
-    },
-    "TestVPC0": {
-        "Properties": {
-            "RouteTableId": {
-                "Ref": "TestVPCIgwRouteTable"
-            },
-            "SubnetId": {
-                "Ref": "TestVPCSubnet"
-            }
-        },
-        "Type": "AWS::EC2::SubnetRouteTableAssociation"
     },
     "TestVPC": {
         "Properties": {
@@ -104,7 +85,7 @@
         },
         "Type": "AWS::EC2::SecurityGroupEgress"
     },
-    "TestVPCS3RouteTable": {
+    "TestVPCRouteTable": {
         "Properties": {
             "VpcId": {
                 "Ref": "TestVPC"
@@ -112,10 +93,10 @@
         },
         "Type": "AWS::EC2::RouteTable"
     },
-    "TestVPCS3RouteTableAssoc": {
+    "TestVPCRouteTableAssoc": {
         "Properties": {
             "RouteTableId": {
-                "Ref": "TestVPCS3RouteTable"
+                "Ref": "TestVPCRouteTable"
             },
             "SubnetId": {
                 "Ref": "TestVPCSubnet"
@@ -147,7 +128,7 @@
             },
             "RouteTableIds": [
                 {
-                    "Ref": "TestVPCS3RouteTable"
+                    "Ref": "TestVPCRouteTable"
                 }
             ],
             "ServiceName": "com.amazonaws.eu-west-1.s3",

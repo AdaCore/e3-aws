@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from troposphere import ec2, Ref
 
 from e3.aws import name_to_id
@@ -44,10 +45,6 @@ EXPECTED_TEMPLATE = {
         },
         "Type": "AWS::EC2::VPCGatewayAttachment",
     },
-    "TestIgwRouteTable": {
-        "Properties": {"VpcId": {"Ref": "VpcTest"}},
-        "Type": "AWS::EC2::RouteTable",
-    },
     "TestIgwRoute": {
         "Properties": {
             "RouteTableId": {"Ref": "TestIgwRouteTable"},
@@ -56,24 +53,11 @@ EXPECTED_TEMPLATE = {
         },
         "Type": "AWS::EC2::Route",
     },
-    "Test0": {
-        "Properties": {
-            "RouteTableId": {"Ref": "TestIgwRouteTable"},
-            "SubnetId": {"Ref": "EuWest1aSubnet"},
-        },
-        "Type": "AWS::EC2::SubnetRouteTableAssociation",
-    },
-    "Test1": {
-        "Properties": {
-            "RouteTableId": {"Ref": "TestIgwRouteTable"},
-            "SubnetId": {"Ref": "EuWest1bSubnet"},
-        },
-        "Type": "AWS::EC2::SubnetRouteTableAssociation",
-    },
 }
 
 
-def test_internet_gateway(stack: Stack) -> None:
+@pytest.mark.parametrize("route_table_provided", [False, True])
+def test_internet_gateway(stack: Stack, route_table_provided: bool) -> None:
     """Test InternetGateway construct."""
     vpc = ec2.VPC(
         name_to_id("vpc-test"),
@@ -95,9 +79,38 @@ def test_internet_gateway(stack: Stack) -> None:
         )
     ]
 
-    igw = InternetGateway(name_prefix="test", vpc=vpc, subnets=subnets)
+    if route_table_provided:
+        route_table = ec2.RouteTable(name_to_id("TestIgwRouteTable"), VpcId=Ref(vpc))
+    else:
+        route_table = None
+
+    igw = InternetGateway(
+        name_prefix="test", vpc=vpc, subnets=subnets, route_table=route_table
+    )
 
     for el in (vpc, *subnets, igw):
         stack.add(el)
 
-    assert stack.export()["Resources"] == EXPECTED_TEMPLATE
+    template = dict(EXPECTED_TEMPLATE)
+
+    if not route_table_provided:
+        template["TestIgwRouteTable"] = {
+            "Properties": {"VpcId": {"Ref": "VpcTest"}},
+            "Type": "AWS::EC2::RouteTable",
+        }
+        template["Test0"] = {
+            "Properties": {
+                "RouteTableId": {"Ref": "TestIgwRouteTable"},
+                "SubnetId": {"Ref": "EuWest1aSubnet"},
+            },
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+        }
+        template["Test1"] = {
+            "Properties": {
+                "RouteTableId": {"Ref": "TestIgwRouteTable"},
+                "SubnetId": {"Ref": "EuWest1bSubnet"},
+            },
+            "Type": "AWS::EC2::SubnetRouteTableAssociation",
+        }
+
+    assert stack.export()["Resources"] == template
