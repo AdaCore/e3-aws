@@ -1,33 +1,7 @@
 {
-    "TestVPCIgw": {
-        "Type": "AWS::EC2::InternetGateway"
-    },
-    "TestVPCIgwAttachement": {
-        "Properties": {
-            "InternetGatewayId": {
-                "Ref": "TestVPCIgw"
-            },
-            "VpcId": {
-                "Ref": "TestVPC"
-            }
-        },
-        "Type": "AWS::EC2::VPCGatewayAttachment"
-    },
-    "TestVPCIgwRoute": {
-        "Properties": {
-            "RouteTableId": {
-                "Ref": "TestVPCRouteTable"
-            },
-            "DestinationCidrBlock": "0.0.0.0/0",
-            "GatewayId": {
-                "Ref": "TestVPCIgw"
-            }
-        },
-        "Type": "AWS::EC2::Route"
-    },
     "TestVPC": {
         "Properties": {
-            "CidrBlock": "10.0.0.0/16",
+            "CidrBlock": "10.10.0.0/16",
             "EnableDnsHostnames": true,
             "EnableDnsSupport": true,
             "Tags": [
@@ -38,21 +12,6 @@
             ]
         },
         "Type": "AWS::EC2::VPC"
-    },
-    "TestVPCSubnet": {
-        "Properties": {
-            "VpcId": {
-                "Ref": "TestVPC"
-            },
-            "CidrBlock": "10.0.64.0/18",
-            "Tags": [
-                {
-                    "Key": "Name",
-                    "Value": "TestVPCSubnet"
-                }
-            ]
-        },
-        "Type": "AWS::EC2::Subnet"
     },
     "TestVPCSecurityGroup": {
         "Properties": {
@@ -85,7 +44,22 @@
         },
         "Type": "AWS::EC2::SecurityGroupEgress"
     },
-    "TestVPCRouteTable": {
+    "TestVPCPrivateSubnet": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPC"
+            },
+            "CidrBlock": "10.10.0.0/17",
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestVPCPrivateSubnet"
+                }
+            ]
+        },
+        "Type": "AWS::EC2::Subnet"
+    },
+    "TestVPCPrivateSubnetRouteTable": {
         "Properties": {
             "VpcId": {
                 "Ref": "TestVPC"
@@ -93,16 +67,105 @@
         },
         "Type": "AWS::EC2::RouteTable"
     },
-    "TestVPCRouteTableAssoc": {
+    "TestVPCPrivateSubnetRouteTableAssoc": {
         "Properties": {
             "RouteTableId": {
-                "Ref": "TestVPCRouteTable"
+                "Ref": "TestVPCPrivateSubnetRouteTable"
             },
             "SubnetId": {
-                "Ref": "TestVPCSubnet"
+                "Ref": "TestVPCPrivateSubnet"
             }
         },
         "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "TestVPCPrivateSubnetNatRoute": {
+        "Properties": {
+            "RouteTableId": {
+                "Ref": "TestVPCPrivateSubnetRouteTable"
+            },
+            "DestinationCidrBlock": "0.0.0.0/0",
+            "NatGatewayId": {
+                "Ref": "TestVPCPublicSubnetNat"
+            }
+        },
+        "Type": "AWS::EC2::Route"
+    },
+    "TestVPCPublicSubnet": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPC"
+            },
+            "CidrBlock": "10.10.128.0/18",
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestVPCPublicSubnet"
+                }
+            ]
+        },
+        "Type": "AWS::EC2::Subnet"
+    },
+    "TestVPCPublicSubnetRouteTable": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPC"
+            }
+        },
+        "Type": "AWS::EC2::RouteTable"
+    },
+    "TestVPCPublicSubnetRouteTableAssoc": {
+        "Properties": {
+            "RouteTableId": {
+                "Ref": "TestVPCPublicSubnetRouteTable"
+            },
+            "SubnetId": {
+                "Ref": "TestVPCPublicSubnet"
+            }
+        },
+        "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "TestVPCPublicSubnetIgw": {
+        "Type": "AWS::EC2::InternetGateway"
+    },
+    "TestVPCPublicSubnetIgwAttachement": {
+        "Properties": {
+            "InternetGatewayId": {
+                "Ref": "TestVPCPublicSubnetIgw"
+            },
+            "VpcId": {
+                "Ref": "TestVPC"
+            }
+        },
+        "Type": "AWS::EC2::VPCGatewayAttachment"
+    },
+    "TestVPCPublicSubnetIgwRoute": {
+        "Properties": {
+            "RouteTableId": {
+                "Ref": "TestVPCPublicSubnetRouteTable"
+            },
+            "DestinationCidrBlock": "0.0.0.0/0",
+            "GatewayId": {
+                "Ref": "TestVPCPublicSubnetIgw"
+            }
+        },
+        "Type": "AWS::EC2::Route"
+    },
+    "TestVPCPublicSubnetNat": {
+        "Properties": {
+            "AllocationId": {
+                "Fn::GetAtt": [
+                    "TestVPCPublicSubnetEip",
+                    "AllocationId"
+                ]
+            },
+            "SubnetId": {
+                "Ref": "TestVPCPublicSubnet"
+            }
+        },
+        "Type": "AWS::EC2::NatGateway"
+    },
+    "TestVPCPublicSubnetEip": {
+        "Type": "AWS::EC2::EIP"
     },
     "TestVPCS3Endpoint": {
         "Properties": {
@@ -128,7 +191,7 @@
             },
             "RouteTableIds": [
                 {
-                    "Ref": "TestVPCRouteTable"
+                    "Ref": "TestVPCPrivateSubnetRouteTable"
                 }
             ],
             "ServiceName": "com.amazonaws.eu-west-1.s3",
@@ -156,7 +219,7 @@
             "VpcId": {
                 "Ref": "TestVPC"
             },
-            "CidrBlock": "10.0.128.0/18",
+            "CidrBlock": "10.10.192.0/18",
             "Tags": [
                 {
                     "Key": "Name",
@@ -179,7 +242,7 @@
     },
     "TestVPCVpcEndpointsSubnetDefaultEgress": {
         "Properties": {
-            "CidrIp": "10.0.128.0/18",
+            "CidrIp": "10.10.192.0/18",
             "IpProtocol": "-1",
             "GroupId": {
                 "Ref": "TestVPCVpcEndpointsSubnetSecurityGroup"

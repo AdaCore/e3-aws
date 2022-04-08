@@ -46,13 +46,18 @@ class FargateScheduledTaskRule(Construct):
 
         :param task_name: name of the task
         """
+        if isinstance(self.vpc, EcsVPC):
+            subnet = self.vpc.subnet
+        else:
+            subnet = self.vpc.main_subnet
+
         return events.EcsParameters(
             LaunchType="FARGATE",
             NetworkConfiguration=events.NetworkConfiguration(
                 AwsVpcConfiguration=events.AwsVpcConfiguration(
                     AssignPublicIp="DISABLED",
                     SecurityGroups=[Ref(self.vpc.security_group)],
-                    Subnets=[Ref(self.vpc.subnet)],
+                    Subnets=[Ref(subnet)],
                 )
             ),
             TaskDefinitionArn=Ref(name_to_id(f"{task_name}")),
