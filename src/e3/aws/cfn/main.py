@@ -148,6 +148,12 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 self.s3_template_key,
             )
 
+    @property
+    def dry_run(self) -> bool:
+        """Return True if CloudFormation stack is not to be deployed."""
+        assert self.args is not None
+        return self.args.command not in ("push", "update")
+
     def create_data_dir(self, root_dir: str) -> None:
         """Sync into root_dir data uploaded to the s3 bucket used by the stack.
 

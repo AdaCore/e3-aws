@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from troposphere import AWSObject, Template
-from e3.aws import cfn, name_to_id
+from e3.aws import cfn, name_to_id, Session
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from typing import TYPE_CHECKING
 
@@ -55,6 +55,8 @@ class Stack(cfn.Stack):
         stack_name: str,
         description: Optional[str] = None,
         cfn_role_arn: Optional[str] = None,
+        deploy_session: Optional[Session] = None,
+        dry_run: Optional[bool] = False,
         s3_bucket: Optional[str] = None,
         s3_key: Optional[str] = None,
     ) -> None:
@@ -62,6 +64,9 @@ class Stack(cfn.Stack):
 
         :param stack_name: stack name
         :param cfn_role_arn: role asssumed by cloud formation to create the stack
+        :param deploy_session: AWS session to deploy non CloudFormation AWS
+            resources (aka Assets)
+        :param dry_run: True if the stack is not to be deployed.
         :param description: a description of the stack
         :param s3_bucket: s3 bucket used to store data needed by the stack
         :param s3_key: s3 prefix in s3_bucket in which data is stored
@@ -74,6 +79,9 @@ class Stack(cfn.Stack):
             s3_key=s3_key,
         )
         self.constructs: list[Construct | AWSObject] = []
+
+        self.deploy_session = deploy_session
+        self.dry_run = dry_run
         self.template = Template()
 
     def add(self, element: Union[AWSObject, Construct, Stack]) -> Stack:
