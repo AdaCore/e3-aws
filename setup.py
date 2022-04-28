@@ -16,7 +16,9 @@ setup(
     install_requires=(
         "boto3",
         "botocore",
-        "docker",
+        # Only require docker for linux as there is a known dependency issue
+        # with pywin32 on windows
+        "docker; platform_system=='Linux'",
         "pyyaml",
         "troposphere",
         "e3-core",
