@@ -23,6 +23,7 @@ class StackSet(Construct):
         description: str,
         regions: list[str],
         ous: Optional[list[str]] = None,
+        accounts: Optional[list[str]] = None,
     ):
         """Initialize a CloudFormation service managed stack set.
 
@@ -30,14 +31,17 @@ class StackSet(Construct):
         :param description: stack set description
         :param regions: list of regions where to deploy stack set stack instances
         :param ous: OrganizationalUnitIds for which to create stack instances
-            in the specified Regions.
+            in the specified Regions. Note that if both ous and accounts parameters
+            are None then the stack set is deployed into the whole organisation
+        :param accounts: list of accounts where to deploy stack set stack instances
         """
         self.name = name
         self.description = description
         self.stack = Stack(stack_name=f"{self.name}-stack", cfn_role_arn="stackset")
         self.template_filename = f"{self.name}-template.yaml"
         self.regions = regions
-        self.organizational_units = ous
+        self.ous = ous
+        self.accounts = accounts
 
     def add(self, element: AWSObject | Construct | Stack) -> None:
         """Add resource to the stackset stack.
@@ -56,31 +60,46 @@ class StackSet(Construct):
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
-        return [
-            cloudformation.StackSet(
-                name_to_id(self.name),
-                AutoDeployment=cloudformation.AutoDeployment(
-                    Enabled=True, RetainStacksOnAccountRemoval=False
-                ),
-                CallAs="SELF",
-                Capabilities=["CAPABILITY_NAMED_IAM"],
-                Description=self.description,
-                PermissionModel="SERVICE_MANAGED",
-                StackSetName=self.name,
-                StackInstancesGroup=[
+        stack_set_args = {
+            "AutoDeployment": cloudformation.AutoDeployment(
+                Enabled=True, RetainStacksOnAccountRemoval=False
+            ),
+            "CallAs": "SELF",
+            "Capabilities": ["CAPABILITY_NAMED_IAM"],
+            "Description": self.description,
+            "PermissionModel": "SERVICE_MANAGED",
+            "StackSetName": self.name,
+            "TemplateURL": (
+                f"https://{stack.s3_bucket}.s3.amazonaws.com/{stack.s3_key}"
+                f"{self.template_filename}"
+            ),
+        }
+        if self.ous is not None or self.accounts is not None:
+            stack_instances_group = []
+
+            if self.ous is not None:
+                stack_instances_group.append(
                     cloudformation.StackInstances(
                         DeploymentTargets=cloudformation.DeploymentTargets(
-                            OrganizationalUnitIds=self.organizational_units
+                            OrganizationalUnitIds=self.ous
                         ),
                         Regions=self.regions,
                     )
-                ],
-                TemplateURL=(
-                    f"https://{stack.s3_bucket}.s3.amazonaws.com/{stack.s3_key}"
-                    f"{self.template_filename}"
-                ),
-            )
-        ]
+                )
+
+            if self.accounts is not None:
+
+                stack_instances_group.append(
+                    cloudformation.StackInstances(
+                        DeploymentTargets=cloudformation.DeploymentTargets(
+                            Accounts=self.accounts
+                        ),
+                        Regions=self.regions,
+                    )
+                )
+
+            stack_set_args["StackInstancesGroup"] = stack_instances_group
+        return [cloudformation.StackSet(name_to_id(self.name), **stack_set_args)]
 
     def create_data_dir(self, root_dir: str) -> None:
         """Create data to be pushed to bucket used by cloudformation for resources."""
