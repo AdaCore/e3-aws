@@ -104,7 +104,7 @@ class Trust(PolicyStatement):
         accounts: Optional[list[str]] = None,
         users: Optional[list[tuple[str, str]]] = None,
         condition: Optional[ConditionType] = None,
-        actions: Optional[list[str] | str] = None,
+        actions: list[str] | str = "sts:AssumeRole",
     ) -> None:
         """Initialize a trust policy statement.
 
@@ -137,13 +137,11 @@ class Trust(PolicyStatement):
 
         self.condition = condition
         self.actions = actions
-        if self.actions is None:
-            self.actions = "sts:AssumeRole"
 
     @property
     def as_dict(self) -> dict[str, Any]:
         """See PolicyStatement doc."""
-        result = {
+        result: dict[str, str | list[str] | dict[str, list[str]] | ConditionType] = {
             "Effect": "Allow",
             "Action": self.actions,
             "Principal": self.principals,
