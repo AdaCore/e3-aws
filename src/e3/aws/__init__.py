@@ -149,6 +149,12 @@ class Session:
         if session_duration is not None:
             arguments["DurationSeconds"] = session_duration
 
+        # If AWS_MFA_DEVICE is in the environment ask user for OTP
+        if "AWS_MFA_DEVICE" in os.environ:  # all: no cover
+            arguments["SerialNumber"] = os.environ["AWS_MFA_DEVICE"]
+            otp = input("Enter MFA code: ")
+            arguments["TokenCode"] = otp
+
         response = client.assume_role(**arguments)
 
         credentials = response["Credentials"]
