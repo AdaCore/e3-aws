@@ -12,14 +12,14 @@ from typing import TYPE_CHECKING
 import botocore.exceptions
 
 from e3.aws import AWSEnv, Session
-from e3.aws.troposphere import Stack as TroposphereStack
+from e3.aws.cfn import Stack
 from e3.env import Env
 from e3.fs import find, sync_tree
 from e3.main import Main
 
+
 if TYPE_CHECKING:
     from typing import List, Optional, Tuple, Union
-    from e3.aws.cfn import Stack
 
 
 class CFNMain(Main, metaclass=abc.ABCMeta):
@@ -281,10 +281,15 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 else:
                     print("No stack policy to set")
             elif self.args.command == "show-cfn-policy":
-                if isinstance(stack, TroposphereStack):
-                    print(json.dumps(stack.cfn_policy_document().as_dict, indent=2))
-                else:
-                    print("command supported only with troposphere stacks")
+                try:
+                    print(
+                        json.dumps(
+                            stack.cfn_policy_document().as_dict,  # type: ignore
+                            indent=2,
+                        )
+                    )
+                except AttributeError as attr_e:
+                    print(f"command supported only with troposphere stacks: {attr_e}")
             elif self.args.command == "delete":
                 stack.delete(wait=self.args.wait_stack_creation)
 

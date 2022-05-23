@@ -2,6 +2,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from troposphere import AWSObject, Template
 from e3.aws import cfn, name_to_id, Session
+from e3.aws.cfn.main import CFNMain
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from typing import TYPE_CHECKING
 
@@ -152,3 +153,53 @@ class Stack(cfn.Stack):
         for construct in self.constructs:
             if isinstance(construct, Construct):
                 construct.create_data_dir(root_dir)
+
+
+class CFNProjectMain(CFNMain):
+    """CFNMain with default value and self initializing its stack.
+
+    This facilitates the deployment of mono stack projects with deployment and
+    CloudFormation roles named respectively cfn-user/CFNAllowDeployOf<stack_name>
+    and cfn-service/CFNServiceRoleFor<stack_name>.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        account_id: str,
+        stack_description: str,
+        s3_bucket: str,
+        regions: list[str],
+    ) -> None:
+        """
+        Initialize a CFNProjectMain instance.
+
+        :param name: name of the project
+        :param account_id: id of the account where to deploy the project
+        :param stack_description: description of the stack to deploy
+        :param s3_bucket: see CFNMain
+        :param regions: see CFNMain
+        """
+        super().__init__(
+            regions=regions,
+            s3_bucket=s3_bucket,
+            s3_key=name,
+            assume_role=(
+                f"arn:aws:iam::{account_id}:role/cfn-user/CFNAllowDeployOf{name}",
+                f"Deploy{name}Session",
+            ),
+        )
+        self.stack = Stack(
+            name,
+            cfn_role_arn=f"arn:aws:iam::{account_id}:role/cfn-service/CFNServiceRoleFor{name}",
+            description=stack_description,
+            s3_bucket=s3_bucket,
+            s3_key=name,
+        )
+
+    def add(self, element: AWSObject | Construct | Stack) -> Stack:
+        """Add resource to project's stack.
+
+        :param element: resource to add to the stack.
+        """
+        return self.stack.add(element)
