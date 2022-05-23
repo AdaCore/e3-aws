@@ -349,7 +349,7 @@ class Py38Function(Function):
         assert isinstance(stack.s3_bucket, str)
         return self.lambda_resources(
             code_bucket=stack.s3_bucket,
-            code_key=f"{stack.s3_key}{self.name}_lambda.zip",
+            code_key=f"{stack.s3_key}/{self.name}_lambda.zip",
         )
 
     def populate_package_dir(self, package_dir: str) -> None:
