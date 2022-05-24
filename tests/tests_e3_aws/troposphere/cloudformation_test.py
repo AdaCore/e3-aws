@@ -18,16 +18,18 @@ EXPECTED_TEMPLATE = {
             "Description": "this is a test",
             "PermissionModel": "SERVICE_MANAGED",
             "StackSetName": "stack-set-test",
+            "TemplateURL": "https://cfn_bucket.s3.amazonaws.com/templates/"
+            "stack-set-test-template.yaml",
+            "OperationPreferences": {
+                "FailureToleranceCount": 4,
+                "MaxConcurrentCount": 5,
+            },
             "StackInstancesGroup": [
                 {
                     "DeploymentTargets": {"OrganizationalUnitIds": ["test-ou"]},
                     "Regions": ["eu-west-1"],
                 }
             ],
-            "TemplateURL": (
-                "https://cfn_bucket.s3.amazonaws.com/"
-                "templates/stack-set-test-template.yaml"
-            ),
         },
         "Type": "AWS::CloudFormation::StackSet",
     }
@@ -44,6 +46,8 @@ def test_stackset(stack: Stack) -> None:
         description="this is a test",
         regions=["eu-west-1"],
         ous=["test-ou"],
+        failure_tolerance_count=4,
+        max_concurrent_count=5,
     )
 
     stack_set.add(
