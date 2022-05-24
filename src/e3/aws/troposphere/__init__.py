@@ -194,7 +194,7 @@ class CFNProjectMain(CFNMain):
             cfn_role_arn=f"arn:aws:iam::{account_id}:role/cfn-service/CFNServiceRoleFor{name}",
             description=stack_description,
             s3_bucket=s3_bucket,
-            s3_key=name,
+            s3_key=self.s3_data_key,
         )
 
     def add(self, element: AWSObject | Construct | Stack) -> Stack:
