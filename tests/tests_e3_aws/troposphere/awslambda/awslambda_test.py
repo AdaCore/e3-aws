@@ -5,13 +5,13 @@ import os
 
 from e3.aws import AWSEnv
 from e3.aws.troposphere import Stack
-from e3.aws.troposphere.awslambda import Py38Function, DockerFunction
+from e3.aws.troposphere.awslambda import PyFunction, Py38Function, DockerFunction
 
 
 SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "source_dir")
 
 
-EXPECTED_TEMPLATE = {
+EXPECTED_PY38FUNCTION_TEMPLATE = {
     "Mypylambda": {
         "Properties": {
             "Code": {
@@ -29,6 +29,32 @@ EXPECTED_TEMPLATE = {
     }
 }
 
+EXPECTED_PYFUNCTION_TEMPLATE = {
+    "Mypylambda": {
+        "Properties": {
+            "Code": {
+                "S3Bucket": "cfn_bucket",
+                "S3Key": "templates/mypylambda_lambda.zip",
+            },
+            "Description": "this is a test",
+            "FunctionName": "mypylambda",
+            "Handler": "app.main",
+            "Role": "somearn",
+            "Runtime": "python3.9",
+            "Timeout": 3,
+        },
+        "Type": "AWS::Lambda::Function",
+    },
+    "MypylambdaLogGroup": {
+        "DeletionPolicy": "Retain",
+        "Properties": {
+            "LogGroupName": "/aws/lambda/mypylambda",
+            "RetentionInDays": 731,
+        },
+        "Type": "AWS::Logs::LogGroup",
+    },
+}
+
 
 EXPECTED_DOCKER_FUNCTION = {
     "Dockerfunction": {
@@ -41,12 +67,20 @@ EXPECTED_DOCKER_FUNCTION = {
             "FunctionName": "dockerfunction",
         },
         "Type": "AWS::Lambda::Function",
-    }
+    },
+    "DockerfunctionLogGroup": {
+        "DeletionPolicy": "Retain",
+        "Properties": {
+            "LogGroupName": "/aws/lambda/dockerfunction",
+            "RetentionInDays": 731,
+        },
+        "Type": "AWS::Logs::LogGroup",
+    },
 }
 
 
-def test_awslambda(stack: Stack) -> None:
-    """Test config recorder creation."""
+def test_py38function(stack: Stack) -> None:
+    """Test Py38Function creation."""
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
     stack.add(
@@ -58,8 +92,25 @@ def test_awslambda(stack: Stack) -> None:
             handler="app.main",
         )
     )
+    assert stack.export()["Resources"] == EXPECTED_PY38FUNCTION_TEMPLATE
 
-    assert stack.export()["Resources"] == EXPECTED_TEMPLATE
+
+def test_pyfunction(stack: Stack) -> None:
+    """Test PyFunction creation."""
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+    stack.add(
+        PyFunction(
+            name="mypylambda",
+            description="this is a test",
+            role="somearn",
+            runtime="python3.9",
+            code_dir="my_code_dir",
+            handler="app.main",
+        )
+    )
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == EXPECTED_PYFUNCTION_TEMPLATE
 
 
 def test_docker_function(stack: Stack) -> None:
