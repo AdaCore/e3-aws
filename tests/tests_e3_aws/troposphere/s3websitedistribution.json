@@ -309,6 +309,14 @@
         },
         "Type": "AWS::Lambda::Function"
     },
+    "TestS3wDistCacheInvalidationLambdaLogGroup": {
+        "DeletionPolicy": "Retain",
+        "Properties": {
+            "LogGroupName": "/aws/lambda/TestS3wDistCacheInvalidationLambda",
+            "RetentionInDays": 731
+        },
+        "Type": "AWS::Logs::LogGroup"
+    },
     "TestS3wDistInvalidationTopic": {
         "Properties": {
             "TopicName": "test-s3w-dist-invalidation-topic",

@@ -9,7 +9,7 @@ from e3.archive import create_archive
 from e3.fs import sync_tree, rm
 from e3.os.process import Run
 from e3.sys import python_script
-from troposphere import awslambda, GetAtt, Ref, Sub
+from troposphere import awslambda, logs, GetAtt, Ref, Sub
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -43,6 +43,7 @@ class Function(Construct):
         runtime: Optional[str] = None,
         memory_size: Optional[int] = None,
         ephemeral_storage_size: Optional[int] = None,
+        logs_retention_in_days: Optional[int] = 731,
     ):
         """Initialize an AWS lambda function.
 
@@ -62,6 +63,8 @@ class Function(Construct):
         :param ephemeral_storage_size: The size of the function’s /tmp directory
             in MB. The default value is 512, but can be any whole number between
             512 and 10240 MB
+        :param logs_retention_in_days: The number of days to retain the log events
+            in the lambda log group
         """
         self.name = name
         self.description = description
@@ -75,6 +78,7 @@ class Function(Construct):
         self.handler = handler
         self.memory_size = memory_size
         self.ephemeral_storage_size = ephemeral_storage_size
+        self.logs_retention_in_days = logs_retention_in_days
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         statements = [
@@ -179,7 +183,20 @@ class Function(Construct):
                 Size=self.ephemeral_storage_size
             )
 
-        return [awslambda.Function(name_to_id(self.name), **params)]
+        result = [awslambda.Function(name_to_id(self.name), **params)]
+        # If retention duration is given provide a log group.
+        # If not provided the lambda creates a log group with
+        # infinite retention.
+        if self.logs_retention_in_days is not None:
+            log_group = logs.LogGroup(
+                name_to_id(f"{self.name}LogGroup"),
+                DeletionPolicy="Retain",
+                LogGroupName=f"/aws/lambda/{self.name}",
+                RetentionInDays=self.logs_retention_in_days,
+            )
+            result.append(log_group)
+
+        return result
 
     @staticmethod
     def lambda_log_group(lambda_name: str) -> Sub:
@@ -294,8 +311,8 @@ class DockerFunction(Function):
         return self.lambda_resources(image_uri=self.image_uri)
 
 
-class Py38Function(Function):
-    """Lambda using the Python 3.8 runtime."""
+class PyFunction(Function):
+    """Lambda with a Python runtime."""
 
     def __init__(
         self,
@@ -304,19 +321,22 @@ class Py38Function(Function):
         role: str | GetAtt | Role,
         code_dir: str,
         handler: str,
+        runtime: str,
         requirement_file: Optional[str] = None,
         code_version: Optional[int] = None,
         timeout: int = 3,
         memory_size: Optional[int] = None,
         ephemeral_storage_size: Optional[int] = None,
+        logs_retention_in_days: Optional[int] = 731,
     ):
-        """Initialize an AWS lambda function using Python 3.8 runtime.
+        """Initialize an AWS lambda function with a Python runtime.
 
         :param name: function name
         :param description: a description of the function
         :param role: role to be asssumed during lambda execution
         :param code_dir: directory containing the python code
         :param handler: name of the function to be invoked on lambda execution
+        :param runtime: lambda runtime. It must be a Python runtime.
         :param requirement_file: requirement file for the application code.
             Required packages are automatically fetched (works only from linux)
             and packaged along with the lambda code
@@ -327,7 +347,10 @@ class Py38Function(Function):
         :param ephemeral_storage_size: The size of the function’s /tmp directory
             in MB. The default value is 512, but can be any whole number between
             512 and 10240 MB
+        :param logs_retention_in_days: The number of days to retain the log events
+            in the lambda log group
         """
+        assert runtime.startswith("python"), "PyFunction only accept Python runtimes"
         super().__init__(
             name=name,
             description=description,
@@ -337,9 +360,10 @@ class Py38Function(Function):
             handler=handler,
             code_version=code_version,
             timeout=timeout,
-            runtime="python3.8",
+            runtime=runtime,
             memory_size=memory_size,
             ephemeral_storage_size=ephemeral_storage_size,
+            logs_retention_in_days=logs_retention_in_days,
         )
         self.code_dir = code_dir
         self.requirement_file = requirement_file
@@ -387,3 +411,40 @@ class Py38Function(Function):
 
         # Remove temporary directory
         rm(package_dir, recursive=True)
+
+
+class Py38Function(PyFunction):
+    """Lambda using the Python 3.8 runtime."""
+
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        role: str | GetAtt | Role,
+        code_dir: str,
+        handler: str,
+        requirement_file: Optional[str] = None,
+        code_version: Optional[int] = None,
+        timeout: int = 3,
+        memory_size: Optional[int] = None,
+        ephemeral_storage_size: Optional[int] = None,
+        logs_retention_in_days: Optional[int] = None,
+    ):
+        """Initialize an AWS lambda function using Python 3.8 runtime.
+
+        See PyFunction for params description.
+        """
+        super().__init__(
+            name=name,
+            description=description,
+            role=role,
+            code_dir=code_dir,
+            handler=handler,
+            requirement_file=requirement_file,
+            code_version=code_version,
+            timeout=timeout,
+            runtime="python3.8",
+            memory_size=memory_size,
+            ephemeral_storage_size=ephemeral_storage_size,
+            logs_retention_in_days=logs_retention_in_days,
+        )
