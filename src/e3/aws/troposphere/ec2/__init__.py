@@ -45,7 +45,7 @@ class InternetGateway(Construct):
         self.add_route_table_to_stack = route_table is None
 
     @property
-    def route_table(self):
+    def route_table(self) -> ec2.RouteTable:
         """Return route table to which the route to IGW is added."""
         if self._route_table is None:
             self._route_table = ec2.RouteTable(
@@ -238,9 +238,9 @@ class VPCEndpointsSubnet(Construct):
 class Subnet(Construct):
     """Subnet Construct.
 
-    Provide a subnet and associated route table. Add optional internet gateway
-    and NAT gateway if needed to make this subnet public or add an optional route
-    to a NAT gateway for a private subnet.
+    Add a NAT gateway if needed if the subnet is public (i.e a route_table to an
+    internet gateway must be provided). For a private subnet a route to a NAT
+    gateway can be created.
     """
 
     def __init__(
@@ -248,28 +248,39 @@ class Subnet(Construct):
         name: str,
         vpc: ec2.VPC,
         cidr_block: str,
-        is_public: bool = False,
+        availability_zone: str,
+        internet_gateway: Optional[InternetGateway] = None,
         use_nat: bool = False,
         nat_to: Optional[ec2.NatGateway] = None,
     ):
         """Initialize Subnet construct.
 
         :param name: name of the Subnet
-        :param cidr_block: address range of the subnet. Should be a subnet
-            of the vpc address range (no check done).
-        :param is_public: if True create a public subnet. This means that
-            a route is created automatically to the vpc internet gateway.
-        :param use_nat: f True and is_public is True, then add a NAT
-            gateway that can be reused by private subnets.
-        :param nat_to: if is_public is False and nat_to is not None,
-            then create a route to the NAT gateway.
+        :param vpc: vpc in which to create the subnet
+        :param cidr_block: address range of the subnet. Should be a subnet of the
+            vpc address range (no check done).
+        :param availability_zone: the availability zone of the subnet
+        :param internet_gateway: Internet Gateway to route traffic to. It has to
+            be provided for a public subnet. if provided the route table associated
+            with the internet gateway will be associated to the subnet.
+        :param use_nat: if True then add a NAT gateway that can be used by
+            private subnets. To do so the subnet must be public i.e internet_gateway
+            must be provided.
+        :param nat_to: if is_public is False and nat_to is not None, then create
+            a route to the NAT gateway.
         """
         self.name = name
         self.cidr_block = cidr_block
         self.vpc = vpc
-        self.is_public = is_public
+        self.availability_zone = availability_zone
+        self.internet_gateway = internet_gateway
         self.use_nat = use_nat
         self.nat_to = nat_to
+
+        if use_nat:
+            assert (
+                internet_gateway is not None
+            ), "a NAT Gateway can only be added to a public subnet"
 
         self._subnet: Optional[ec2.Subnet] = None
         self._route_table: Optional[ec2.RouteTable] = None
@@ -285,6 +296,7 @@ class Subnet(Construct):
                 VpcId=Ref(self.vpc),
                 CidrBlock=self.cidr_block,
                 Tags=Tags({"Name": self.name}),
+                AvailabilityZone=self.availability_zone,
             )
         return self._subnet
 
@@ -292,9 +304,14 @@ class Subnet(Construct):
     def route_table(self) -> ec2.RouteTable:
         """Return a route table for this subnet."""
         if self._route_table is None:
-            self._route_table = ec2.RouteTable(
-                name_to_id(f"{self.name}RouteTable"), VpcId=Ref(self.vpc)
-            )
+            if self.internet_gateway:
+                # By default only one route table is used to route traffic
+                # from public subnets to the Internet Gateway.
+                self._route_table = self.internet_gateway.route_table
+            else:
+                self._route_table = ec2.RouteTable(
+                    name_to_id(f"{self.name}RouteTable"), VpcId=Ref(self.vpc)
+                )
         return self._route_table
 
     @property
@@ -310,7 +327,7 @@ class Subnet(Construct):
     def nat_eip(self) -> Optional[ec2.EIP]:
         """Return an elastic IP for the NAT gateway."""
         if self.use_nat and self._nat_eip is None:
-            self._nat_eip = ec2.EIP(name_to_id(f"{self.name}-eip"))
+            self._nat_eip = ec2.EIP(name_to_id(f"{self.name}EIP"))
         return self._nat_eip
 
     @property
@@ -318,7 +335,7 @@ class Subnet(Construct):
         """Return a NAT gateway for this subnet."""
         if self.use_nat and self._nat_gateway is None:
             self._nat_gateway = ec2.NatGateway(
-                name_to_id(f"{self.name}-nat"),
+                name_to_id(f"{self.name}NAT"),
                 AllocationId=GetAtt(self.nat_eip, "AllocationId"),
                 SubnetId=Ref(self.subnet),
             )
@@ -326,20 +343,17 @@ class Subnet(Construct):
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return resources associated with the Subnet construct."""
-        result = [self.subnet, self.route_table, self.route_table_assoc]
-        if self.is_public:
-            result.extend(
-                InternetGateway(
-                    name_prefix=self.name, vpc=self.vpc, route_table=self.route_table
-                ).resources(stack)
-            )
-            if self.use_nat:
-                result.extend([self.nat_gateway, self.nat_eip])
+        result = [self.subnet, self.route_table_assoc]
+
+        if not self.internet_gateway:
+            result.append(self.route_table)
+        if self.use_nat:
+            result.extend([self.nat_gateway, self.nat_eip])
 
         if self.nat_to:
             result.append(
                 ec2.Route(
-                    name_to_id(f"{self.name}-nat-route"),
+                    name_to_id(f"{self.name}NATRoute"),
                     RouteTableId=Ref(self.route_table),
                     DestinationCidrBlock="0.0.0.0/0",
                     NatGatewayId=Ref(self.nat_to),
@@ -353,20 +367,26 @@ class VPC(Construct):
     """VPC Construct.
 
     Provide a VPC with:
-    * a private subnet which can have a NAT Gatway an optional public subnet.
-    * a endpoints subnet with VPC endpoints configured according to arguments.
-    * an optional s3 endpoint
+    * a primary and an optional secondary public subnets
+    * an optional private subnet which can have a route to the NAT Gateway of
+      the primary public subnets
+    * a endpoints subnet with VPC endpoints configured according to arguments
+    * an optional s3 endpoint for the private subnet or the primary public subnet
+      if there is no private subnet or NAT configured
     """
 
     def __init__(
         self,
         name: str,
-        region: str,
+        region: str = "eu-west-1",
         cidr_block: str = "10.10.0.0/16",
-        private_subnet_cidr_block: str = "10.10.0.0/17",
-        public_subnet_cidr_block: str = "10.10.128.0/18",
+        private_subnet_cidr_block: Optional[str] = "10.10.0.0/17",
+        private_subnet_az: str = "eu-west-1a",
+        public_subnet_cidr_block: str = "10.10.64.0/18",
+        public_subnet_az: str = "eu-west-1a",
+        secondary_public_subnet_cidr_block: Optional[str] = "10.10.128.0/18",
+        secondary_public_subnet_az: str = "eu-west-1b",
         vpc_endpoints_subnet_cidr_block: str = "10.10.192.0/18",
-        internet_gateway: bool = False,
         nat_gateway: bool = False,
         s3_endpoint_policy_document: Optional[PolicyDocument] = None,
         interface_endpoints: Optional[
@@ -380,12 +400,13 @@ class VPC(Construct):
         :param region: region where to deploy the VPC
         :param cidr_block: the primary IPv4 CIDR block for the VPC
         :param private_subnet_cidr_block: The IPv4 CIDR block assigned to the
-            private subnet
+            private subnet. If None no private subnet is created.
         :param public_subnet_cidr_block: The IPv4 CIDR block assigned to the
             public subnet
+        :param secondary_public_subnet_cidr_block: The IPv4 CIDR block for an
+            optional secondary public subnet
         :param vpc_endpoint_cidr_block: The IPv4 CIDR block assigned to the VPC
             endpoints subnet
-        :param internet_gateway: set it to True to add an InternetGateway to this VPC
         :param nat_gateway: set it to True to add a NatGateway.
         :param s3_endpoint_policy_document: policy for s3 endpoint. If none is
             given no s3 endpoint is created.
@@ -396,9 +417,6 @@ class VPC(Construct):
         self.name = name
         self.region = region
         self.cidr_block = cidr_block
-        self.public_subnet_cidr_block = public_subnet_cidr_block
-        self.private_subnet_cidr_block = private_subnet_cidr_block
-        self.internet_gateway = internet_gateway
         self.nat_gateway = nat_gateway
         self.vpc_endpoints_subnet_cidr_block = vpc_endpoints_subnet_cidr_block
         self.s3_endpoint_policy_document = s3_endpoint_policy_document
@@ -409,15 +427,60 @@ class VPC(Construct):
         else:
             self.tags = {}
 
-        self._vpc: Optional[ec2.VPC] = None
-        self._private_subnet: Optional[ec2.Subnet] = None
-        self._public_subnet: Optional[ec2.Subnet] = None
-        self._security_group: Optional[ec2.SecurityGroup] = None
-        self._main_route_table: Optional[ec2.RouteTable] = None
-        self._public_route_table: Optional[ec2.RouteTable] = None
+        # Add a VPC and associate an InternetGateway to it.
+        # Traffic is routed from public subnets to the InternetGateway
+        # thought a route table that is associated to all public subnets
+        self.vpc = ec2.VPC(
+            name_to_id(self.name),
+            CidrBlock=self.cidr_block,
+            EnableDnsHostnames="true",
+            EnableDnsSupport="true",
+            Tags=Tags({"Name": self.name, **self.tags}),
+        )
+        self.public_subnets_route_table = ec2.RouteTable(
+            name_to_id(f"{self.name}PublicSubnetsRouteTable"), VpcId=Ref(self.vpc)
+        )
+        self.internet_gateway = InternetGateway(
+            name_prefix=self.name,
+            vpc=self.vpc,
+            route_table=self.public_subnets_route_table,
+        )
 
+        # Add public subnets
+        self.public_subnet = Subnet(
+            name=f"{self.name}PublicSubnet",
+            vpc=self.vpc,
+            cidr_block=public_subnet_cidr_block,
+            internet_gateway=self.internet_gateway,
+            use_nat=True,
+            availability_zone=public_subnet_az,
+        )
+        self.secondary_public_subnet: Optional[Subnet] = None
+        if secondary_public_subnet_cidr_block:
+            self.secondary_public_subnet = Subnet(
+                name=f"{self.name}SecondaryPublicSubnet",
+                vpc=self.vpc,
+                cidr_block=secondary_public_subnet_cidr_block,
+                internet_gateway=self.internet_gateway,
+                availability_zone=secondary_public_subnet_az,
+            )
+
+        # Add a private subnet if requested and route outgoing traffic to the
+        # primary public subnet NAT Gateway
+        self.private_subnet: Optional[Subnet] = None
+        if private_subnet_cidr_block:
+            self.private_subnet = Subnet(
+                name=f"{self.name}PrivateSubnet",
+                vpc=self.vpc,
+                cidr_block=private_subnet_cidr_block,
+                nat_to=self.public_subnet.nat_gateway,
+                availability_zone=private_subnet_az,
+            )
+        else:
+            self.private_subnet = None
+        self._security_group: Optional[ec2.SecurityGroup] = None
         self.vpc_endpoints_subnet = VPCEndpointsSubnet(
-            name=f"{self.name}-vpc-endpoints-subnet",
+            name=f"{self.name}VPCEndpointsSubnet",
             region=region,
             cidr_block=vpc_endpoints_subnet_cidr_block,
             vpc=self.vpc,
@@ -426,54 +489,16 @@ class VPC(Construct):
         )
 
     @property
-    def vpc(self) -> ec2.VPC:
-        """Return the VPC."""
-        if self._vpc is None:
-            self._vpc = ec2.VPC(
-                name_to_id(self.name),
-                CidrBlock=self.cidr_block,
-                EnableDnsHostnames="true",
-                EnableDnsSupport="true",
-                Tags=Tags({"Name": self.name, **self.tags}),
-            )
-        return self._vpc
-
-    @property
     def main_subnet(self) -> ec2.Subnet:
         """Return the subnet where instances/task that access Internet should run.
 
         If there is no NAT gateway, instances/tasks should be run in the public
         subnet to have an Internet Access.
         """
-        if self.nat_gateway:
+        if self.private_subnet and self.nat_gateway:
             return self.private_subnet.subnet
         else:
             return self.public_subnet.subnet
-
-    @property
-    def private_subnet(self) -> Subnet:
-        """Return a private subnet for the VPC."""
-        if self._private_subnet is None:
-            self._private_subnet = Subnet(
-                name=f"{self.name}PrivateSubnet",
-                vpc=self.vpc,
-                cidr_block=self.private_subnet_cidr_block,
-                nat_to=self.public_subnet.nat_gateway,
-            )
-        return self._private_subnet
-
-    @property
-    def public_subnet(self) -> Subnet:
-        """Return a public subnet for the VPC."""
-        if self._public_subnet is None:
-            self._public_subnet = Subnet(
-                name=f"{self.name}PublicSubnet",
-                vpc=self.vpc,
-                cidr_block=self.public_subnet_cidr_block,
-                is_public=True,
-                use_nat=True,
-            )
-        return self._public_subnet
 
     # Security groups and traffic control
     @property
@@ -497,6 +522,7 @@ class VPC(Construct):
         return ec2.SecurityGroupEgress(
             name_to_id(f"{self.name}EndpointsEgress"),
             DestinationSecurityGroupId=Ref(self.vpc_endpoints_subnet.security_group),
+            Description="Allows traffic to the subnet holding VPC interface endpoints",
             FromPort="443",
             ToPort="443",
             IpProtocol="tcp",
@@ -504,55 +530,67 @@ class VPC(Construct):
         )
 
     @property
-    def s3_egress_rule(self) -> ec2.SecurityGroupEgress:
-        """Return security group egress rule allowing S3 traffic."""
-        return ec2.SecurityGroupEgress(
-            name_to_id(f"{self.name}S3Egress"),
-            DestinationPrefixListId="pl-6da54004",
-            FromPort="443",
-            ToPort="443",
-            IpProtocol="tcp",
-            GroupId=Ref(self.security_group),
-        )
+    def s3_egress_rule(self) -> Optional[ec2.SecurityGroupEgress]:
+        """Return security group egress rule allowing outgoing S3 traffic."""
+        if self.s3_endpoint_policy_document:
+            return ec2.SecurityGroupEgress(
+                name_to_id(f"{self.name}S3Egress"),
+                Description="Allows traffic though S3 VPC endpoint",
+                DestinationPrefixListId="pl-6da54004",
+                FromPort="443",
+                ToPort="443",
+                IpProtocol="tcp",
+                GroupId=Ref(self.security_group),
+            )
+        else:
+            return None
 
     @property
     def s3_route_table(self) -> ec2.RouteTable:
         """Return the route table for the s3 endpoint.
 
-        Plug it to the route_table of the subnet where instances/tasks are running
+        Plug it to the route_table of the subnet where instances/tasks should be running
         """
-        if self.nat_gateway:
+        if self.nat_gateway and self.private_subnet:
             return self.private_subnet.route_table
         else:
             return self.public_subnet.route_table
 
     @property
-    def s3_vpc_endpoint(self) -> ec2.VPCEndPoint:
+    def s3_vpc_endpoint(self) -> Optional[ec2.VPCEndPoint]:
         """Return S3 VPC Endpoint.
 
-        Note that is endpoint is also needed when using ECR as ECR stores
+        Note that this endpoint is also needed when using ECR as ECR stores
         images on S3.
         """
-        assert self.s3_endpoint_policy_document is not None
-        return ec2.VPCEndpoint(
-            name_to_id(f"{self.name}S3Endpoint"),
-            PolicyDocument=self.s3_endpoint_policy_document.as_dict,
-            RouteTableIds=[Ref(self.s3_route_table)],
-            ServiceName=f"com.amazonaws.{self.region}.s3",
-            VpcEndpointType="Gateway",
-            VpcId=Ref(self.vpc),
-        )
+        if self.s3_endpoint_policy_document:
+            return ec2.VPCEndpoint(
+                name_to_id(f"{self.name}S3Endpoint"),
+                PolicyDocument=self.s3_endpoint_policy_document.as_dict,
+                RouteTableIds=[Ref(self.s3_route_table)],
+                ServiceName=f"com.amazonaws.{self.region}.s3",
+                VpcEndpointType="Gateway",
+                VpcId=Ref(self.vpc),
+            )
+        else:
+            return None
 
     def resources(self, stack: Stack) -> list[AWSObject]:
-        """Build and return VPC resources."""
-        result = []
-        result.extend([self.vpc, self.security_group, self.endpoints_egress_rule])
-        result.extend(self.private_subnet.resources(stack))
-        result.extend(self.public_subnet.resources(stack))
-
-        if self.s3_endpoint_policy_document:
-            result.extend([self.s3_vpc_endpoint, self.s3_egress_rule])
-
-        result.extend(self.vpc_endpoints_subnet.resources(stack))
-
-        return result
+        """Return VPC Construct resources."""
+        return [
+            el
+            for el in (
+                self.vpc,
+                self.security_group,
+                self.private_subnet,
+                self.public_subnet,
+                self.public_subnets_route_table,
+                self.secondary_public_subnet,
+                self.internet_gateway,
+                self.vpc_endpoints_subnet,
+                self.endpoints_egress_rule,
+                self.s3_vpc_endpoint,
+                self.s3_egress_rule,
+            )
+            if el is not None
+        ]

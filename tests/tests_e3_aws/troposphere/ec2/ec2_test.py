@@ -62,7 +62,6 @@ def test_vpc(stack: Stack) -> None:
         VPC(
             name="TestVPC",
             region="eu-west-1",
-            internet_gateway=True,
             nat_gateway=True,
             s3_endpoint_policy_document=s3_endpoint_pd,
             interface_endpoints=[
