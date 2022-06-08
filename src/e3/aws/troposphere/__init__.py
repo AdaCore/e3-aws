@@ -20,7 +20,7 @@ class Construct(ABC):
     """
 
     @abstractmethod
-    def resources(self, stack: Stack) -> list[AWSObject]:
+    def resources(self, stack: Stack) -> list[Union[AWSObject, Construct]]:
         """Return a list of troposphere AWSObject.
 
         Objects returned can be added to a troposphere template with
@@ -104,7 +104,11 @@ class Stack(cfn.Stack):
         resources = []
         for construct in constructs:
             if isinstance(construct, Construct):
-                resources += construct.resources(stack=self)
+                for el in construct.resources(stack=self):
+                    if isinstance(el, Construct):
+                        resources.extend(el.resources(stack=self))
+                    else:
+                        resources.append(el)
             if isinstance(construct, AWSObject):
                 resources.append(construct)
         self.template.add_resource(resources)
