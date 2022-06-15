@@ -42,6 +42,7 @@ EXPECTED_PYFUNCTION_TEMPLATE = {
             "Role": "somearn",
             "Runtime": "python3.9",
             "Timeout": 3,
+            "EphemeralStorage": {"Size": 4096},
         },
         "Type": "AWS::Lambda::Function",
     },
@@ -107,6 +108,7 @@ def test_pyfunction(stack: Stack) -> None:
             runtime="python3.9",
             code_dir="my_code_dir",
             handler="app.main",
+            ephemeral_storage_size=4096,
         )
     )
     print(stack.export()["Resources"])
