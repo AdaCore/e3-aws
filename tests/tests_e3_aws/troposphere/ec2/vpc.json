@@ -35,7 +35,7 @@
             "VpcId": {
                 "Ref": "TestVPC"
             },
-            "CidrBlock": "10.10.0.0/17",
+            "CidrBlock": "10.10.0.0/18",
             "Tags": [
                 {
                     "Key": "Name",
