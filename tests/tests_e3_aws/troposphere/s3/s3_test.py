@@ -3,6 +3,7 @@ import json
 import os
 
 from e3.aws.troposphere.s3.bucket import Bucket, EncryptionAlgorithm
+from e3.aws.troposphere.s3 import BucketWithRoles
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.awslambda import Py38Function
 from e3.aws.troposphere.sns import Topic
@@ -44,6 +45,24 @@ def test_bucket(stack: Stack) -> None:
     stack.add(bucket)
 
     with open(os.path.join(TEST_DIR, "bucket.json")) as fd:
+        expected_template = json.load(fd)
+
+    assert stack.export()["Resources"] == expected_template
+
+
+def test_bucket_with_roles(stack: Stack) -> None:
+    """Test BucketWithRoles."""
+    bucket = BucketWithRoles(
+        name="test-bucket-with-roles",
+        iam_names_prefix="TestBucket",
+        iam_read_root_name="Restore",
+        iam_write_root_name="Push",
+        iam_path="/test/",
+        trusted_accounts=["123456789"],
+    )
+    stack.add(bucket)
+
+    with open(os.path.join(TEST_DIR, "bucket-with-roles.json")) as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
