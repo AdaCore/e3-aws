@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import abc
 from email.mime.multipart import MIMEMultipart
 from email.contentmanager import raw_data_manager
 from email.message import EmailMessage
@@ -303,7 +302,7 @@ class NetworkInterface(Resource):
         return result
 
 
-class TemplateOrInstance(Resource, metaclass=abc.ABCMeta):
+class TemplateOrInstance(Resource):
     def set_instance_profile(self, profile):
         self.instance_profile = profile
 

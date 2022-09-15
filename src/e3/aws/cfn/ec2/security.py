@@ -1,5 +1,4 @@
 from __future__ import annotations
-import abc
 from typing import TYPE_CHECKING
 from e3.aws.cfn import AWSType, GetAtt, Resource
 from e3.aws.cfn.ec2 import VPC
@@ -8,7 +7,7 @@ if TYPE_CHECKING:
     from typing import Any, Optional
 
 
-class GroupSecurityRule(metaclass=abc.ABCMeta):
+class GroupSecurityRule:
     """Security rule for EC2 Security groups."""
 
     RULE_TYPE: Optional[str] = None
@@ -82,11 +81,11 @@ class GroupSecurityRule(metaclass=abc.ABCMeta):
         return result
 
 
-class EgressRule(GroupSecurityRule, metaclass=abc.ABCMeta):
+class EgressRule(GroupSecurityRule):
     pass
 
 
-class IngressRule(GroupSecurityRule, metaclass=abc.ABCMeta):
+class IngressRule(GroupSecurityRule):
     pass
 
 
