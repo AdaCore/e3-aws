@@ -32,6 +32,8 @@ class Role(Construct):
     :param path: The path to the role.
     :param boundary: The ARN of the policy used to set the permissions boundary
         for the role.
+    :param condition: condition contains statements that define the circumstances
+        under which role the is created.
     """
 
     name: str
@@ -42,6 +44,7 @@ class Role(Construct):
     tags: dict[str, str] = field(default_factory=lambda: {})
     path: str = "/"
     boundary: Optional[str] = None
+    condition: Optional[dict[str, dict]] = None
 
     @property
     def trust_policy(self) -> PolicyDocument:
@@ -70,6 +73,7 @@ class Role(Construct):
             "Tags": Tags({"Name": self.name, **self.tags}),
             "Path": self.path,
             "PermissionsBoundary": self.boundary,
+            "Condition": self.condition,
         }.items():
             if val is not None:
                 attr[key] = val
