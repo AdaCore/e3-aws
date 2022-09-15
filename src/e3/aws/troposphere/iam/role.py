@@ -29,6 +29,9 @@ class Role(Construct):
     :param max_session_duration: the maximum session duration (in seconds) that
         you want to set for the specified role. default is one hour
     :param tags: a list of tags that are attached to the specified role
+    :param path: The path to the role.
+    :param boundary: The ARN of the policy used to set the permissions boundary
+        for the role.
     """
 
     name: str
