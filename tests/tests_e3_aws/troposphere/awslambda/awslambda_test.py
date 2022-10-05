@@ -42,6 +42,9 @@ EXPECTED_PYFUNCTION_TEMPLATE = {
             "Role": "somearn",
             "Runtime": "python3.9",
             "Timeout": 3,
+            "Environment": {
+                "Variables": {"env_key_1": "env_value_1", "env_key_2": "env_value2"}
+            },
         },
         "Type": "AWS::Lambda::Function",
     },
@@ -107,6 +110,7 @@ def test_pyfunction(stack: Stack) -> None:
             runtime="python3.9",
             code_dir="my_code_dir",
             handler="app.main",
+            environment={"env_key_1": "env_value_1", "env_key_2": "env_value2"},
         )
     )
     print(stack.export()["Resources"])
