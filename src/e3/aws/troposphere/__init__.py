@@ -62,6 +62,7 @@ class Stack(cfn.Stack):
         dry_run: Optional[bool] = False,
         s3_bucket: Optional[str] = None,
         s3_key: Optional[str] = None,
+        version: Optional[str] = None,
     ) -> None:
         """Initialize Stack attributes.
 
@@ -73,6 +74,7 @@ class Stack(cfn.Stack):
         :param description: a description of the stack
         :param s3_bucket: s3 bucket used to store data needed by the stack
         :param s3_key: s3 prefix in s3_bucket in which data is stored
+        :param version: template format version
         """
         super().__init__(
             stack_name,
@@ -85,6 +87,7 @@ class Stack(cfn.Stack):
 
         self.deploy_session = deploy_session
         self.dry_run = dry_run
+        self.version = version
         self.template = Template()
 
     def construct_to_objects(self, construct: Construct | AWSObject) -> list[AWSObject]:
@@ -157,6 +160,9 @@ class Stack(cfn.Stack):
         :return: a dict that can be serialized as YAML to produce a template
         """
         result = self.template.to_dict()
+        result["AWSTemplateFormatVersion"] = (
+            "2010-09-09" if self.version is None else self.version
+        )
         if self.description is not None:
             result["Description"] = self.description
         return result
