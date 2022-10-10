@@ -167,13 +167,19 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         if self.data_dir is not None:
             sync_tree(self.data_dir, root_dir)
 
-    def execute_for_stack(self, stack: Stack) -> int:
+    def execute_for_stack(self, stack: Stack, aws_env: Optional[Session] = None) -> int:
         """Execute application for a given stack and return exit status.
 
         :param Stack: the stack on which the application executes
+        :param aws_env: custom AWS session to use
         """
         assert self.args is not None
         try:
+            if self.args.command != "show":
+                self.start_session(
+                    profile=self.args.profile, region=self.args.region, aws_env=aws_env
+                )
+
             if self.args.command in ("push", "update"):
 
                 # Synchronize resources to the S3 bucket
@@ -310,32 +316,18 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         """
         super(CFNMain, self).parse_args(args, known_args_only)
         assert self.args is not None
-        if aws_env is not None:
-            self.aws_env = aws_env
-        else:
-
-            if self.assume_role:
-                main_session = Session(regions=self.regions, profile=self.args.profile)
-                self.aws_env = main_session.assume_role(
-                    self.assume_role[0], self.assume_role[1]
-                )
-                # ??? needed since we still use a global variable for AWSEnv
-                Env().aws_env = self.aws_env
-            else:
-                self.aws_env = AWSEnv(regions=self.regions, profile=self.args.profile)
-            self.aws_env.default_region = self.args.region
 
         return_val = 0
         stacks = self.create_stack()
 
         if isinstance(stacks, list):
             for stack in stacks:
-                return_val = self.execute_for_stack(stack)
+                return_val = self.execute_for_stack(stack, aws_env=aws_env)
                 # Stop at first failure
                 if return_val:
                     return return_val
         else:
-            return_val = self.execute_for_stack(stacks)
+            return_val = self.execute_for_stack(stacks, aws_env=aws_env)
 
         return return_val
 
@@ -356,3 +348,32 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         :rtype: str
         """
         return None
+
+    def start_session(
+        self,
+        profile: Optional[str] = None,
+        region: Optional[str] = None,
+        aws_env: Optional[Session] = None,
+    ) -> None:
+        """Start the AWS session.
+
+        If an assume_role was passed in the constructor, then it will try
+        to assume the role.
+
+        :param profile: AWS profile for the session
+        :param region: region for the session
+        :param aws_env: custom AWS session to use
+        """
+        if aws_env is not None:
+            self.aws_env = aws_env
+        else:
+            if self.assume_role:
+                main_session = Session(regions=self.regions, profile=profile)
+                self.aws_env = main_session.assume_role(
+                    self.assume_role[0], self.assume_role[1]
+                )
+                # ??? needed since we still use a global variable for AWSEnv
+                Env().aws_env = self.aws_env
+            else:
+                self.aws_env = AWSEnv(regions=self.regions, profile=profile)
+            self.aws_env.default_region = self.regions[0] if region is None else region
