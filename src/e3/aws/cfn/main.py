@@ -28,7 +28,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
     def __init__(
         self,
         regions: list[str],
-        default_profile: str = "default",
+        default_profile: Optional[str] = None,
         data_dir: Optional[str] = None,
         s3_bucket: Optional[str] = None,
         s3_key: str = "",
@@ -53,7 +53,9 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         super(CFNMain, self).__init__(platform_args=False)
         self.argument_parser.add_argument(
             "--profile",
-            help="choose AWS profile, default is {}".format(default_profile),
+            help="choose AWS profile{}".format(
+                "" if default_profile is None else f", default is {default_profile}"
+            ),
             default=default_profile,
         )
 
