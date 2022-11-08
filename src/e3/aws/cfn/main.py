@@ -98,6 +98,13 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             dest="wait_stack_creation",
             help="do not wait for stack update completion",
         )
+        update_args.add_argument(
+            "-y",
+            "--yes",
+            action="store_true",
+            dest="skip_prompts",
+            help="automatic yes to prompts",
+        )
         update_args.set_defaults(command="update")
 
         show_args = subs.add_parser("show", help="show the changeset content")
@@ -168,6 +175,18 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         """
         if self.data_dir is not None:
             sync_tree(self.data_dir, root_dir)
+
+    def _prompt_yes(self, msg: str) -> bool:
+        """Prompt user for yes or no answer.
+
+        :param msg: short question to ask user
+        :return: if user answered yes
+        """
+        if self.args.skip_prompts:
+            return True
+
+        ask = input(f"{msg} (y/N): ")
+        return ask[0] in "Yy"
 
     def execute_for_stack(self, stack: Stack, aws_env: Optional[Session] = None) -> int:
         """Execute application for a given stack and return exit status.
@@ -265,13 +284,13 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                                 el["ResourceChange"].get("Replacement", "n/a"),
                             )
 
-                        if self.args.apply_changeset:
-                            ask = input("Apply change (y/N): ")
-                            if ask[0] in "Yy":
-                                stack.execute_change_set(
-                                    changeset_name=changeset_name,
-                                    wait=self.args.wait_stack_creation,
-                                )
+                        if self.args.apply_changeset and self._prompt_yes(
+                            "Apply change"
+                        ):
+                            stack.execute_change_set(
+                                changeset_name=changeset_name,
+                                wait=self.args.wait_stack_creation,
+                            )
                         return 0
                 else:
                     logging.info("Create new stack")
