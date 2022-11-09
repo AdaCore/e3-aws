@@ -3,12 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 import logging
 import os
+import sys
 from typing import TYPE_CHECKING
 
 from e3.archive import create_archive
 from e3.fs import sync_tree, rm
 from e3.os.process import Run
-from e3.sys import python_script
 from troposphere import awslambda, logs, GetAtt, Ref, Sub
 
 from e3.aws import name_to_id
@@ -402,8 +402,15 @@ class PyFunction(Function):
         # Install the requirements
         if self.requirement_file is not None:
             p = Run(
-                python_script("pip")
-                + ["install", f"--target={package_dir}", "-r", self.requirement_file],
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    f"--target={package_dir}",
+                    "-r",
+                    self.requirement_file,
+                ],
                 output=None,
             )
             assert p.status == 0
