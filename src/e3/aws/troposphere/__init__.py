@@ -39,7 +39,7 @@ class Construct(ABC):
         """
         return PolicyDocument([])
 
-    def create_data_dir(self, root_dir: str) -> None:
+    def create_data_dir(self, root_dir: str) -> None:  # noqa: B027
         """Put data in root_dir before export to S3 bucket referenced by the stack.
 
         :param root_dir: local directory in which data should be stored. Data will
