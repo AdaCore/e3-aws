@@ -341,6 +341,11 @@ class Subnet(Construct):
             )
         return self._nat_gateway
 
+    @property
+    def ID(self) -> Ref:
+        """Return subnet's ID."""
+        return Ref(self.subnet)
+
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return resources associated with the Subnet construct."""
         result = [self.subnet, self.route_table_assoc]
@@ -380,7 +385,7 @@ class VPC(Construct):
         name: str,
         region: str = "eu-west-1",
         cidr_block: str = "10.10.0.0/16",
-        private_subnet_cidr_block: Optional[str] = "10.10.0.0/17",
+        private_subnet_cidr_block: Optional[str] = "10.10.0.0/18",
         private_subnet_az: str = "eu-west-1a",
         public_subnet_cidr_block: str = "10.10.64.0/18",
         public_subnet_az: str = "eu-west-1a",

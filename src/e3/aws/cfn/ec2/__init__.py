@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import abc
 from email.mime.multipart import MIMEMultipart
 from email.contentmanager import raw_data_manager
 from email.message import EmailMessage
@@ -11,6 +10,8 @@ from e3.aws.cfn.iam import PolicyDocument
 from e3.aws.ec2.ami import AMI
 
 if TYPE_CHECKING:
+    from typing import Optional
+
     from e3.aws.cfn.ec2.security import SecurityGroup
 
 CFN_INIT_STARTUP_SCRIPT = """#!/bin/sh
@@ -301,7 +302,7 @@ class NetworkInterface(Resource):
         return result
 
 
-class TemplateOrInstance(Resource, metaclass=abc.ABCMeta):
+class TemplateOrInstance(Resource):
     def set_instance_profile(self, profile):
         self.instance_profile = profile
 
@@ -711,7 +712,7 @@ class VPCInterfaceEndpoint(Resource):
         service: str,
         subnet: Subnet,
         vpc: VPC,
-        policy_document: PolicyDocument,
+        policy_document: Optional[PolicyDocument],
         security_group: SecurityGroup,
     ):
         """Initialize a VPC interface endpoint.
@@ -734,17 +735,21 @@ class VPCInterfaceEndpoint(Resource):
 
     @property
     def properties(self):
-        return {
+        props = {
             "VpcId": self.subnet.vpc.ref,
             "ServiceName": Join(
                 ["com.amazonaws.", Ref("AWS::Region"), "." + self.service]
             ),
-            "PolicyDocument": self.policy_document.properties,
             "PrivateDnsEnabled": "true",
             "VpcEndpointType": "Interface",
             "SubnetIds": [self.subnet.ref],
             "SecurityGroupIds": [self.security_group.group_id],
         }
+
+        if self.policy_document is not None:
+            props["PolicyDocument"] = self.policy_document.properties
+
+        return props
 
 
 class Subnet(Resource):

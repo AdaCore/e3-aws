@@ -1,6 +1,8 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
+from itertools import chain
 from troposphere import AWSObject, Template
+
 from e3.aws import cfn, name_to_id, Session
 from e3.aws.cfn.main import CFNMain
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
@@ -37,7 +39,7 @@ class Construct(ABC):
         """
         return PolicyDocument([])
 
-    def create_data_dir(self, root_dir: str) -> None:
+    def create_data_dir(self, root_dir: str) -> None:  # noqa: B027
         """Put data in root_dir before export to S3 bucket referenced by the stack.
 
         :param root_dir: local directory in which data should be stored. Data will
@@ -60,6 +62,7 @@ class Stack(cfn.Stack):
         dry_run: Optional[bool] = False,
         s3_bucket: Optional[str] = None,
         s3_key: Optional[str] = None,
+        version: Optional[str] = None,
     ) -> None:
         """Initialize Stack attributes.
 
@@ -71,6 +74,7 @@ class Stack(cfn.Stack):
         :param description: a description of the stack
         :param s3_bucket: s3 bucket used to store data needed by the stack
         :param s3_key: s3 prefix in s3_bucket in which data is stored
+        :param version: template format version
         """
         super().__init__(
             stack_name,
@@ -83,7 +87,25 @@ class Stack(cfn.Stack):
 
         self.deploy_session = deploy_session
         self.dry_run = dry_run
+        self.version = version
         self.template = Template()
+
+    def construct_to_objects(self, construct: Construct | AWSObject) -> list[AWSObject]:
+        """Return list of AWS objects resources from a construct.
+
+        :param construct: construct to list resources from
+        """
+        if isinstance(construct, AWSObject):
+            return [construct]
+        else:
+            return list(
+                chain.from_iterable(
+                    [
+                        self.construct_to_objects(el)
+                        for el in construct.resources(stack=self)
+                    ]
+                )
+            )
 
     def add(self, element: Union[AWSObject, Construct, Stack]) -> Stack:
         """Add a Construct or AWSObject to the stack.
@@ -103,14 +125,7 @@ class Stack(cfn.Stack):
         # Update the template
         resources = []
         for construct in constructs:
-            if isinstance(construct, Construct):
-                for el in construct.resources(stack=self):
-                    if isinstance(el, Construct):
-                        resources.extend(el.resources(stack=self))
-                    else:
-                        resources.append(el)
-            if isinstance(construct, AWSObject):
-                resources.append(construct)
+            resources.extend(self.construct_to_objects(construct))
         self.template.add_resource(resources)
 
         return self
@@ -145,6 +160,9 @@ class Stack(cfn.Stack):
         :return: a dict that can be serialized as YAML to produce a template
         """
         result = self.template.to_dict()
+        result["AWSTemplateFormatVersion"] = (
+            "2010-09-09" if self.version is None else self.version
+        )
         if self.description is not None:
             result["Description"] = self.description
         return result

@@ -1,5 +1,4 @@
 from __future__ import annotations
-import abc
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -59,7 +58,7 @@ class Principal(object):
         return result
 
 
-class Statement(object, metaclass=abc.ABCMeta):
+class Statement(object):
     """Statement of IAM Policy Document."""
 
     def __init__(

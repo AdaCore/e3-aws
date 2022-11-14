@@ -3,12 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 import logging
 import os
+import sys
 from typing import TYPE_CHECKING
 
 from e3.archive import create_archive
 from e3.fs import sync_tree, rm
 from e3.os.process import Run
-from e3.sys import python_script
 from troposphere import awslambda, logs, GetAtt, Ref, Sub
 
 from e3.aws import name_to_id
@@ -44,6 +44,7 @@ class Function(Construct):
         memory_size: Optional[int] = None,
         ephemeral_storage_size: Optional[int] = None,
         logs_retention_in_days: Optional[int] = 731,
+        environment: dict[str, str] | None = None,
     ):
         """Initialize an AWS lambda function.
 
@@ -65,6 +66,8 @@ class Function(Construct):
             512 and 10240 MB
         :param logs_retention_in_days: The number of days to retain the log events
             in the lambda log group
+        :param environment: Environment variables that are accessible from function
+            code during execution
         """
         self.name = name
         self.description = description
@@ -79,6 +82,7 @@ class Function(Construct):
         self.memory_size = memory_size
         self.ephemeral_storage_size = ephemeral_storage_size
         self.logs_retention_in_days = logs_retention_in_days
+        self.environment = environment
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         statements = [
@@ -182,6 +186,8 @@ class Function(Construct):
             params["EphemeralStorage"] = awslambda.EphemeralStorage(
                 Size=self.ephemeral_storage_size
             )
+        if self.environment is not None:
+            params["Environment"] = awslambda.Environment(Variables=self.environment)
 
         result = [awslambda.Function(name_to_id(self.name), **params)]
         # If retention duration is given provide a log group.
@@ -328,6 +334,7 @@ class PyFunction(Function):
         memory_size: Optional[int] = None,
         ephemeral_storage_size: Optional[int] = None,
         logs_retention_in_days: Optional[int] = 731,
+        environment: dict[str, str] | None = None,
     ):
         """Initialize an AWS lambda function with a Python runtime.
 
@@ -349,6 +356,8 @@ class PyFunction(Function):
             512 and 10240 MB
         :param logs_retention_in_days: The number of days to retain the log events
             in the lambda log group
+        :param environment: Environment variables that are accessible from function
+            code during execution
         """
         assert runtime.startswith("python"), "PyFunction only accept Python runtimes"
         super().__init__(
@@ -364,6 +373,7 @@ class PyFunction(Function):
             memory_size=memory_size,
             ephemeral_storage_size=ephemeral_storage_size,
             logs_retention_in_days=logs_retention_in_days,
+            environment=environment,
         )
         self.code_dir = code_dir
         self.requirement_file = requirement_file
@@ -392,8 +402,15 @@ class PyFunction(Function):
         # Install the requirements
         if self.requirement_file is not None:
             p = Run(
-                python_script("pip")
-                + ["install", f"--target={package_dir}", "-r", self.requirement_file],
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    f"--target={package_dir}",
+                    "-r",
+                    self.requirement_file,
+                ],
                 output=None,
             )
             assert p.status == 0

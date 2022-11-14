@@ -375,6 +375,33 @@ class Fortress(Stack):
         """
         return self[self.name + "VPC"].region
 
+    def add_service_access(
+        self,
+        service_name: str,
+        policy_document: Optional[PolicyDocument] = None,
+        endpoint_name: Optional[str] = None,
+    ) -> None:
+        """Add an interface endpoint for a given service.
+
+        :param service_name: name of the service for which to add an interface endpoint
+        :param policy_document: optional policy to limit resources that are
+            accessibles through the endpoint.
+        :param endpont_name: name of the endpoint
+        """
+        if not endpoint_name:
+            endpoint_name = f"{self.name}{service_name}EndPoint"
+        if endpoint_name not in self:
+            self.add(
+                VPCInterfaceEndpoint(
+                    name=endpoint_name,
+                    service=service_name,
+                    vpc=self.vpc,
+                    subnet=self.aws_endpoints_subnet.subnet,
+                    policy_document=policy_document,
+                    security_group=self.aws_endpoints_security_group,
+                )
+            )
+
     def add_lambda_access(self, lambda_arns):
         """Add a lambda interface endpoint with permissions to invoke given lambdas.
 
@@ -382,18 +409,8 @@ class Fortress(Stack):
         :type lambda_arns: list[str]
         """
         endpoint_name = f"{self.name}LambdaEndPoint"
-        if endpoint_name not in self:
-            self.add(
-                VPCInterfaceEndpoint(
-                    name=endpoint_name,
-                    service="lambda",
-                    vpc=self.vpc,
-                    subnet=self.aws_endpoints_subnet.subnet,
-                    policy_document=PolicyDocument(),
-                    security_group=self.aws_endpoints_security_group,
-                )
-            )
-        self.lambda_endpoint.policy_document.append(
+        pd = PolicyDocument()
+        pd.append(
             Allow(
                 to=["lambda:InvokeFunction"],
                 on=chain.from_iterable(
@@ -401,6 +418,9 @@ class Fortress(Stack):
                 ),
                 apply_to=Principal(PrincipalKind.EVERYONE),
             )
+        )
+        self.add_service_access(
+            service_name="lambda", policy_document=pd, endpoint_name=endpoint_name
         )
 
     def add_secret_access(self, secret_arn):
@@ -410,18 +430,8 @@ class Fortress(Stack):
         :type secret_name: str
         """
         endpoint_name = f"{self.name}SecretsManagerEndPoint"
-        if endpoint_name not in self:
-            self.add(
-                VPCInterfaceEndpoint(
-                    name=endpoint_name,
-                    service="secretsmanager",
-                    vpc=self.vpc,
-                    subnet=self.aws_endpoints_subnet.subnet,
-                    policy_document=PolicyDocument(),
-                    security_group=self.aws_endpoints_security_group,
-                )
-            )
-        self.secretsmanager_endpoint.policy_document.append(
+        pd = PolicyDocument()
+        pd.append(
             Allow(
                 to=[
                     "secretsmanager:GetResourcePolicy",
@@ -432,6 +442,11 @@ class Fortress(Stack):
                 on=[secret_arn],
                 apply_to=Principal(PrincipalKind.EVERYONE),
             )
+        )
+        self.add_service_access(
+            service_name="secretsmanager",
+            policy_document=pd,
+            endpoint_name=endpoint_name,
         )
 
     def add_network_access(

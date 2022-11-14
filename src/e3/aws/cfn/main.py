@@ -28,7 +28,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
     def __init__(
         self,
         regions: list[str],
-        default_profile: str = "default",
+        default_profile: Optional[str] = None,
         data_dir: Optional[str] = None,
         s3_bucket: Optional[str] = None,
         s3_key: str = "",
@@ -53,7 +53,9 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         super(CFNMain, self).__init__(platform_args=False)
         self.argument_parser.add_argument(
             "--profile",
-            help="choose AWS profile, default is {}".format(default_profile),
+            help="choose AWS profile{}".format(
+                "" if default_profile is None else f", default is {default_profile}"
+            ),
             default=default_profile,
         )
 
@@ -95,6 +97,13 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             default=True,
             dest="wait_stack_creation",
             help="do not wait for stack update completion",
+        )
+        update_args.add_argument(
+            "-y",
+            "--yes",
+            action="store_true",
+            dest="skip_prompts",
+            help="automatic yes to prompts",
         )
         update_args.set_defaults(command="update")
 
@@ -167,13 +176,31 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         if self.data_dir is not None:
             sync_tree(self.data_dir, root_dir)
 
-    def execute_for_stack(self, stack: Stack) -> int:
+    def _prompt_yes(self, msg: str) -> bool:
+        """Prompt user for yes or no answer.
+
+        :param msg: short question to ask user
+        :return: if user answered yes
+        """
+        if self.args.skip_prompts:
+            return True
+
+        ask = input(f"{msg} (y/N): ")
+        return ask[0] in "Yy"
+
+    def execute_for_stack(self, stack: Stack, aws_env: Optional[Session] = None) -> int:
         """Execute application for a given stack and return exit status.
 
         :param Stack: the stack on which the application executes
+        :param aws_env: custom AWS session to use
         """
         assert self.args is not None
         try:
+            if self.args.command != "show":
+                self.start_session(
+                    profile=self.args.profile, region=self.args.region, aws_env=aws_env
+                )
+
             if self.args.command in ("push", "update"):
 
                 # Synchronize resources to the S3 bucket
@@ -257,13 +284,13 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                                 el["ResourceChange"].get("Replacement", "n/a"),
                             )
 
-                        if self.args.apply_changeset:
-                            ask = input("Apply change (y/N): ")
-                            if ask[0] in "Yy":
-                                stack.execute_change_set(
-                                    changeset_name=changeset_name,
-                                    wait=self.args.wait_stack_creation,
-                                )
+                        if self.args.apply_changeset and self._prompt_yes(
+                            "Apply change"
+                        ):
+                            stack.execute_change_set(
+                                changeset_name=changeset_name,
+                                wait=self.args.wait_stack_creation,
+                            )
                         return 0
                 else:
                     logging.info("Create new stack")
@@ -310,32 +337,18 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         """
         super(CFNMain, self).parse_args(args, known_args_only)
         assert self.args is not None
-        if aws_env is not None:
-            self.aws_env = aws_env
-        else:
-
-            if self.assume_role:
-                main_session = Session(regions=self.regions, profile=self.args.profile)
-                self.aws_env = main_session.assume_role(
-                    self.assume_role[0], self.assume_role[1]
-                )
-                # ??? needed since we still use a global variable for AWSEnv
-                Env().aws_env = self.aws_env
-            else:
-                self.aws_env = AWSEnv(regions=self.regions, profile=self.args.profile)
-            self.aws_env.default_region = self.args.region
 
         return_val = 0
         stacks = self.create_stack()
 
         if isinstance(stacks, list):
             for stack in stacks:
-                return_val = self.execute_for_stack(stack)
+                return_val = self.execute_for_stack(stack, aws_env=aws_env)
                 # Stop at first failure
                 if return_val:
                     return return_val
         else:
-            return_val = self.execute_for_stack(stacks)
+            return_val = self.execute_for_stack(stacks, aws_env=aws_env)
 
         return return_val
 
@@ -356,3 +369,32 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         :rtype: str
         """
         return None
+
+    def start_session(
+        self,
+        profile: Optional[str] = None,
+        region: Optional[str] = None,
+        aws_env: Optional[Session] = None,
+    ) -> None:
+        """Start the AWS session.
+
+        If an assume_role was passed in the constructor, then it will try
+        to assume the role.
+
+        :param profile: AWS profile for the session
+        :param region: region for the session
+        :param aws_env: custom AWS session to use
+        """
+        if aws_env is not None:
+            self.aws_env = aws_env
+        else:
+            if self.assume_role:
+                main_session = Session(regions=self.regions, profile=profile)
+                self.aws_env = main_session.assume_role(
+                    self.assume_role[0], self.assume_role[1]
+                )
+                # ??? needed since we still use a global variable for AWSEnv
+                Env().aws_env = self.aws_env
+            else:
+                self.aws_env = AWSEnv(regions=self.regions, profile=profile)
+            self.aws_env.default_region = self.regions[0] if region is None else region
