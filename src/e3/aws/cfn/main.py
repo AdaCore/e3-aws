@@ -182,6 +182,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         :param msg: short question to ask user
         :return: if user answered yes
         """
+        assert self.args is not None
         if self.args.skip_prompts:
             return True
 
