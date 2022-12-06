@@ -292,6 +292,13 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                                 changeset_name=changeset_name,
                                 wait=self.args.wait_stack_creation,
                             )
+
+                            if self.args.wait_stack_creation:
+                                return (
+                                    0
+                                    if stack.state()["StackStatus"] == "UPDATE_COMPLETE"
+                                    else 1
+                                )
                         return 0
                 else:
                     logging.info("Create new stack")
