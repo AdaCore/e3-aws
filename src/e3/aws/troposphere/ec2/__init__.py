@@ -80,7 +80,9 @@ class InternetGateway(Construct):
                         RouteTableId=Ref(self.route_table),
                         SubnetId=Ref(subnet),
                     )
-                    for subnet, num in zip(self.subnets, range(len(self.subnets)))
+                    for subnet, num in zip(  # noqa: B905
+                        self.subnets, range(len(self.subnets))
+                    )
                 ]
             )
 

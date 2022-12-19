@@ -31,7 +31,7 @@ class Secret(Construct):
     def rotation_lambda_policy(self) -> ManagedPolicy:
         """Return policy granting permissions to rotate the secret."""
         return ManagedPolicy(
-            name=f"{self.name}RotationPolicy",
+            name=name_to_id(f"{self.name}RotationPolicy"),
             description="Managed policy granting permissions"
             f"to rotate the {self.name} secret",
             statements=[
