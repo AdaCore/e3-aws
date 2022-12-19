@@ -74,7 +74,7 @@ def test_internet_gateway(stack: Stack, route_table_provided: bool) -> None:
             VpcId=Ref(vpc),
             MapPublicIpOnLaunch="true",
         )
-        for zone, ip in zip(
+        for zone, ip in zip(  # noqa: B905
             ["eu-west-1a", "eu-west-1b"], ["10.0.0.0/20", "10.0.16.0/20"]
         )
     ]
