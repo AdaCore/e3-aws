@@ -65,6 +65,7 @@ class PyFlaskFunction(PyFunction):
         timeout: int = 3,
         memory_size: Optional[int] = None,
         logs_retention_in_days: Optional[int] = 731,
+        reserved_concurrent_executions: Optional[int] = None,
         environment: dict[str, str] | None = None,
     ):
         """Initialize a Flask AWS lambda function using a Python runtime.
@@ -84,6 +85,8 @@ class PyFlaskFunction(PyFunction):
             runtime. The value can be any multiple of 1 MB.
         :param logs_retention_in_days: The number of days to retain the log events
             in the lambda log group
+        :param reserved_concurrent_executions: The number of concurrent executions
+            that are reserved for this function
         :param environment: Environment variables that are accessible from function
             code during execution
         """
@@ -100,6 +103,7 @@ class PyFlaskFunction(PyFunction):
             code_version=code_version,
             timeout=timeout,
             memory_size=memory_size,
+            reserved_concurrent_executions=reserved_concurrent_executions,
             environment=environment,
         )
 
