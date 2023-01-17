@@ -73,6 +73,7 @@ EXPECTED_PYFUNCTION_TEMPLATE = {
             "Timeout": 3,
             "MemorySize": 128,
             "EphemeralStorage": {"Size": 1024},
+            "ReservedConcurrentExecutions": 1,
             "Environment": {
                 "Variables": {"env_key_1": "env_value_1", "env_key_2": "env_value2"}
             },
@@ -182,6 +183,7 @@ def test_pyfunction(stack: Stack) -> None:
             memory_size=128,
             ephemeral_storage_size=1024,
             logs_retention_in_days=7,
+            reserved_concurrent_executions=1,
             environment={"env_key_1": "env_value_1", "env_key_2": "env_value2"},
         )
     )

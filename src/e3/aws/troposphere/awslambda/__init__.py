@@ -44,6 +44,7 @@ class Function(Construct):
         memory_size: Optional[int] = None,
         ephemeral_storage_size: Optional[int] = None,
         logs_retention_in_days: Optional[int] = 731,
+        reserved_concurrent_executions: Optional[int] = None,
         environment: dict[str, str] | None = None,
     ):
         """Initialize an AWS lambda function.
@@ -66,6 +67,8 @@ class Function(Construct):
             512 and 10240 MB
         :param logs_retention_in_days: The number of days to retain the log events
             in the lambda log group
+        :param reserved_concurrent_executions: The number of concurrent executions
+            that are reserved for this function
         :param environment: Environment variables that are accessible from function
             code during execution
         """
@@ -82,6 +85,7 @@ class Function(Construct):
         self.memory_size = memory_size
         self.ephemeral_storage_size = ephemeral_storage_size
         self.logs_retention_in_days = logs_retention_in_days
+        self.reserved_concurrent_executions = reserved_concurrent_executions
         self.environment = environment
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
@@ -188,6 +192,9 @@ class Function(Construct):
             )
         if self.environment is not None:
             params["Environment"] = awslambda.Environment(Variables=self.environment)
+
+        if self.reserved_concurrent_executions is not None:
+            params["ReservedConcurrentExecutions"] = self.reserved_concurrent_executions
 
         result = [awslambda.Function(name_to_id(self.name), **params)]
         # If retention duration is given provide a log group.
@@ -334,6 +341,7 @@ class PyFunction(Function):
         memory_size: Optional[int] = None,
         ephemeral_storage_size: Optional[int] = None,
         logs_retention_in_days: Optional[int] = 731,
+        reserved_concurrent_executions: Optional[int] = None,
         environment: dict[str, str] | None = None,
     ):
         """Initialize an AWS lambda function with a Python runtime.
@@ -356,6 +364,8 @@ class PyFunction(Function):
             512 and 10240 MB
         :param logs_retention_in_days: The number of days to retain the log events
             in the lambda log group
+        :param reserved_concurrent_executions: The number of concurrent executions
+            that are reserved for this function
         :param environment: Environment variables that are accessible from function
             code during execution
         """
@@ -373,6 +383,7 @@ class PyFunction(Function):
             memory_size=memory_size,
             ephemeral_storage_size=ephemeral_storage_size,
             logs_retention_in_days=logs_retention_in_days,
+            reserved_concurrent_executions=reserved_concurrent_executions,
             environment=environment,
         )
         self.code_dir = code_dir
@@ -446,6 +457,7 @@ class Py38Function(PyFunction):
         memory_size: Optional[int] = None,
         ephemeral_storage_size: Optional[int] = None,
         logs_retention_in_days: Optional[int] = None,
+        reserved_concurrent_executions: Optional[int] = None,
     ):
         """Initialize an AWS lambda function using Python 3.8 runtime.
 
@@ -464,4 +476,5 @@ class Py38Function(PyFunction):
             memory_size=memory_size,
             ephemeral_storage_size=ephemeral_storage_size,
             logs_retention_in_days=logs_retention_in_days,
+            reserved_concurrent_executions=reserved_concurrent_executions,
         )
