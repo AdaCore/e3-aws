@@ -8,7 +8,7 @@ from e3.aws.troposphere.iam.policy_statement import Allow
 from troposphere import sns, GetAtt, Ref
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from typing import Optional, Any
     from troposphere import AWSObject
     from e3.aws.troposphere import Stack
     from e3.aws.troposphere.awslambda import Function
@@ -18,14 +18,17 @@ if TYPE_CHECKING:
 class Topic(Construct):
     """A SNS Topic."""
 
-    def __init__(self, name: str):
+    def __init__(self, name: str, kms_master_key_id: Optional[str] = None):
         """Initialize a SNS Topic.
 
         :param name: topic name
+        :param kms_master_key_id: the ID of an AWS managed customer master
+            key (CMK) for Amazon SNS or a custom CMK
         """
         self.name = name
         self.subscriptions: list[sns.Subscription] = []
         self.optional_resources: list[AWSObject] = []
+        self.kms_master_key_id = kms_master_key_id
 
     def add_lambda_subscription(
         self, function: Function, delivery_policy: Optional[dict] = None
@@ -92,11 +95,17 @@ class Topic(Construct):
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Compute AWS resources for the construct."""
+        params: dict[str, Any] = {}
+
+        if self.kms_master_key_id is not None:
+            params["KmsMasterKeyId"] = self.kms_master_key_id
+
         return [
             sns.Topic(
                 name_to_id(self.name),
                 TopicName=self.name,
                 Subscription=self.subscriptions,
+                **params,
             ),
             *self.optional_resources,
         ]
