@@ -356,6 +356,50 @@ def session() -> Callable:
     return decorator
 
 
+def assume_profile_main():
+    """Generate shell commands to set credentials for a profile."""
+    argument_parser = argparse.ArgumentParser()
+    argument_parser.add_argument(
+        "--json", action="store_true", help="Output credentials as JSON"
+    )
+    argument_parser.add_argument("profile")
+    args = argument_parser.parse_args()
+
+    # Frozen credentials returns a tuple so we need to convert it to
+    # the same dict as in assume_role_main
+    var_to_key = {
+        "access_key": "AccessKeyId",
+        "secret_key": "SecretAccessKey",
+        "token": "SessionToken",
+    }
+
+    key_to_envvar = {
+        "AccessKeyId": "AWS_ACCESS_KEY_ID",
+        "SecretAccessKey": "AWS_SECRET_ACCESS_KEY",
+        "SessionToken": "AWS_SESSION_TOKEN",
+    }
+
+    frozen_credentials = (
+        boto3.Session(
+            region_name="eu-west-1",
+            profile_name=args.profile,
+        )
+        .get_credentials()
+        .get_frozen_credentials()
+    )
+
+    credentials = {v: getattr(frozen_credentials, k) for k, v in var_to_key.items()}
+
+    if args.json:
+        print(json.dumps(credentials))
+    else:
+        credentials = {
+            key_to_envvar[k]: v for k, v in credentials.items() if k in key_to_envvar
+        }
+        for k, v in credentials.items():
+            print(f"export {k}={v}")
+
+
 def assume_role_main():
     """Generate shell commands to set credentials for a role."""
     argument_parser = argparse.ArgumentParser()
