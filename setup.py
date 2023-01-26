@@ -26,6 +26,9 @@ setup(
     namespace_packages=["e3"],
     entry_points={
         "e3.event.handler": ["s3-boto3 = e3.aws.handler.s3:S3Handler"],
-        "console_scripts": ["e3-aws-assume-role = e3.aws:assume_role_main"],
+        "console_scripts": [
+            "e3-aws-assume-profile = e3.aws:assume_profile_main",
+            "e3-aws-assume-role = e3.aws:assume_role_main",
+        ],
     },
 )
