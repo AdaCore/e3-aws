@@ -103,6 +103,7 @@ class PyFlaskFunction(PyFunction):
             code_version=code_version,
             timeout=timeout,
             memory_size=memory_size,
+            logs_retention_in_days=logs_retention_in_days,
             reserved_concurrent_executions=reserved_concurrent_executions,
             environment=environment,
         )
@@ -155,4 +156,5 @@ class Py38FlaskFunction(PyFlaskFunction):
             code_version=code_version,
             timeout=timeout,
             memory_size=memory_size,
+            logs_retention_in_days=logs_retention_in_days,
         )
