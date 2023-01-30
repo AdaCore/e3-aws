@@ -91,6 +91,29 @@ def test_create_change_set():
             s.create_change_set("name2", url="noprotocol://nothing")
 
 
+def test_create_change_set_role_arn():
+    s = Stack(name="teststack", cfn_role_arn="arn:aws:iam::123456789012:role/S3Access")
+
+    aws_env = AWSEnv(regions=["us-east-1"])
+    with default_region("us-east-1"):
+        cfn_client = aws_env.client("cloudformation", region="us-east-1")
+
+        stubber = Stubber(cfn_client)
+        stubber.add_response(
+            "create_change_set",
+            {},
+            {
+                "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+                "StackName": "teststack",
+                "ChangeSetName": "name1",
+                "TemplateBody": ANY,
+                "RoleARN": "arn:aws:iam::123456789012:role/S3Access",
+            },
+        )
+        with stubber:
+            s.create_change_set("name1")
+
+
 def test_validate():
     s = Stack(name="teststack")
 

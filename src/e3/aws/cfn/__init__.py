@@ -646,19 +646,24 @@ class Stack(object):
             50Ko.
         :type url: str | None
         """
+        parameters = {
+            "ChangeSetName": name,
+            "StackName": self.name,
+            "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+        }
+
+        if self.cfn_role_arn is not None:
+            parameters["RoleARN"] = self.cfn_role_arn
+
         if url is None:
             return client.create_change_set(
-                ChangeSetName=name,
-                StackName=self.name,
                 TemplateBody=self.body,
-                Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+                **parameters,
             )
         else:
             return client.create_change_set(
-                ChangeSetName=name,
-                StackName=self.name,
                 TemplateURL=url,
-                Capabilities=["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+                **parameters,
             )
 
     @client("cloudformation")
