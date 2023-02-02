@@ -422,9 +422,9 @@ class PyFunction(Function):
                     "-r",
                     self.requirement_file,
                 ],
-                output=None,
             )
-            assert p.status == 0
+            assert p.status == 0, p.out
+            logger.info(p.out)
 
         # Copy user code
         self.populate_package_dir(package_dir=package_dir)
