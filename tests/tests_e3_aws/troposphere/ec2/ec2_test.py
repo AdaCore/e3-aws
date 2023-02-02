@@ -1,11 +1,14 @@
 """Provide ecr construct tests."""
+import json
+import os
+
+from troposphere import ec2, Ref
+
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.ec2 import VPC
 from e3.aws.troposphere.iam.policy_statement import Allow
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 
-import json
-import os
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -58,21 +61,33 @@ def test_vpc(stack: Stack) -> None:
             )
         ]
     )
-    stack.add(
-        VPC(
-            name="TestVPC",
-            region="eu-west-1",
-            nat_gateway=True,
-            s3_endpoint_policy_document=s3_endpoint_pd,
-            interface_endpoints=[
-                ("logs", cloudwatch_endpoint_pd),
-                ("ecr.api", ecr_endpoint_pd),
-                ("ecr.dkr", ecr_endpoint_pd),
-                ("sts", None),
-                ("secretsmanager", sm_endpoint_pd),
-            ],
-        )
+    vpc = VPC(
+        name="TestVPC",
+        region="eu-west-1",
+        nat_gateway=True,
+        s3_endpoint_policy_document=s3_endpoint_pd,
+        interface_endpoints=[
+            ("logs", cloudwatch_endpoint_pd),
+            ("ecr.api", ecr_endpoint_pd),
+            ("ecr.dkr", ecr_endpoint_pd),
+            ("sts", None),
+            ("secretsmanager", sm_endpoint_pd),
+        ],
     )
+    stack.add(vpc)
+
+    # Add a security group with access to VPC endpoints
+    group_name = "SGWithVPCEndpointsAccess"
+    sg = ec2.SecurityGroup(
+        group_name,
+        GroupDescription="Security group for some privileged runners that need "
+        "outbound to the world",
+        GroupName=group_name,
+        SecurityGroupEgress=vpc.egress_to_vpc_endpoints,
+        VpcId=Ref(vpc.vpc),
+    )
+    stack.add(sg)
+
     with open(os.path.join(TEST_DIR, "vpc.json")) as fd:
         expected_template = json.load(fd)
 

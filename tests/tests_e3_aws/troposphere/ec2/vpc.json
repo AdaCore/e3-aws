@@ -476,5 +476,33 @@
             }
         },
         "Type": "AWS::EC2::SecurityGroupEgress"
+    },
+    "SGWithVPCEndpointsAccess": {
+        "Properties": {
+            "GroupDescription": "Security group for some privileged runners that need outbound to the world",
+            "GroupName": "SGWithVPCEndpointsAccess",
+            "SecurityGroupEgress": [
+                {
+                    "DestinationSecurityGroupId": {
+                        "Ref": "TestVPCVPCEndpointsSubnetSecurityGroup"
+                    },
+                    "Description": "Allows traffic to the subnet holding VPC interface endpoints",
+                    "FromPort": "443",
+                    "ToPort": "443",
+                    "IpProtocol": "tcp"
+                },
+                {
+                    "Description": "Allows traffic to S3 VPC endpoint",
+                    "DestinationPrefixListId": "pl-6da54004",
+                    "FromPort": "443",
+                    "ToPort": "443",
+                    "IpProtocol": "tcp"
+                }
+            ],
+            "VpcId": {
+                "Ref": "TestVPC"
+            }
+        },
+        "Type": "AWS::EC2::SecurityGroup"
     }
 }
