@@ -186,7 +186,11 @@ class HttpApi(Construct):
         )
 
     def declare_stage(
-        self, stage_name: str, log_arn: str | GetAtt
+        self,
+        stage_name: str,
+        log_arn: str | GetAtt,
+        *,
+        stage_variables: dict[str, str] | None = None,
     ) -> apigatewayv2.Stage:
         """Declare an API gateway stage.
 
@@ -220,6 +224,11 @@ class HttpApi(Construct):
             ThrottlingRateLimit=self.rate_limit,
         )
 
+        parameters: dict[str, Any] = {}
+
+        if stage_variables is not None:
+            parameters["StageVariables"] = stage_variables
+
         return apigatewayv2.Stage(
             logical_id + name_to_id(stage_name) + "Stage",
             AccessLogSettings=access_log_settings,
@@ -228,6 +237,7 @@ class HttpApi(Construct):
             Description=f"stage {stage_name}",
             DefaultRouteSettings=route_settings,
             StageName=stage_name,
+            **parameters,
         )
 
     def declare_route(self, route: Route, integration: Ref | str) -> list[AWSObject]:
