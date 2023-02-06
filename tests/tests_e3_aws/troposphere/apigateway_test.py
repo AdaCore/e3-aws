@@ -129,6 +129,37 @@ EXPECTED_TEMPLATE = {
     },
 }
 
+EXPECTED_TEMPLATE_STAGE = {
+    **EXPECTED_TEMPLATE,
+    **{
+        "TestapiTestStage": {
+            "Properties": {
+                "AccessLogSettings": {
+                    "DestinationArn": {"Fn::GetAtt": ["TestapiLogGroup", "Arn"]},
+                    "Format": '{"source_ip": "$context.identity.sourceIp", '
+                    '"request_time": "$context.requestTime", '
+                    '"method": "$context.httpMethod", "route": "$context.routeKey", '
+                    '"protocol": "$context.protocol", "status": "$context.status", '
+                    '"response_length": "$context.responseLength", '
+                    '"request_id": "$context.requestId", '
+                    '"integration_error_msg": "$context.integrationErrorMessage"}',
+                },
+                "ApiId": {"Ref": "Testapi"},
+                "AutoDeploy": True,
+                "DefaultRouteSettings": {
+                    "DetailedMetricsEnabled": True,
+                    "ThrottlingBurstLimit": 10,
+                    "ThrottlingRateLimit": 10,
+                },
+                "Description": "stage test",
+                "StageName": "test",
+                "StageVariables": {"somevar": "somevalue"},
+            },
+            "Type": "AWS::ApiGatewayV2::Stage",
+        },
+    },
+}
+
 
 def test_http_api(stack: Stack) -> None:
     """Test basic HTTP API."""
@@ -153,6 +184,39 @@ def test_http_api(stack: Stack) -> None:
     )
 
     assert stack.export()["Resources"] == EXPECTED_TEMPLATE
+
+
+def test_http_api_stage(stack: Stack) -> None:
+    """Test HTTP API with stages."""
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+
+    lambda_fun = Py38Function(
+        name="mypylambda",
+        description="this is a test",
+        role="somearn",
+        code_dir="my_code_dir",
+        handler="app.main",
+    )
+
+    http_api = HttpApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        route_list=[GET(route="/api1"), POST(route="/api2")],
+    )
+
+    stack.add(lambda_fun)
+    stack.add(http_api)
+    stack.add(
+        http_api.declare_stage(
+            stage_name="test",
+            log_arn="unused",
+            stage_variables={"somevar": "somevalue"},
+        )
+    )
+
+    assert stack.export()["Resources"] == EXPECTED_TEMPLATE_STAGE
 
 
 def test_http_api_custom_domain(stack: Stack) -> None:
