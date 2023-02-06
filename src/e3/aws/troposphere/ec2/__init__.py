@@ -1,4 +1,5 @@
 from __future__ import annotations
+from functools import cached_property
 from typing import TYPE_CHECKING
 
 from troposphere import ec2, GetAtt, Ref, Tags
@@ -522,6 +523,37 @@ class VPC(Construct):
                 Tags=Tags({"Name": sg_name}),
             )
         return self._security_group
+
+    @cached_property
+    def egress_to_vpc_endpoints(self) -> list[ec2.SecurityGroupRule]:
+        """Return egress rules allowing traffic to VPC endpoints.
+
+        This is an helper function to create security groups with permissions to
+        access VPC endpoints.
+        """
+        rules = [
+            ec2.SecurityGroupRule(
+                DestinationSecurityGroupId=Ref(
+                    self.vpc_endpoints_subnet.security_group
+                ),
+                Description="Allows traffic to the subnet holding VPC "
+                "interface endpoints",
+                FromPort="443",
+                ToPort="443",
+                IpProtocol="tcp",
+            ),
+        ]
+        if self.s3_endpoint_policy_document:
+            rules.append(
+                ec2.SecurityGroupRule(
+                    Description="Allows traffic to S3 VPC endpoint",
+                    DestinationPrefixListId="pl-6da54004",
+                    FromPort="443",
+                    ToPort="443",
+                    IpProtocol="tcp",
+                )
+            )
+        return rules
 
     @property
     def endpoints_egress_rule(self) -> ec2.SecurityGroupEgress:
