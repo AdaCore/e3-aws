@@ -2,10 +2,23 @@ from __future__ import annotations
 import base64
 import docker
 import os
+import pytest
+
+from troposphere.awslambda import (
+    ProvisionedConcurrencyConfiguration,
+    AliasRoutingConfiguration,
+    VersionWeight,
+)
 
 from e3.aws import AWSEnv
 from e3.aws.troposphere import Stack
-from e3.aws.troposphere.awslambda import PyFunction, Py38Function, DockerFunction
+from e3.aws.troposphere.awslambda import (
+    PyFunction,
+    Py38Function,
+    DockerFunction,
+    Alias,
+    Version,
+)
 
 
 SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "source_dir")
@@ -132,6 +145,74 @@ EXPECTED_DOCKER_FUNCTION = {
     },
 }
 
+EXPECTED_VERSION_DEFAULT_TEMPLATE = {
+    "Prod": {
+        "Properties": {
+            "Description": "this is the prod version",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
+        },
+        "Type": "AWS::Lambda::Version",
+    }
+}
+
+EXPECTED_VERSION_TEMPLATE = {
+    "Prod": {
+        "Properties": {
+            "Description": "this is the prod version",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
+            "ProvisionedConcurrencyConfig": {"ProvisionedConcurrentExecutions": 1},
+            "CodeSha256": "somesha",
+        },
+        "Type": "AWS::Lambda::Version",
+    }
+}
+
+EXPECTED_ALIAS_DEFAULT_TEMPLATE = {
+    "Myalias": {
+        "Properties": {
+            "Name": "myalias",
+            "Description": "this is a test",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
+            "FunctionVersion": "1",
+        },
+        "Type": "AWS::Lambda::Alias",
+    }
+}
+
+EXPECTED_ALIAS_TEMPLATE = {
+    "Myalias": {
+        "Properties": {
+            "Name": "myalias",
+            "Description": "this is a test",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
+            "FunctionVersion": {"Fn::GetAtt": ["Newversion", "Arn"]},
+            "ProvisionedConcurrencyConfig": {"ProvisionedConcurrentExecutions": 1},
+            "RoutingConfig": {
+                "AdditionalVersionWeights": [
+                    {
+                        "FunctionVersion": {"Fn::GetAtt": ["Oldversion", "Arn"]},
+                        "FunctionWeight": 0.5,
+                    }
+                ]
+            },
+        },
+        "Type": "AWS::Lambda::Alias",
+    }
+}
+
+
+@pytest.fixture
+def simple_lambda_function() -> PyFunction:
+    """Return a simple lambda function for testing."""
+    return PyFunction(
+        name="mypylambda",
+        description="this is a test",
+        role="somearn",
+        runtime="python3.9",
+        code_dir="my_code_dir",
+        handler="app.main",
+    )
+
 
 def test_py38function(stack: Stack) -> None:
     """Test Py38Function creation."""
@@ -253,3 +334,81 @@ def test_docker_function(stack: Stack) -> None:
     stack.add(docker_function)
 
     assert stack.export()["Resources"] == EXPECTED_DOCKER_FUNCTION
+
+
+def test_version_default(stack: Stack, simple_lambda_function: PyFunction) -> None:
+    """Test Version creation with default settings."""
+    stack.add(
+        Version(
+            name="prod",
+            description="this is the prod version",
+            lambda_arn=simple_lambda_function.arn,
+        )
+    )
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == EXPECTED_VERSION_DEFAULT_TEMPLATE
+
+
+def test_version(stack: Stack, simple_lambda_function: PyFunction) -> None:
+    """Test Version creation."""
+    stack.add(
+        Version(
+            name="prod",
+            description="this is the prod version",
+            lambda_arn=simple_lambda_function.arn,
+            provisioned_concurrency_config=ProvisionedConcurrencyConfiguration(
+                ProvisionedConcurrentExecutions=1
+            ),
+            code_sha256="somesha",
+        )
+    )
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == EXPECTED_VERSION_TEMPLATE
+
+
+def test_alias_default(stack: Stack, simple_lambda_function: PyFunction) -> None:
+    """Test Alias creation with default settings."""
+    stack.add(
+        Alias(
+            name="myalias",
+            description="this is a test",
+            lambda_arn=simple_lambda_function.arn,
+            lambda_version="1",
+        )
+    )
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == EXPECTED_ALIAS_DEFAULT_TEMPLATE
+
+
+def test_alias(stack: Stack, simple_lambda_function: PyFunction) -> None:
+    """Test Alias creation."""
+    new_version = Version(
+        name="newversion",
+        description="this is the new version",
+        lambda_arn=simple_lambda_function.arn,
+    )
+
+    old_version = Version(
+        name="oldversion",
+        description="this is the old version",
+        lambda_arn=simple_lambda_function.arn,
+    )
+
+    stack.add(
+        Alias(
+            name="myalias",
+            description="this is a test",
+            lambda_arn=simple_lambda_function.arn,
+            lambda_version=new_version.arn,
+            provisioned_concurrency_config=ProvisionedConcurrencyConfiguration(
+                ProvisionedConcurrentExecutions=1
+            ),
+            routing_config=AliasRoutingConfiguration(
+                AdditionalVersionWeights=[
+                    VersionWeight(FunctionVersion=old_version.arn, FunctionWeight=0.5)
+                ]
+            ),
+        )
+    )
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == EXPECTED_ALIAS_TEMPLATE

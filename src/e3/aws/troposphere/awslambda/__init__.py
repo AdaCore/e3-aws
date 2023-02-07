@@ -478,3 +478,119 @@ class Py38Function(PyFunction):
             logs_retention_in_days=logs_retention_in_days,
             reserved_concurrent_executions=reserved_concurrent_executions,
         )
+
+
+class Alias(Construct):
+    """A lambda alias."""
+
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        lambda_arn: str | GetAtt | Ref,
+        lambda_version: str,
+        provisioned_concurrency_config: Optional[
+            awslambda.ProvisionedConcurrencyConfiguration
+        ] = None,
+        routing_config: Optional[awslambda.AliasRoutingConfiguration] = None,
+    ):
+        """Initialize an AWS lambda alias.
+
+        :param name: function name
+        :param description: a description of the function
+        :param lambda_arn: the name of the Lambda function
+        :param lambda_version: the function version that the alias invokes
+        :param provisioned_concurrency_config: specifies a provisioned
+            concurrency configuration for a function's alias
+        :param routing_config: the routing configuration of the alias
+        """
+        self.name = name
+        self.description = description
+        self.lambda_arn = lambda_arn
+        self.lambda_version = lambda_version
+        self.provisioned_concurrency_config = provisioned_concurrency_config
+        self.routing_config = routing_config
+
+    @property
+    def arn(self) -> GetAtt:
+        """Arn of the lambda alias."""
+        return GetAtt(name_to_id(self.name), "Arn")
+
+    @property
+    def ref(self) -> Ref:
+        return Ref(name_to_id(self.name))
+
+    def resources(self, stack: Stack) -> list[AWSObject]:
+        """Return list of AWSObject associated with the construct."""
+        params = {
+            "Name": self.name,
+            "Description": self.description,
+            "FunctionName": self.lambda_arn,
+            "FunctionVersion": self.lambda_version,
+        }
+
+        if self.provisioned_concurrency_config is not None:
+            params["ProvisionedConcurrencyConfig"] = self.provisioned_concurrency_config
+
+        if self.routing_config is not None:
+            params["RoutingConfig"] = self.routing_config
+
+        return [awslambda.Alias(name_to_id(self.name), **params)]
+
+
+class Version(Construct):
+    """A lambda version."""
+
+    def __init__(
+        self,
+        name: str,
+        description: str,
+        lambda_arn: str | GetAtt | Ref,
+        provisioned_concurrency_config: Optional[
+            awslambda.ProvisionedConcurrencyConfiguration
+        ] = None,
+        code_sha256: Optional[str] = None,
+    ):
+        """Initialize an AWS lambda version.
+
+        :param name: version name
+        :param description: a description for the version to override the description
+            in the function configuration. Updates are not supported for this property
+        :param lambda_arn: the name of the Lambda function
+        :param provisioned_concurrency_config: specifies a provisioned concurrency
+            configuration for a function's version. Updates are not supported for this
+            property.
+        :param code_sha256: only publish a version if the hash value matches the value
+            that's specified. Use this option to avoid publishing a version if the
+            function code has changed since you last updated it. Updates are not
+            supported for this property
+        """
+        self.name = name
+        self.description = description
+        self.lambda_arn = lambda_arn
+        self.provisioned_concurrency_config = provisioned_concurrency_config
+        self.code_sha256 = code_sha256
+
+    @property
+    def arn(self) -> GetAtt:
+        """Arn of the lambda version."""
+        return GetAtt(name_to_id(self.name), "Arn")
+
+    @property
+    def ref(self) -> Ref:
+        return Ref(name_to_id(self.name))
+
+    def resources(self, stack: Stack) -> list[AWSObject]:
+        """Return list of AWSObject associated with the construct."""
+        params = {
+            "Description": self.description,
+            "FunctionName": self.lambda_arn,
+        }
+
+        if self.provisioned_concurrency_config is not None:
+            params["ProvisionedConcurrencyConfig"] = self.provisioned_concurrency_config
+
+        if self.code_sha256 is not None:
+            params["CodeSha256"] = self.code_sha256
+
+        return [awslambda.Version(name_to_id(self.name), **params)]
