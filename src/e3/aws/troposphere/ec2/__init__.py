@@ -94,7 +94,7 @@ class VPCEndpointsSubnet(Construct):
     """VPCEndpointsSubnet Construct.
 
     Provide a subnet with Interface VPC endpoints and a security group
-    configured to authorize access to endpoints from given security groups.
+    configured to authorize access to endpoints from the VPC.
     """
 
     def __init__(
@@ -103,7 +103,6 @@ class VPCEndpointsSubnet(Construct):
         region: str,
         cidr_block: str,
         vpc: ec2.vpc,
-        authorized_sgs: list[ec2.SecurityGroup],
         interface_endpoints: Optional[
             list[Tuple[str, Optional[PolicyDocument]]]
         ] = None,
@@ -114,8 +113,6 @@ class VPCEndpointsSubnet(Construct):
         :param region: AWS region where to deploy the Subnet
         :param vpc_endpoint_cidr_block: The IPv4 CIDR block assigned to the subnet
         :param vpc: attach the subnet to this vpc
-        :param authorized_sgs: security groups authorized to access this subnet's
-            endpoints
         :param interface_endpoint: list of (<service_name>, <endpoint_policy_document>)
             tuples for each interface endpoint to create in the vpc endpoints subnet.
         """
@@ -123,7 +120,6 @@ class VPCEndpointsSubnet(Construct):
         self.region = region
         self.cidr_block = cidr_block
         self.vpc = vpc
-        self.authorized_sgs = authorized_sgs
 
         if interface_endpoints:
             self.interface_endpoints = interface_endpoints
@@ -159,32 +155,24 @@ class VPCEndpointsSubnet(Construct):
             )
         return self._security_group
 
-    def https_ingress_rule(
-        self, security_group: ec2.SecurityGroup
-    ) -> ec2.SecurityGroupIngress:
-        """Return Ingress rule allowing HTTPS traffic from a given security group.
-
-        :param security_group: authorize https inbound access from this sg.
-        """
+    @cached_property
+    def https_ingress_rule(self) -> ec2.SecurityGroupIngress:
+        """Return Ingress rule allowing HTTPS traffic from the VPC."""
         return ec2.SecurityGroupIngress(
-            name_to_id(f"{self.name}Ingress{security_group.title}"),
-            SourceSecurityGroupId=Ref(security_group),
+            name_to_id(f"{self.name}IngressFromVPC"),
+            CidrIp=self.vpc.CidrBlock,
             FromPort="443",
             ToPort="443",
             IpProtocol="tcp",
             GroupId=Ref(self.security_group),
         )
 
-    def https_egress_rule(
-        self, security_group: ec2.SecurityGroup
-    ) -> ec2.SecurityGroupEgress:
-        """Return Egress rule allowing HTTPS traffic to a given security group.
-
-        :param security_group: authorize https outbound access to this sg.
-        """
+    @cached_property
+    def https_egress_rule(self) -> ec2.SecurityGroupEgress:
+        """Return Egress rule allowing HTTPS traffic to the VPC."""
         return ec2.SecurityGroupEgress(
-            name_to_id(f"{self.name}Egress{security_group.title}"),
-            DestinationSecurityGroupId=Ref(security_group),
+            name_to_id(f"{self.name}EgressToVPC"),
+            CidrIp=self.vpc.CidrBlock,
             FromPort="443",
             ToPort="443",
             IpProtocol="tcp",
@@ -228,12 +216,14 @@ class VPCEndpointsSubnet(Construct):
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Construct and return VPCEndpointsSubnet resources."""
-        result = [self.subnet, self.security_group, self.default_egress_rule]
-
-        for sg in self.authorized_sgs:
-            result.extend([self.https_egress_rule(sg), self.https_ingress_rule(sg)])
-
-        result.extend(self.interface_vpc_endpoints)
+        result = [
+            self.subnet,
+            self.security_group,
+            self.default_egress_rule,
+            self.https_egress_rule,
+            self.https_ingress_rule,
+            *self.interface_vpc_endpoints,
+        ]
 
         return result
 
@@ -492,7 +482,6 @@ class VPC(Construct):
             region=region,
             cidr_block=vpc_endpoints_subnet_cidr_block,
             vpc=self.vpc,
-            authorized_sgs=[self.security_group],
             interface_endpoints=interface_endpoints,
         )
 
