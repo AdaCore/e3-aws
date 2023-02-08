@@ -218,11 +218,9 @@
         },
         "Type": "AWS::EC2::SecurityGroupEgress"
     },
-    "TestVPCVPCEndpointsSubnetEgressTestVPCSecurityGroup": {
+    "TestVPCVPCEndpointsSubnetEgressToVPC": {
         "Properties": {
-            "DestinationSecurityGroupId": {
-                "Ref": "TestVPCSecurityGroup"
-            },
+            "CidrIp": "10.10.0.0/16",
             "FromPort": "443",
             "ToPort": "443",
             "IpProtocol": "tcp",
@@ -232,11 +230,9 @@
         },
         "Type": "AWS::EC2::SecurityGroupEgress"
     },
-    "TestVPCVPCEndpointsSubnetIngressTestVPCSecurityGroup": {
+    "TestVPCVPCEndpointsSubnetIngressFromVPC": {
         "Properties": {
-            "SourceSecurityGroupId": {
-                "Ref": "TestVPCSecurityGroup"
-            },
+            "CidrIp": "10.10.0.0/16",
             "FromPort": "443",
             "ToPort": "443",
             "IpProtocol": "tcp",
