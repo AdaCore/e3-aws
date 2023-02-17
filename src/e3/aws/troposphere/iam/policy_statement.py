@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Any, Optional, Union, Dict, List
 
+    ResourceType = Union[str, List[str]]
     PrincipalType = Union[str, Dict[str, Union[str, List[str]]]]
     ConditionType = Dict[str, Dict[str, Union[str, List[str]]]]
 
@@ -17,7 +18,7 @@ class PolicyStatement:
         self,
         action: str | list[str],
         effect: str = "Deny",
-        resource: Optional[str] = None,
+        resource: Optional[ResourceType] = None,
         principal: Optional[PrincipalType] = None,
         condition: Optional[ConditionType] = None,
     ) -> None:
@@ -55,7 +56,7 @@ class Allow(PolicyStatement):
     def __init__(
         self,
         action: str | list[str],
-        resource: Optional[str] = None,
+        resource: Optional[ResourceType] = None,
         principal: Optional[PrincipalType] = None,
         condition: Optional[ConditionType] = None,
     ) -> None:
