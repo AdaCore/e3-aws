@@ -111,6 +111,8 @@ class HttpApi(Construct):
         rate_limit: int = 10,
         domain_name: Optional[str] = None,
         hosted_zone_id: Optional[str] = None,
+        stage_variables: Optional[dict[str, str]] = None,
+        integration_uri: Optional[str] = None,
     ):
         """Initialize an HTTP API.
 
@@ -135,6 +137,9 @@ class HttpApi(Construct):
             disabled.
         :param hosted_zone_id: id of the hosted zone that contains domain_name.
             This parameter is required if domain_name is not None
+        :param stage_variables: a map that defines the stage variables for the
+            $default stage
+        :param integration_uri: URI of a Lambda function
         """
         self.name = name
         self.description = description
@@ -151,6 +156,10 @@ class HttpApi(Construct):
             ), "hosted zone id required when domain_name is not None"
         self.hosted_zone_id = hosted_zone_id
         self.authorizers: dict[str, Any] = {}
+        self.stage_variables = stage_variables
+        self.integration_uri = (
+            integration_uri if integration_uri is not None else lambda_arn
+        )
 
     def add_jwt_authorizer(
         self, name: str, audience: list[str], issuer: str, header: str = "Authorization"
@@ -377,7 +386,9 @@ class HttpApi(Construct):
         # Declare the default stage
         result.append(
             self.declare_stage(
-                stage_name="$default", log_arn=GetAtt(logical_id + "LogGroup", "Arn")
+                stage_name="$default",
+                log_arn=GetAtt(logical_id + "LogGroup", "Arn"),
+                stage_variables=self.stage_variables,
             )
         )
 
@@ -387,7 +398,7 @@ class HttpApi(Construct):
                 logical_id + "Integration",
                 ApiId=Ref(logical_id),
                 IntegrationType="AWS_PROXY",
-                IntegrationUri=self.lambda_arn,
+                IntegrationUri=self.integration_uri,
                 PayloadFormatVersion="2.0",
             )
         )
