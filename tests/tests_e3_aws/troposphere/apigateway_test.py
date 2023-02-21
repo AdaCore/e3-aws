@@ -156,6 +156,36 @@ EXPECTED_TEMPLATE_STAGE = {
                 "StageVariables": {"somevar": "somevalue"},
             },
             "Type": "AWS::ApiGatewayV2::Stage",
+        }
+    },
+}
+
+EXPECTED_TEMPLATE_LAMBDA_ALIAS = {
+    **EXPECTED_TEMPLATE,
+    **{
+        "TestapiDefaultStage": {
+            "Properties": {
+                **EXPECTED_TEMPLATE_STAGE["TestapiDefaultStage"]["Properties"],
+                **{"StageVariables": {"lambdaAlias": "prod"}},
+            },
+            "Type": "AWS::ApiGatewayV2::Stage",
+        },
+        "TestapiTestStage": {
+            "Properties": {
+                **EXPECTED_TEMPLATE_STAGE["TestapiTestStage"]["Properties"],
+                **{"StageVariables": {"lambdaAlias": "test"}},
+            },
+            "Type": "AWS::ApiGatewayV2::Stage",
+        },
+        "TestapiIntegration": {
+            "Properties": {
+                **EXPECTED_TEMPLATE_STAGE["TestapiIntegration"]["Properties"],
+                **{
+                    "IntegrationUri": "arn:aws:lambda:eu-west-1:123456789012:function:"
+                    "mypylambda:${stageVariables.lambdaAlias}"
+                },
+            },
+            "Type": "AWS::ApiGatewayV2::Integration",
         },
     },
 }
@@ -217,6 +247,42 @@ def test_http_api_stage(stack: Stack) -> None:
     )
 
     assert stack.export()["Resources"] == EXPECTED_TEMPLATE_STAGE
+
+
+def test_http_api_lambda_alias(stack: Stack) -> None:
+    """Test HTTP API with lambda alias."""
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+
+    lambda_fun = Py38Function(
+        name="mypylambda",
+        description="this is a test",
+        role="somearn",
+        code_dir="my_code_dir",
+        handler="app.main",
+    )
+
+    http_api = HttpApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        route_list=[GET(route="/api1"), POST(route="/api2")],
+        stage_variables={"lambdaAlias": "prod"},
+        integration_uri="arn:aws:lambda:eu-west-1:123456789012:function:"
+        f"{lambda_fun.name}:${{stageVariables.lambdaAlias}}",
+    )
+
+    stack.add(lambda_fun)
+    stack.add(http_api)
+    stack.add(
+        http_api.declare_stage(
+            stage_name="test",
+            log_arn="unused",
+            stage_variables={"lambdaAlias": "test"},
+        )
+    )
+
+    assert stack.export()["Resources"] == EXPECTED_TEMPLATE_LAMBDA_ALIAS
 
 
 def test_http_api_custom_domain(stack: Stack) -> None:
