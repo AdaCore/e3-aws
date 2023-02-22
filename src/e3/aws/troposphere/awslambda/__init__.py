@@ -572,13 +572,13 @@ class Version(Construct):
         self.code_sha256 = code_sha256
 
     @property
-    def arn(self) -> GetAtt:
-        """Arn of the lambda version."""
-        return GetAtt(name_to_id(self.name), "Arn")
-
-    @property
     def ref(self) -> Ref:
         return Ref(name_to_id(self.name))
+
+    @property
+    def version(self) -> GetAtt:
+        """Version of the lambda version."""
+        return GetAtt(name_to_id(self.name), "Version")
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
