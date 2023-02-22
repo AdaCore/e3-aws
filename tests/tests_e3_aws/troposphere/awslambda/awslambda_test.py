@@ -185,12 +185,12 @@ EXPECTED_ALIAS_TEMPLATE = {
             "Name": "myalias",
             "Description": "this is a test",
             "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
-            "FunctionVersion": {"Fn::GetAtt": ["Newversion", "Arn"]},
+            "FunctionVersion": {"Fn::GetAtt": ["Newversion", "Version"]},
             "ProvisionedConcurrencyConfig": {"ProvisionedConcurrentExecutions": 1},
             "RoutingConfig": {
                 "AdditionalVersionWeights": [
                     {
-                        "FunctionVersion": {"Fn::GetAtt": ["Oldversion", "Arn"]},
+                        "FunctionVersion": {"Fn::GetAtt": ["Oldversion", "Version"]},
                         "FunctionWeight": 0.5,
                     }
                 ]
@@ -399,13 +399,15 @@ def test_alias(stack: Stack, simple_lambda_function: PyFunction) -> None:
             name="myalias",
             description="this is a test",
             lambda_arn=simple_lambda_function.arn,
-            lambda_version=new_version.arn,
+            lambda_version=new_version.version,
             provisioned_concurrency_config=ProvisionedConcurrencyConfiguration(
                 ProvisionedConcurrentExecutions=1
             ),
             routing_config=AliasRoutingConfiguration(
                 AdditionalVersionWeights=[
-                    VersionWeight(FunctionVersion=old_version.arn, FunctionWeight=0.5)
+                    VersionWeight(
+                        FunctionVersion=old_version.version, FunctionWeight=0.5
+                    )
                 ]
             ),
         )
