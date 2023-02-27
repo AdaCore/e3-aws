@@ -15,7 +15,11 @@ def test_secret_rotation_schedule(stack: Stack) -> None:
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
 
-    secret = Secret(name="TestSecret", description="TestSecret description")
+    secret = Secret(
+        name="TestSecret",
+        description="TestSecret description",
+    )
+    rotation_policy = secret.rotation_lambda_policy
     rotation_function = PyFunction(
         name="myrotationlambda",
         description="this is a test",
@@ -29,9 +33,26 @@ def test_secret_rotation_schedule(stack: Stack) -> None:
         rotation_function=rotation_function,
         schedule_expression="rate(4 days)",
     )
-    for el in (secret, rotation_function, rotation_schedule):
+    for el in (secret, rotation_policy, rotation_function, rotation_schedule):
         stack.add(el)
     with open(os.path.join(TEST_DIR, "secret_rotation_schedule.json")) as fd:
+        expected_template = json.load(fd)
+
+    assert stack.export()["Resources"] == expected_template
+
+
+def test_secret_iam_path(stack: Stack) -> None:
+    """Test Secret with iam_path."""
+    secret = Secret(
+        name="TestSecret",
+        description="TestSecret description",
+        iam_path="/iam_test_path/",
+    )
+    rotation_policy = secret.rotation_lambda_policy
+    for el in (secret, rotation_policy):
+        stack.add(el)
+
+    with open(os.path.join(TEST_DIR, "secret_iam_path.json")) as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template

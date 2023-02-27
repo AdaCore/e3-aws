@@ -15,14 +15,16 @@ if TYPE_CHECKING:
 class Secret(Construct):
     """Provide Secret resource and associated utility methods."""
 
-    def __init__(self, name: str, description: str):
+    def __init__(self, name: str, description: str, iam_path: str = "/"):
         """Initialize a Secret instance.
 
         :param name: name of the secret
         :param description: secret description
+        :param iam_path: IAM path for the rotation policy
         """
         self.name = name
         self.description = description
+        self.iam_path = iam_path
         self.secret = secretsmanager.Secret(
             name_to_id(name), Description=description, Name=name
         )
@@ -45,6 +47,7 @@ class Secret(Construct):
                     resource=self.secret_arn,
                 )
             ],
+            path=self.iam_path,
         )
 
     @property
