@@ -17,7 +17,6 @@ from e3.aws.troposphere.sqs import Queue
 
 
 if TYPE_CHECKING:
-    from typing import Optional, Tuple
     from e3.aws.troposphere import Stack
     from e3.aws.troposphere.iam.policy_statement import ConditionType
 
@@ -36,11 +35,10 @@ class Bucket(Construct):
         self,
         name: str,
         enable_versioning: bool = True,
-        lifecycle_rules: Optional[list[s3.LifecycleRule]] = None,
-        default_bucket_encryption: Optional[
-            EncryptionAlgorithm
-        ] = EncryptionAlgorithm.AES256,
-        authorized_encryptions: Optional[list[EncryptionAlgorithm]] = None,
+        lifecycle_rules: list[s3.LifecycleRule] | None = None,
+        default_bucket_encryption: EncryptionAlgorithm
+        | None = EncryptionAlgorithm.AES256,
+        authorized_encryptions: list[EncryptionAlgorithm] | None = None,
     ):
         """Initialize a bucket.
 
@@ -60,9 +58,9 @@ class Bucket(Construct):
             self.authorized_encryptions = [EncryptionAlgorithm.AES256]
         else:
             self.authorized_encryptions = authorized_encryptions
-        self.lambda_configurations: list[Tuple[dict[str, str], Function, str]] = []
-        self.topic_configurations: list[Tuple[dict[str, str], Topic, str]] = []
-        self.queue_configurations: list[Tuple[dict[str, str], Queue, str]] = []
+        self.lambda_configurations: list[tuple[dict[str, str], Function, str]] = []
+        self.topic_configurations: list[tuple[dict[str, str], Topic, str]] = []
+        self.queue_configurations: list[tuple[dict[str, str], Queue, str]] = []
         self.depends_on: list[str] = []
 
         # Add minimal policy statements
@@ -133,7 +131,7 @@ class Bucket(Construct):
         event: str,
         target: Function | Topic | Queue | str,
         permission_suffix: str,
-        s3_filter: Optional[s3.Filter] = None,
+        s3_filter: s3.Filter | None = None,
     ) -> None:
         """Add a configuration to bucket notification rules.
 
@@ -160,7 +158,7 @@ class Bucket(Construct):
     @property
     def notification_setup(
         self,
-    ) -> Tuple[s3.NotificationConfiguration, list[AWSObject]]:
+    ) -> tuple[s3.NotificationConfiguration, list[AWSObject]]:
         """Return notifcation configuration and associated resources."""
         notification_resources = []
         notification_config = None

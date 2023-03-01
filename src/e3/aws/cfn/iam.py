@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from e3.aws.cfn import AWSType, GetAtt, Resource, Stack
 
 if TYPE_CHECKING:
-    from typing import Optional, Any, Iterable
+    from typing import Any, Iterable
 
 
 class PrincipalKind(Enum):
@@ -18,7 +18,7 @@ class PrincipalKind(Enum):
 class Principal(object):
     """Represent a principal in an IAM policy."""
 
-    def __init__(self, kind: PrincipalKind, value: Optional[str] = None) -> None:
+    def __init__(self, kind: PrincipalKind, value: str | None = None) -> None:
         """Initialize a Principal.
 
         :param kind: principal kind
@@ -63,11 +63,11 @@ class Statement(object):
 
     def __init__(
         self,
-        sid: Optional[str] = None,
-        to: Optional[list[str] | str] = None,
-        on: Optional[list[str] | str] = None,
-        not_on: Optional[list[str] | str] = None,
-        apply_to: Optional[list[Principal] | Principal] = None,
+        sid: str | None = None,
+        to: list[str] | str | None = None,
+        on: list[str] | str | None = None,
+        not_on: list[str] | str | None = None,
+        apply_to: list[Principal] | Principal | None = None,
     ):
         """Initialize a statement.
 

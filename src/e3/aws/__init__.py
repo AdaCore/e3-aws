@@ -24,15 +24,13 @@ from e3.os.process import Run
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional, Callable
+    from typing import Any, Callable
     import botocore.client
     import botocore.stub
 
 
 class AWSSessionRunError(E3Error):
-    def __init__(
-        self, message: str, origin: str, process: Optional[Run] = None
-    ) -> None:
+    def __init__(self, message: str, origin: str, process: Run | None = None) -> None:
         """Initialize an AWSSessionRunError.
 
         :param message: the exception message
@@ -50,10 +48,10 @@ class Session:
 
     def __init__(
         self,
-        regions: Optional[list[str]] = None,
+        regions: list[str] | None = None,
         stub: bool = False,
-        profile: Optional[str] = None,
-        credentials: Optional[Dict] = None,
+        profile: str | None = None,
+        credentials: dict | None = None,
     ) -> None:
         """Initialize an AWS session.
 
@@ -107,7 +105,7 @@ class Session:
         self,
         role_arn: str,
         role_session_name: str,
-        session_duration: Optional[int] = None,
+        session_duration: int | None = None,
     ) -> Session:
         """Return a session with ``role_arn`` credentials.
 
@@ -128,9 +126,9 @@ class Session:
         self,
         role_arn: str,
         role_session_name: str,
-        session_duration: Optional[int] = None,
+        session_duration: int | None = None,
         as_env_var: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Return credentials for ``role_arn``.
 
         :param role_arn: ARN of the role to assume
@@ -142,7 +140,7 @@ class Session:
             keys are translated to be compatible to update os.environ.
         """
         client = self.client("sts", region=self.regions[0])
-        arguments: Dict[str, Any] = {
+        arguments: dict[str, Any] = {
             "RoleArn": role_arn,
             "RoleSessionName": role_session_name,
         }
@@ -196,7 +194,7 @@ class Session:
 
         return self._identity
 
-    def stub(self, name: str, region: Optional[str] = None) -> botocore.stub.Stubber:
+    def stub(self, name: str, region: str | None = None) -> botocore.stub.Stubber:
         """Return stub for a given client.
 
         Note that if the client does not exist yet it will be created.
@@ -229,7 +227,7 @@ class Session:
             profile_name=self.profile,
         )
 
-    def client(self, name: str, region: Optional[str] = None) -> botocore.client.Client:
+    def client(self, name: str, region: str | None = None) -> botocore.client.Client:
         """Get a client.
 
         :param name: client name
@@ -257,7 +255,7 @@ class Session:
         return self.clients[name][region]
 
     def run(
-        self, cmd: List[str], role_arn: str, session_duration: int, **kwargs: Any
+        self, cmd: list[str], role_arn: str, session_duration: int, **kwargs: Any
     ) -> Run:
         """Execute a command with credentials to assume role role_arn.
 
@@ -294,9 +292,9 @@ class AWSEnv(Session):
 
     def __init__(
         self,
-        regions: Optional[list[str]] = None,
+        regions: list[str] | None = None,
         stub: bool = False,
-        profile: Optional[str] = None,
+        profile: str | None = None,
     ):
         """Initialize an AWS session.
 
@@ -482,7 +480,7 @@ class IAMAuth(requests.auth.AuthBase):
     """Authorizer for the requests framework that use AWS Signature V4 protocol."""
 
     def __init__(
-        self, session: Session, role: Optional[str] = None, region: Optional[str] = None
+        self, session: Session, role: str | None = None, region: str | None = None
     ):
         """Initialize authorizer.
 

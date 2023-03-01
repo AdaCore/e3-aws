@@ -29,7 +29,6 @@ The resulting lambda can then be added into an HttpAPI::
 
 """
 from __future__ import annotations
-from typing import TYPE_CHECKING
 import os
 
 from troposphere import GetAtt
@@ -37,8 +36,6 @@ from e3.aws.troposphere.iam.role import Role
 from e3.fs import cp, sync_tree
 from . import PyFunction
 
-if TYPE_CHECKING:
-    from typing import Optional
 
 STARTUP_CODE = """
 from %(app_module)s import %(app_name)s
@@ -60,12 +57,12 @@ class PyFlaskFunction(PyFunction):
         code_dir: str,
         app: str,
         runtime: str,
-        requirement_file: Optional[str] = None,
-        code_version: Optional[int] = None,
+        requirement_file: str | None = None,
+        code_version: int | None = None,
         timeout: int = 3,
-        memory_size: Optional[int] = None,
-        logs_retention_in_days: Optional[int] = 731,
-        reserved_concurrent_executions: Optional[int] = None,
+        memory_size: int | None = None,
+        logs_retention_in_days: int | None = 731,
+        reserved_concurrent_executions: int | None = None,
         environment: dict[str, str] | None = None,
     ):
         """Initialize a Flask AWS lambda function using a Python runtime.
@@ -135,11 +132,11 @@ class Py38FlaskFunction(PyFlaskFunction):
         role: str | GetAtt | Role,
         code_dir: str,
         app: str,
-        requirement_file: Optional[str] = None,
-        code_version: Optional[int] = None,
+        requirement_file: str | None = None,
+        code_version: int | None = None,
         timeout: int = 3,
-        memory_size: Optional[int] = None,
-        logs_retention_in_days: Optional[int] = None,
+        memory_size: int | None = None,
+        logs_retention_in_days: int | None = None,
     ):
         """Initialize a Flask AWS lambda function using Python 3.8 runtime.
 

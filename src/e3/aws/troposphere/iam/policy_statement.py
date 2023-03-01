@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Optional, Union, Dict, List
+    from typing import Any, Union, List, Dict
 
     ResourceType = Union[str, List[str]]
     PrincipalType = Union[str, Dict[str, Union[str, List[str]]]]
@@ -18,9 +18,9 @@ class PolicyStatement:
         self,
         action: str | list[str],
         effect: str = "Deny",
-        resource: Optional[ResourceType] = None,
-        principal: Optional[PrincipalType] = None,
-        condition: Optional[ConditionType] = None,
+        resource: ResourceType | None = None,
+        principal: PrincipalType | None = None,
+        condition: ConditionType | None = None,
     ) -> None:
         """Initialize a policy statement.
 
@@ -56,9 +56,9 @@ class Allow(PolicyStatement):
     def __init__(
         self,
         action: str | list[str],
-        resource: Optional[ResourceType] = None,
-        principal: Optional[PrincipalType] = None,
-        condition: Optional[ConditionType] = None,
+        resource: ResourceType | None = None,
+        principal: PrincipalType | None = None,
+        condition: ConditionType | None = None,
     ) -> None:
         """Initialize an Allow policy statement.
 
@@ -80,7 +80,7 @@ class AssumeRole(PolicyStatement):
     """Define a sts:AssumeRole role policy statement."""
 
     def __init__(
-        self, principal: PrincipalType, condition: Optional[ConditionType] = None
+        self, principal: PrincipalType, condition: ConditionType | None = None
     ):
         """Initialize an AssumeRole statement.
 
@@ -101,11 +101,11 @@ class Trust(PolicyStatement):
 
     def __init__(
         self,
-        services: Optional[list[str]] = None,
-        accounts: Optional[list[str]] = None,
-        users: Optional[list[tuple[str, str]]] = None,
-        roles: Optional[list[tuple[str, str]]] = None,
-        condition: Optional[ConditionType] = None,
+        services: list[str] | None = None,
+        accounts: list[str] | None = None,
+        users: list[tuple[str, str]] | None = None,
+        roles: list[tuple[str, str]] | None = None,
+        condition: ConditionType | None = None,
         actions: list[str] | str = "sts:AssumeRole",
     ) -> None:
         """Initialize a trust policy statement.

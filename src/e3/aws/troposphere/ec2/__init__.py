@@ -9,8 +9,6 @@ from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 
 if TYPE_CHECKING:
-    from typing import Optional, Tuple
-
     from troposphere import AWSObject
     from e3.aws.troposphere import Stack
 
@@ -26,8 +24,8 @@ class InternetGateway(Construct):
         self,
         name_prefix: str,
         vpc: ec2.vpc,
-        subnets: Optional[list[ec2.subnet]] = None,
-        route_table: Optional[ec2.RouteTable] = None,
+        subnets: list[ec2.subnet] | None = None,
+        route_table: ec2.RouteTable | None = None,
     ):
         """Initialize InternetGateway construct.
 
@@ -103,9 +101,7 @@ class VPCEndpointsSubnet(Construct):
         region: str,
         cidr_block: str,
         vpc: ec2.vpc,
-        interface_endpoints: Optional[
-            list[Tuple[str, Optional[PolicyDocument]]]
-        ] = None,
+        interface_endpoints: list[tuple[str, PolicyDocument | None]] | None = None,
     ) -> None:
         """Initialize VPCEndpointsSubnet Construct.
 
@@ -126,8 +122,8 @@ class VPCEndpointsSubnet(Construct):
         else:
             self.interface_endpoints = []
 
-        self._subnet: Optional[ec2.Subnet] = None
-        self._security_group: Optional[ec2.SecurityGroup] = None
+        self._subnet: ec2.Subnet | None = None
+        self._security_group: ec2.SecurityGroup | None = None
 
     @property
     def subnet(self) -> ec2.Subnet:
@@ -242,9 +238,9 @@ class Subnet(Construct):
         vpc: ec2.VPC,
         cidr_block: str,
         availability_zone: str,
-        internet_gateway: Optional[InternetGateway] = None,
+        internet_gateway: InternetGateway | None = None,
         use_nat: bool = False,
-        nat_to: Optional[ec2.NatGateway] = None,
+        nat_to: ec2.NatGateway | None = None,
     ):
         """Initialize Subnet construct.
 
@@ -275,10 +271,10 @@ class Subnet(Construct):
                 internet_gateway is not None
             ), "a NAT Gateway can only be added to a public subnet"
 
-        self._subnet: Optional[ec2.Subnet] = None
-        self._route_table: Optional[ec2.RouteTable] = None
-        self._nat_gateway: Optional[ec2.NatGateway] = None
-        self._nat_eip: Optional[ec2.EIP] = None
+        self._subnet: ec2.Subnet | None = None
+        self._route_table: ec2.RouteTable | None = None
+        self._nat_gateway: ec2.NatGateway | None = None
+        self._nat_eip: ec2.EIP | None = None
 
     @property
     def subnet(self) -> ec2.Subnet:
@@ -317,14 +313,14 @@ class Subnet(Construct):
         )
 
     @property
-    def nat_eip(self) -> Optional[ec2.EIP]:
+    def nat_eip(self) -> ec2.EIP | None:
         """Return an elastic IP for the NAT gateway."""
         if self.use_nat and self._nat_eip is None:
             self._nat_eip = ec2.EIP(name_to_id(f"{self.name}EIP"))
         return self._nat_eip
 
     @property
-    def nat_gateway(self) -> Optional[ec2.NatGateway]:
+    def nat_gateway(self) -> ec2.NatGateway | None:
         """Return a NAT gateway for this subnet."""
         if self.use_nat and self._nat_gateway is None:
             self._nat_gateway = ec2.NatGateway(
@@ -378,19 +374,17 @@ class VPC(Construct):
         name: str,
         region: str = "eu-west-1",
         cidr_block: str = "10.10.0.0/16",
-        private_subnet_cidr_block: Optional[str] = "10.10.0.0/18",
+        private_subnet_cidr_block: str | None = "10.10.0.0/18",
         private_subnet_az: str = "eu-west-1a",
         public_subnet_cidr_block: str = "10.10.64.0/18",
         public_subnet_az: str = "eu-west-1a",
-        secondary_public_subnet_cidr_block: Optional[str] = "10.10.128.0/18",
+        secondary_public_subnet_cidr_block: str | None = "10.10.128.0/18",
         secondary_public_subnet_az: str = "eu-west-1b",
         vpc_endpoints_subnet_cidr_block: str = "10.10.192.0/18",
         nat_gateway: bool = False,
-        s3_endpoint_policy_document: Optional[PolicyDocument] = None,
-        interface_endpoints: Optional[
-            list[Tuple[str, Optional[PolicyDocument]]]
-        ] = None,
-        tags: Optional[dict[str, str]] = None,
+        s3_endpoint_policy_document: PolicyDocument | None = None,
+        interface_endpoints: list[tuple[str, PolicyDocument | None]] | None = None,
+        tags: dict[str, str] | None = None,
     ) -> None:
         """Initialize VPC Construct.
 
@@ -453,7 +447,7 @@ class VPC(Construct):
             use_nat=True,
             availability_zone=public_subnet_az,
         )
-        self.secondary_public_subnet: Optional[Subnet] = None
+        self.secondary_public_subnet: Subnet | None = None
         if secondary_public_subnet_cidr_block:
             self.secondary_public_subnet = Subnet(
                 name=f"{self.name}SecondaryPublicSubnet",
@@ -465,7 +459,7 @@ class VPC(Construct):
 
         # Add a private subnet if requested and route outgoing traffic to the
         # primary public subnet NAT Gateway
-        self.private_subnet: Optional[Subnet] = None
+        self.private_subnet: Subnet | None = None
         if private_subnet_cidr_block:
             self.private_subnet = Subnet(
                 name=f"{self.name}PrivateSubnet",
@@ -476,7 +470,7 @@ class VPC(Construct):
             )
         else:
             self.private_subnet = None
-        self._security_group: Optional[ec2.SecurityGroup] = None
+        self._security_group: ec2.SecurityGroup | None = None
         self.vpc_endpoints_subnet = VPCEndpointsSubnet(
             name=f"{self.name}VPCEndpointsSubnet",
             region=region,
@@ -558,7 +552,7 @@ class VPC(Construct):
         )
 
     @property
-    def s3_egress_rule(self) -> Optional[ec2.SecurityGroupEgress]:
+    def s3_egress_rule(self) -> ec2.SecurityGroupEgress | None:
         """Return security group egress rule allowing outgoing S3 traffic."""
         if self.s3_endpoint_policy_document:
             return ec2.SecurityGroupEgress(
@@ -585,7 +579,7 @@ class VPC(Construct):
             return self.public_subnet.route_table
 
     @property
-    def s3_vpc_endpoint(self) -> Optional[ec2.VPCEndPoint]:
+    def s3_vpc_endpoint(self) -> ec2.VPCEndPoint | None:
         """Return S3 VPC Endpoint.
 
         Note that this endpoint is also needed when using ECR as ECR stores

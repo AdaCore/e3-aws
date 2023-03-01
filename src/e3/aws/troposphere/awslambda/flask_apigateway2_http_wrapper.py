@@ -8,7 +8,7 @@ import sys
 import base64
 
 if TYPE_CHECKING:
-    from typing import Any, Optional
+    from typing import Any
 
 
 class FlaskLambdaHandler:
@@ -57,7 +57,7 @@ class FlaskLambdaHandler:
         :param context: as received by the lambda
         """
         request_ctx = event["requestContext"]
-        remote_user: Optional[str] = None
+        remote_user: str | None = None
 
         if "authorizer" in request_ctx:
             remote_user = request_ctx["authorizer"].get("principalId")

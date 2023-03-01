@@ -12,7 +12,6 @@ from e3.aws.troposphere.iam.managed_policy import ManagedPolicy
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement, Trust
 
 if TYPE_CHECKING:
-    from typing import Optional
     from e3.aws.troposphere import Stack
 
 
@@ -30,9 +29,9 @@ class Cluster(Construct):
     """
 
     name: str
-    capacity_providers: Optional[list[str]] = None
-    cluster_settings: Optional[list[dict[str, str]]] = None
-    default_capacity_provider_strategy: Optional[list[dict[str, str]]] = None
+    capacity_providers: list[str] | None = None
+    cluster_settings: list[dict[str, str]] | None = None
+    default_capacity_provider_strategy: list[dict[str, str]] | None = None
     tags: dict[str, str] = field(default_factory=lambda: {})
 
     def resources(self, stack: Stack) -> list[AWSObject]:
@@ -98,11 +97,11 @@ class FargateCluster(Cluster):
 
     name: str
     path: str = "/"
-    capacity_providers: Optional[list[str]] = field(default_factory=lambda: ["FARGATE"])
-    cluster_settings: Optional[list[dict[str, str]]] = field(
+    capacity_providers: list[str] | None = field(default_factory=lambda: ["FARGATE"])
+    cluster_settings: list[dict[str, str]] | None = field(
         default_factory=lambda: [{"Name": "containerInsights", "Value": "enabled"}]
     )
-    default_capacity_provider_strategy: Optional[list[dict[str, str]]] = field(
+    default_capacity_provider_strategy: list[dict[str, str]] | None = field(
         default_factory=lambda: [{"CapacityProvider": "FARGATE", "Weight": "1"}]
     )
     tags: dict[str, str] = field(default_factory=lambda: {})

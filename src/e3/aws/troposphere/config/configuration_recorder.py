@@ -12,7 +12,6 @@ from e3.aws.troposphere.s3.bucket import Bucket
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 
 if TYPE_CHECKING:
-    from typing import List
     from e3.aws.troposphere import Stack
 
 
@@ -28,7 +27,7 @@ class ConfigurationRecorder(Construct):
         """
         self.bucket_name = bucket_name
 
-    def resources(self, stack: Stack) -> List[AWSObject]:
+    def resources(self, stack: Stack) -> list[AWSObject]:
         """Build and return objects associated with the configuration recorder.
 
         Return a configuration recorder and a delivery channel with its s3 bucket

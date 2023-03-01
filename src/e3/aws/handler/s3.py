@@ -14,7 +14,7 @@ import e3.log
 from e3.aws import Session
 
 if TYPE_CHECKING:
-    from typing import Optional, Any
+    from typing import Any
     from e3.event import Event
 
 logger = e3.log.getLogger("S3Handler")
@@ -28,7 +28,7 @@ class S3Handler(EventHandler):
         event_bucket: str,
         log_bucket: str,
         sse: str = "AES256",
-        profile: Optional[str] = None,
+        profile: str | None = None,
     ) -> None:
         """Initialize handler.
 
@@ -43,7 +43,7 @@ class S3Handler(EventHandler):
         self.sse = sse
 
     @classmethod
-    def decode_config(cls, config_str: str) -> dict[str, Optional[str]]:
+    def decode_config(cls, config_str: str) -> dict[str, str | None]:
         event_bucket, log_bucket, sse, aws_profile = config_str.split(",", 3)
         return {
             "event_bucket": event_bucket,
@@ -79,7 +79,7 @@ class S3Handler(EventHandler):
             from_path: str,
             s3_key: str,
             bucket: str,
-        ) -> Optional[str]:
+        ) -> str | None:
             """copy file to S3 bucket.
 
             :param from_path: File to copy

@@ -2,17 +2,13 @@
 from __future__ import annotations
 from argparse import ArgumentParser
 import os
-from typing import TYPE_CHECKING
 
 from e3.env import Env
 
 from configparser import ConfigParser
 
-if TYPE_CHECKING:
-    from typing import Optional
 
-
-def main(coverage_rc: str, omit_list_filename: Optional[str] = None) -> None:
+def main(coverage_rc: str, omit_list_filename: str | None = None) -> None:
     os_name = Env().build.os.name
     test_dir = os.path.abspath(os.path.dirname(__file__))
 

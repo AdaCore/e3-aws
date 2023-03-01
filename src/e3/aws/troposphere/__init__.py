@@ -9,7 +9,7 @@ from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # all: no cover
-    from typing import Optional, Union
+    from typing import Union
     from troposphere import And, Condition, Equals, If, Not, Or
 
     ConditionFunction = Union[And, Condition, Equals, If, Not, Or]
@@ -22,7 +22,7 @@ class Construct(ABC):
     """
 
     @abstractmethod
-    def resources(self, stack: Stack) -> list[Union[AWSObject, Construct]]:
+    def resources(self, stack: Stack) -> list[AWSObject | Construct]:
         """Return a list of troposphere AWSObject.
 
         Objects returned can be added to a troposphere template with
@@ -56,13 +56,13 @@ class Stack(cfn.Stack):
     def __init__(
         self,
         stack_name: str,
-        description: Optional[str] = None,
-        cfn_role_arn: Optional[str] = None,
-        deploy_session: Optional[Session] = None,
-        dry_run: Optional[bool] = False,
-        s3_bucket: Optional[str] = None,
-        s3_key: Optional[str] = None,
-        version: Optional[str] = None,
+        description: str | None = None,
+        cfn_role_arn: str | None = None,
+        deploy_session: Session | None = None,
+        dry_run: bool | None = False,
+        s3_bucket: str | None = None,
+        s3_key: str | None = None,
+        version: str | None = None,
     ) -> None:
         """Initialize Stack attributes.
 
@@ -107,7 +107,7 @@ class Stack(cfn.Stack):
                 )
             )
 
-    def add(self, element: Union[AWSObject, Construct, Stack]) -> Stack:
+    def add(self, element: AWSObject | Construct | Stack) -> Stack:
         """Add a Construct or AWSObject to the stack.
 
         :param element: if a resource an AWSObject or Construct add the resource

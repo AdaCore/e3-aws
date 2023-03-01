@@ -1,6 +1,5 @@
 from __future__ import annotations
 from itertools import chain
-from typing import TYPE_CHECKING
 
 from e3.aws.cfn import Stack, Join
 from e3.aws.cfn.arch.security import amazon_security_groups, github_security_groups
@@ -30,8 +29,6 @@ from e3.aws.cfn.ec2.security import (
 from e3.aws.cfn.iam import PolicyDocument, Principal, PrincipalKind, InstanceRole, Allow
 from e3.aws.cfn.s3 import Bucket
 
-if TYPE_CHECKING:
-    from typing import Optional
 
 # Prefix lists are static name used to select a list of IPs for a given
 # AWS services. Currently Amazon only offer prefix lists for s3 and
@@ -378,8 +375,8 @@ class Fortress(Stack):
     def add_service_access(
         self,
         service_name: str,
-        policy_document: Optional[PolicyDocument] = None,
-        endpoint_name: Optional[str] = None,
+        policy_document: PolicyDocument | None = None,
+        endpoint_name: str | None = None,
     ) -> None:
         """Add an interface endpoint for a given service.
 
@@ -453,8 +450,8 @@ class Fortress(Stack):
         self,
         protocol: str,
         cidr_block: str = "0.0.0.0/0",
-        from_port: Optional[int] = None,
-        to_port: Optional[int] = None,
+        from_port: int | None = None,
+        to_port: int | None = None,
     ) -> None:
         """Authorize some outbound protocols for internal servers.
 
@@ -486,9 +483,9 @@ class Fortress(Stack):
             github services. Default is True
         :type github_access: bool
         :param extra_groups: additional security groups
-        :type extra_groups: Optional[List[SecurityGroups]]
+        :type extra_groups: Optional[list[SecurityGroups]]
         :return: a list of security groups
-        :rtype: List[SecurityGroups]
+        :rtype: list[SecurityGroups]
         """
         groups = [self[self.name + "InternalSG"]]
         if amazon_access:
@@ -559,7 +556,7 @@ class Fortress(Stack):
         :param is_template: create a template rather than an instance
         :type is_template: bool
         :param extra_groups: a list of security groups to add
-        :type extra_groups: Optional[List[SecurityGroup]]
+        :type extra_groups: Optional[list[SecurityGroup]]
         """
         groups = self.private_server_security_groups(
             amazon_access=amazon_access,
