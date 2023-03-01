@@ -10,7 +10,6 @@ from e3.aws.troposphere import Stack
 
 
 if TYPE_CHECKING:  # all: no cover
-    from typing import Optional
     from troposphere import AWSHelperFn, AWSObject
 
 
@@ -22,8 +21,8 @@ class StackSet(Construct):
         name: str,
         description: str,
         regions: list[str],
-        ous: Optional[list[str]] = None,
-        accounts: Optional[list[str]] = None,
+        ous: list[str] | None = None,
+        accounts: list[str] | None = None,
         failure_tolerance_count: int = 0,
         max_concurrent_count: int = 1,
     ):

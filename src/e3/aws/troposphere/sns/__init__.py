@@ -8,7 +8,7 @@ from e3.aws.troposphere.iam.policy_statement import Allow
 from troposphere import sns, GetAtt, Ref
 
 if TYPE_CHECKING:
-    from typing import Optional, Any
+    from typing import Any
     from troposphere import AWSObject
     from e3.aws.troposphere import Stack
     from e3.aws.troposphere.awslambda import Function
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class Topic(Construct):
     """A SNS Topic."""
 
-    def __init__(self, name: str, kms_master_key_id: Optional[str] = None):
+    def __init__(self, name: str, kms_master_key_id: str | None = None):
         """Initialize a SNS Topic.
 
         :param name: topic name
@@ -31,7 +31,7 @@ class Topic(Construct):
         self.kms_master_key_id = kms_master_key_id
 
     def add_lambda_subscription(
-        self, function: Function, delivery_policy: Optional[dict] = None
+        self, function: Function, delivery_policy: dict | None = None
     ) -> None:
         """Add a lambda subscription endpoint to topic.
 
@@ -60,7 +60,7 @@ class Topic(Construct):
         )
 
     def allow_publish_policy(
-        self, service: str, name_suffix: str, condition: Optional[ConditionType] = None
+        self, service: str, name_suffix: str, condition: ConditionType | None = None
     ) -> sns.TopicPolicy:
         """Return a policy allowing a service to publish to the topic.
 

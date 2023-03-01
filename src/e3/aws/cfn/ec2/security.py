@@ -4,13 +4,13 @@ from e3.aws.cfn import AWSType, GetAtt, Resource
 from e3.aws.cfn.ec2 import VPC
 
 if TYPE_CHECKING:
-    from typing import Any, Optional
+    from typing import Any
 
 
 class GroupSecurityRule:
     """Security rule for EC2 Security groups."""
 
-    RULE_TYPE: Optional[str] = None
+    RULE_TYPE: str | None = None
     PROTOCOLS: dict[str | int, dict[str, int | str]] = {
         "ssh": {"from": 22, "to": 22, "protocol": "tcp"},
         "smtps": {"from": 465, "to": 465, "protocol": "tcp"},
@@ -26,9 +26,9 @@ class GroupSecurityRule:
         self,
         protocol: str | int,
         target: Any,
-        from_port: Optional[int] = None,
-        to_port: Optional[int] = None,
-        description: Optional[str] = None,
+        from_port: int | None = None,
+        to_port: int | None = None,
+        description: str | None = None,
     ):
         """Initialize a security rule.
 

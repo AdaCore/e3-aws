@@ -11,7 +11,6 @@ from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import AssumeRole, Trust, Allow
 
 if TYPE_CHECKING:
-    from typing import Optional
     from e3.aws.troposphere import Stack
     from e3.aws.troposphere.iam.policy_statement import PrincipalType
 
@@ -39,12 +38,12 @@ class Role(Construct):
     name: str
     description: str
     trust: PrincipalType | Trust | PolicyDocument
-    managed_policy_arns: Optional[list[str]] = None
-    max_session_duration: Optional[int] = None
+    managed_policy_arns: list[str] | None = None
+    max_session_duration: int | None = None
     tags: dict[str, str] = field(default_factory=lambda: {})
     path: str = "/"
-    boundary: Optional[str] = None
-    condition: Optional[dict[str, dict]] = None
+    boundary: str | None = None
+    condition: dict[str, dict] | None = None
 
     @property
     def trust_policy(self) -> PolicyDocument:

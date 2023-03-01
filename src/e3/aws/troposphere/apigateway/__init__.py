@@ -12,7 +12,7 @@ import json
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
-    from typing import Any, Optional
+    from typing import Any
 
 
 class AuthorizationType(Enum):
@@ -39,7 +39,7 @@ class Route:
         method: str,
         route: str,
         auth: AuthorizationType = NO_AUTH,
-        authorizer_name: Optional[str] = None,
+        authorizer_name: str | None = None,
     ) -> None:
         """Initialize an API Gateway route definition.
 
@@ -63,7 +63,7 @@ class GET(Route):
         self,
         route: str,
         auth: AuthorizationType = NO_AUTH,
-        authorizer_name: Optional[str] = None,
+        authorizer_name: str | None = None,
     ) -> None:
         """Initialize a GET route.
 
@@ -84,7 +84,7 @@ class POST(Route):
         self,
         route: str,
         auth: AuthorizationType = NO_AUTH,
-        authorizer_name: Optional[str] = None,
+        authorizer_name: str | None = None,
     ) -> None:
         """Initialize a POST route.
 
@@ -109,10 +109,10 @@ class HttpApi(Construct):
         route_list: list[Route],
         burst_limit: int = 10,
         rate_limit: int = 10,
-        domain_name: Optional[str] = None,
-        hosted_zone_id: Optional[str] = None,
-        stage_variables: Optional[dict[str, str]] = None,
-        integration_uri: Optional[str] = None,
+        domain_name: str | None = None,
+        hosted_zone_id: str | None = None,
+        stage_variables: dict[str, str] | None = None,
+        integration_uri: str | None = None,
     ):
         """Initialize an HTTP API.
 

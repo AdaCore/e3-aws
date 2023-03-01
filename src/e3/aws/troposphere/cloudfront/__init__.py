@@ -15,7 +15,6 @@ from e3.aws.troposphere.s3.bucket import Bucket
 from e3.aws.troposphere.sns import Topic
 
 if TYPE_CHECKING:
-    from typing import Optional, Tuple
     from troposphere import AWSObject
     from e3.aws.troposphere import Stack
 
@@ -34,9 +33,9 @@ class S3WebsiteDistribution(Construct):
         bucket_name: str,
         certificate_arn: str,
         default_ttl: int = 86400,
-        lambda_edge_function_arns: Optional[list[str]] = None,
+        lambda_edge_function_arns: list[str] | None = None,
         root_object: str = "index.html",
-        r53_route_from: Optional[list[Tuple[str, str]]] = None,
+        r53_route_from: list[tuple[str, str]] | None = None,
     ):
         """Initialize a S3WebsiteCFDistribution.
 

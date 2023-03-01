@@ -11,7 +11,6 @@ from e3.aws.cfn import Stack
 from e3.aws.cfn.main import CFNMain
 
 if TYPE_CHECKING:
-    from typing import Tuple
     from _pytest.monkeypatch import MonkeyPatch
 
 DEFAULT_S3_ANSWER = {
@@ -91,7 +90,7 @@ def test_cfn_main_multiple_stacks() -> None:
     ],
 )
 def test_cfn_main_push_existing_stack(
-    status: Tuple[str, str, int], monkeypatch: MonkeyPatch
+    status: tuple[str, str, int], monkeypatch: MonkeyPatch
 ) -> None:
     """Test pushing an already existing stack.
 

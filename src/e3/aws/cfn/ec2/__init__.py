@@ -10,8 +10,6 @@ from e3.aws.cfn.iam import PolicyDocument
 from e3.aws.ec2.ami import AMI
 
 if TYPE_CHECKING:
-    from typing import Optional
-
     from e3.aws.cfn.ec2.security import SecurityGroup
 
 CFN_INIT_STARTUP_SCRIPT = """#!/bin/sh
@@ -712,7 +710,7 @@ class VPCInterfaceEndpoint(Resource):
         service: str,
         subnet: Subnet,
         vpc: VPC,
-        policy_document: Optional[PolicyDocument],
+        policy_document: PolicyDocument | None,
         security_group: SecurityGroup,
     ):
         """Initialize a VPC interface endpoint.
@@ -800,7 +798,7 @@ class EIP(Resource):
         :param gateway_attach: gateway attachment
         :type gateway_attach: VPCGatewayAttachment
         :param instance: instance to which EIP is asstached
-        :type instance: Optional[Instance]
+        :type instance: Instance | None
         """
         super().__init__(name, kind=AWSType.EC2_EIP)
         assert isinstance(gateway_attach, VPCGatewayAttachment)

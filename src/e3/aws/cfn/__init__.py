@@ -11,7 +11,7 @@ import logging
 
 if TYPE_CHECKING:
     import botocore.client
-    from typing import Iterator, Optional, Iterable, Callable, Any
+    from typing import Iterator, Iterable, Callable, Any
 
 VALID_STACK_NAME = re.compile("^[a-zA-Z][a-zA-Z0-9-]*$")
 VALID_STACK_NAME_MAX_LEN = 128
@@ -369,7 +369,7 @@ class StackEvent:
         resource_type: str,
         timestamp: datetime,
         resource_status: StackEventStatus,
-        client_token: Optional[str] = None,
+        client_token: str | None = None,
         resource_status_reason: str = "",
         resource_properties: str = "",
     ) -> None:
@@ -416,10 +416,10 @@ class Stack(object):
     def __init__(
         self,
         name: str,
-        description: Optional[str] = None,
-        cfn_role_arn: Optional[str] = None,
-        s3_bucket: Optional[str] = None,
-        s3_key: Optional[str] = None,
+        description: str | None = None,
+        cfn_role_arn: str | None = None,
+        s3_bucket: str | None = None,
+        s3_key: str | None = None,
     ):
         """Initialize a stack.
 
@@ -459,7 +459,7 @@ class Stack(object):
         # The uuid is used by create and create_change_set. It allows then
         # to track for example events associated with that deployment
         self.uuid = str(uuid.uuid1(clock_seq=int(1000 * time.time())))
-        self.latest_read_event: Optional[StackEvent] = None
+        self.latest_read_event: StackEvent | None = None
 
     def add(self, element: Stack | Resource) -> Stack:
         """Add a resource or merge a stack.
@@ -540,7 +540,7 @@ class Stack(object):
     def create(
         self,
         client: botocore.client.Client,
-        url: Optional[str] = None,
+        url: str | None = None,
         wait: bool = False,
     ) -> None:
         """Create a stack.
