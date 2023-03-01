@@ -104,6 +104,7 @@ class Trust(PolicyStatement):
         services: Optional[list[str]] = None,
         accounts: Optional[list[str]] = None,
         users: Optional[list[tuple[str, str]]] = None,
+        roles: Optional[list[tuple[str, str]]] = None,
         condition: Optional[ConditionType] = None,
         actions: list[str] | str = "sts:AssumeRole",
     ) -> None:
@@ -112,6 +113,7 @@ class Trust(PolicyStatement):
         :param services: list of services to trust (without amazonaws.com suffix)
         :param accounts: list of accounts to trust (accounts alias not allowed)
         :param users: list of users as tuple (account number, user name)
+        :param roles: list of roles as tuple (account number, role name)
         :param condition: condition to apply to the statement
         :param actions: list of trusted actions. If None, the action iam:AssumeRole
             is used.
@@ -134,6 +136,12 @@ class Trust(PolicyStatement):
             self.principals.setdefault("AWS", [])
             self.principals["AWS"] += [
                 f"arn:aws:iam::{account}:user/{user}" for account, user in users
+            ]
+
+        if roles is not None:
+            self.principals.setdefault("AWS", [])
+            self.principals["AWS"] += [
+                f"arn:aws:iam::{account}:role/{role}" for account, role in roles
             ]
 
         self.condition = condition
