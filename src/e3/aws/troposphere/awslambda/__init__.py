@@ -589,3 +589,85 @@ class Version(Construct):
             params["CodeSha256"] = self.code_sha256
 
         return [awslambda.Version(name_to_id(self.name), **params)]
+
+
+class AutoVersion(Construct):
+    """Automatic lambda versions."""
+
+    def __init__(
+        self,
+        version: int,
+        min_version: int | None = None,
+        lambda_name: str | None = None,
+        lambda_arn: str | GetAtt | Ref | None = None,
+        lambda_function: Function | None = None,
+        provisioned_concurrency_config: awslambda.ProvisionedConcurrencyConfiguration
+        | None = None,
+        code_sha256: Optional[str] = None,
+    ) -> None:
+        """Create lambda versions from 1 to version included.
+
+        When using this construct, you must provide either a lambda function or
+        a lambda name plus arn.
+
+        Parameters provisioned_concurrency_config and code_sha256 are only relevant
+        for when creating a new version.
+
+        :param version: number of the latest version
+        :param min_version: minimum deployed version (default 1)
+        :param lambda_name: the name of the Lambda function
+        :param lambda_arn: the arn of the Lambda function
+        :param lambda_function: the Lambda function
+        :param provisioned_concurrency_config: specifies a provisioned concurrency
+            configuration for a function's version. Updates are not supported for this
+            property.
+        :param code_sha256: only publish a version if the hash value matches the value
+            that's specified. Use this option to avoid publishing a version if the
+            function code has changed since you last updated it. Updates are not
+            supported for this property
+        """
+        assert version > 0, "version should be greater than 0"
+        assert (
+            min_version is None or min_version > 0
+        ), "min_version should be greater than 0"
+        assert (
+            min_version is None or min_version <= version
+        ), "min_version can't be greater than version"
+        assert lambda_function or (
+            lambda_name is not None and lambda_arn is not None
+        ), "either lambda_function or lambda_name plus lambda_arn should be provided"
+        self.version = version
+        self.min_version = min_version
+        self.lambda_function = lambda_function
+        self.lambda_name = lambda_function.name if lambda_function else lambda_name
+        self.lambda_arn = lambda_function.arn if lambda_function else lambda_arn
+        self.versions = [
+            Version(
+                name=f"{self.lambda_name}Version{i}",
+                description=f"version {i} of {self.lambda_name} lambda",
+                lambda_arn=self.lambda_arn,
+            )
+            for i in range(min_version if min_version is not None else 1, version + 1)
+        ]
+        self.latest.provisioned_concurrency_config = provisioned_concurrency_config
+        self.latest.code_sha256 = code_sha256
+
+    @property
+    def previous(self) -> Version:
+        """Return the previous version.
+
+        If there is only one version, then the latest version is
+        returned.
+        """
+        # Last item if there is only 1 element
+        # Last - 1 item if there is more than 1 elements
+        return self.versions[-1] if len(self.versions) < 2 else self.versions[-2]
+
+    @property
+    def latest(self) -> Version:
+        """Return the latest version."""
+        return self.versions[-1]
+
+    def resources(self, stack: Stack) -> list[AWSObject]:
+        """Return list of AWSObject associated with the construct."""
+        return self.versions
