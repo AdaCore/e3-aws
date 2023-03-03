@@ -512,11 +512,6 @@ class Alias(Construct):
         self.routing_config = routing_config
 
     @property
-    def arn(self) -> GetAtt:
-        """Arn of the lambda alias."""
-        return GetAtt(name_to_id(self.name), "Arn")
-
-    @property
     def ref(self) -> Ref:
         return Ref(name_to_id(self.name))
 
