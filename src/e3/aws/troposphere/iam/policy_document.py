@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import List
     from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 
 
@@ -18,7 +17,7 @@ class PolicyDocument:
         process the policy
     """
 
-    statements: List[PolicyStatement]
+    statements: list[PolicyStatement]
     version: str = "2012-10-17"
 
     def __add__(self, other: PolicyDocument) -> PolicyDocument:

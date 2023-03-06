@@ -15,7 +15,6 @@ from e3.aws.troposphere.ecs.vpc import EcsVPC
 if TYPE_CHECKING:
 
     from e3.aws.troposphere import Stack
-    from typing import Union
 
 
 @dataclass(frozen=True)
@@ -38,7 +37,7 @@ class FargateScheduledTaskRule(Construct):
     name: str
     schedule_expression: str
     task_names: list[str]
-    vpc: Union[EcsVPC, VPC]
+    vpc: EcsVPC | VPC
     state: str = "DISABLED"
 
     def ecs_parameters(self, task_name: str) -> events.EcsParameters:
