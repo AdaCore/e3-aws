@@ -6,8 +6,6 @@ import tempfile
 import time
 import json
 from datetime import datetime
-from typing import TYPE_CHECKING
-
 
 import botocore.exceptions
 
@@ -18,21 +16,17 @@ from e3.fs import find, sync_tree
 from e3.main import Main
 
 
-if TYPE_CHECKING:
-    from typing import List, Optional, Tuple, Union
-
-
 class CFNMain(Main, metaclass=abc.ABCMeta):
     """Main to handle CloudFormation stack from command line."""
 
     def __init__(
         self,
         regions: list[str],
-        default_profile: Optional[str] = None,
-        data_dir: Optional[str] = None,
-        s3_bucket: Optional[str] = None,
+        default_profile: str | None = None,
+        data_dir: str | None = None,
+        s3_bucket: str | None = None,
         s3_key: str = "",
-        assume_role: Optional[Tuple[str, str]] = None,
+        assume_role: tuple[str, str] | None = None,
     ):
         """Initialize main.
 
@@ -189,7 +183,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         ask = input(f"{msg} (y/N): ")
         return ask[0] in "Yy"
 
-    def execute_for_stack(self, stack: Stack, aws_env: Optional[Session] = None) -> int:
+    def execute_for_stack(self, stack: Stack, aws_env: Session | None = None) -> int:
         """Execute application for a given stack and return exit status.
 
         :param Stack: the stack on which the application executes
@@ -335,9 +329,9 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
     def execute(
         self,
-        args: Optional[List[str]] = None,
+        args: list[str] | None = None,
         known_args_only: bool = False,
-        aws_env: Optional[Session] = None,
+        aws_env: Session | None = None,
     ) -> int:
         """Execute application and return exit status.
 
@@ -361,7 +355,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         return return_val
 
     @abc.abstractmethod
-    def create_stack(self) -> Union[Stack, List[Stack]]:
+    def create_stack(self) -> Stack | list[Stack]:
         """Create a stack.
 
         :return: Stack on which the application will operate
@@ -380,9 +374,9 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
     def start_session(
         self,
-        profile: Optional[str] = None,
-        region: Optional[str] = None,
-        aws_env: Optional[Session] = None,
+        profile: str | None = None,
+        region: str | None = None,
+        aws_env: Session | None = None,
     ) -> None:
         """Start the AWS session.
 

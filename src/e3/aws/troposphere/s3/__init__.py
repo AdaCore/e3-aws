@@ -10,7 +10,7 @@ from e3.aws.troposphere.iam.role import Role
 from e3.aws.troposphere.s3.bucket import Bucket
 
 if TYPE_CHECKING:
-    from typing import Any, Union
+    from typing import Any
     from troposphere import AWSObject, Stack
 
 
@@ -91,7 +91,7 @@ class BucketWithRoles(Construct):
     def all_objects_arn(self):
         return self.bucket.all_objects_arn
 
-    def resources(self, stack: Stack) -> list[Union[AWSObject, Construct]]:
+    def resources(self, stack: Stack) -> list[AWSObject | Construct]:
         """Return resources associated with the construct."""
         return [
             self.bucket,

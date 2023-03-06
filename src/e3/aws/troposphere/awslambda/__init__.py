@@ -19,7 +19,7 @@ from e3.aws.troposphere.iam.role import Role
 from e3.aws.util.ecr import build_and_push_image
 
 if TYPE_CHECKING:
-    from typing import Any, Optional, Union
+    from typing import Any
     from troposphere import AWSObject
     from e3.aws.troposphere import Stack
 
@@ -33,18 +33,18 @@ class Function(Construct):
         self,
         name: str,
         description: str,
-        role: Union[str, GetAtt, Role],
-        code_bucket: Optional[str] = None,
-        code_key: Optional[str] = None,
-        code_zipfile: Optional[str] = None,
-        handler: Optional[str] = None,
-        code_version: Optional[int] = None,
+        role: str | GetAtt | Role,
+        code_bucket: str | None = None,
+        code_key: str | None = None,
+        code_zipfile: str | None = None,
+        handler: str | None = None,
+        code_version: int | None = None,
         timeout: int = 3,
-        runtime: Optional[str] = None,
-        memory_size: Optional[int] = None,
-        ephemeral_storage_size: Optional[int] = None,
-        logs_retention_in_days: Optional[int] = 731,
-        reserved_concurrent_executions: Optional[int] = None,
+        runtime: str | None = None,
+        memory_size: int | None = None,
+        ephemeral_storage_size: int | None = None,
+        logs_retention_in_days: int | None = 731,
+        reserved_concurrent_executions: int | None = None,
         environment: dict[str, str] | None = None,
     ):
         """Initialize an AWS lambda function.
@@ -138,9 +138,9 @@ class Function(Construct):
 
     def lambda_resources(
         self,
-        code_bucket: Optional[str] = None,
-        code_key: Optional[str] = None,
-        image_uri: Optional[str] = None,
+        code_bucket: str | None = None,
+        code_key: str | None = None,
+        image_uri: str | None = None,
     ) -> list[AWSObject]:
         """Return resource associated with the construct.
 
@@ -239,7 +239,7 @@ class Function(Construct):
         name_suffix: str,
         service: str,
         source_arn: str,
-        source_account: Optional[str] = None,
+        source_account: str | None = None,
     ) -> awslambda.Permission:
         """Create a Lambda Permission object for a given service.
 
@@ -277,7 +277,7 @@ class DockerFunction(Function):
         repository_name: str,
         image_tag: str,
         timeout: int = 3,
-        memory_size: Optional[int] = None,
+        memory_size: int | None = None,
     ):
         """Initialize an AWS lambda function using a Docker image.
 
@@ -302,7 +302,7 @@ class DockerFunction(Function):
         self.repository_name: str = repository_name
         timestamp = datetime.utcnow().strftime("%Y-%m-%d-%H-%M-%S-%f")
         self.image_tag: str = f"{image_tag}-{timestamp}"
-        self.image_uri: Optional[str] = None
+        self.image_uri: str | None = None
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Compute AWS resources for the construct.
@@ -335,13 +335,13 @@ class PyFunction(Function):
         code_dir: str,
         handler: str,
         runtime: str,
-        requirement_file: Optional[str] = None,
-        code_version: Optional[int] = None,
+        requirement_file: str | None = None,
+        code_version: int | None = None,
         timeout: int = 3,
-        memory_size: Optional[int] = None,
-        ephemeral_storage_size: Optional[int] = None,
-        logs_retention_in_days: Optional[int] = 731,
-        reserved_concurrent_executions: Optional[int] = None,
+        memory_size: int | None = None,
+        ephemeral_storage_size: int | None = None,
+        logs_retention_in_days: int | None = 731,
+        reserved_concurrent_executions: int | None = None,
         environment: dict[str, str] | None = None,
     ):
         """Initialize an AWS lambda function with a Python runtime.
@@ -451,13 +451,13 @@ class Py38Function(PyFunction):
         role: str | GetAtt | Role,
         code_dir: str,
         handler: str,
-        requirement_file: Optional[str] = None,
-        code_version: Optional[int] = None,
+        requirement_file: str | None = None,
+        code_version: int | None = None,
         timeout: int = 3,
-        memory_size: Optional[int] = None,
-        ephemeral_storage_size: Optional[int] = None,
-        logs_retention_in_days: Optional[int] = None,
-        reserved_concurrent_executions: Optional[int] = None,
+        memory_size: int | None = None,
+        ephemeral_storage_size: int | None = None,
+        logs_retention_in_days: int | None = None,
+        reserved_concurrent_executions: int | None = None,
     ):
         """Initialize an AWS lambda function using Python 3.8 runtime.
 
@@ -489,10 +489,9 @@ class Alias(Construct):
         description: str,
         lambda_arn: str | GetAtt | Ref,
         lambda_version: str,
-        provisioned_concurrency_config: Optional[
-            awslambda.ProvisionedConcurrencyConfiguration
-        ] = None,
-        routing_config: Optional[awslambda.AliasRoutingConfiguration] = None,
+        provisioned_concurrency_config: awslambda.ProvisionedConcurrencyConfiguration
+        | None = None,
+        routing_config: awslambda.AliasRoutingConfiguration | None = None,
     ):
         """Initialize an AWS lambda alias.
 
@@ -541,10 +540,9 @@ class Version(Construct):
         name: str,
         description: str,
         lambda_arn: str | GetAtt | Ref,
-        provisioned_concurrency_config: Optional[
-            awslambda.ProvisionedConcurrencyConfiguration
-        ] = None,
-        code_sha256: Optional[str] = None,
+        provisioned_concurrency_config: awslambda.ProvisionedConcurrencyConfiguration
+        | None = None,
+        code_sha256: str | None = None,
     ):
         """Initialize an AWS lambda version.
 
@@ -603,7 +601,7 @@ class AutoVersion(Construct):
         lambda_function: Function | None = None,
         provisioned_concurrency_config: awslambda.ProvisionedConcurrencyConfiguration
         | None = None,
-        code_sha256: Optional[str] = None,
+        code_sha256: str | None = None,
     ) -> None:
         """Create lambda versions from 1 to version included.
 
