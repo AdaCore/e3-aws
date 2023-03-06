@@ -18,6 +18,7 @@ from e3.aws.troposphere.awslambda import (
     DockerFunction,
     Alias,
     Version,
+    AutoVersion,
 )
 
 
@@ -199,6 +200,52 @@ EXPECTED_ALIAS_TEMPLATE = {
         },
         "Type": "AWS::Lambda::Alias",
     }
+}
+
+EXPECTED_AUTOVERSION_DEFAULT_TEMPLATE = {
+    "MypylambdaVersion1": {
+        "Properties": {
+            "Description": "version 1 of mypylambda lambda",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
+        },
+        "Type": "AWS::Lambda::Version",
+    },
+    "MypylambdaVersion2": {
+        "Properties": {
+            "Description": "version 2 of mypylambda lambda",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
+        },
+        "Type": "AWS::Lambda::Version",
+    },
+}
+
+EXPECTED_AUTOVERSION_SINGLE_TEMPLATE = {
+    "MypylambdaVersion1": {
+        "Properties": {
+            "Description": "version 1 of mypylambda lambda",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
+        },
+        "Type": "AWS::Lambda::Version",
+    }
+}
+
+EXPECTED_AUTOVERSION_TEMPLATE = {
+    "MypylambdaVersion2": {
+        "Properties": {
+            "Description": "version 2 of mypylambda lambda",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
+        },
+        "Type": "AWS::Lambda::Version",
+    },
+    "MypylambdaVersion3": {
+        "Properties": {
+            "Description": "version 3 of mypylambda lambda",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
+            "ProvisionedConcurrencyConfig": {"ProvisionedConcurrentExecutions": 1},
+            "CodeSha256": "somesha",
+        },
+        "Type": "AWS::Lambda::Version",
+    },
 }
 
 
@@ -416,3 +463,48 @@ def test_alias(stack: Stack, simple_lambda_function: PyFunction) -> None:
     )
     print(stack.export()["Resources"])
     assert stack.export()["Resources"] == EXPECTED_ALIAS_TEMPLATE
+
+
+def test_autoversion_default(stack: Stack, simple_lambda_function: PyFunction) -> None:
+    """Test AutoVersion creation with default settings."""
+    auto_version = AutoVersion(
+        2,
+        lambda_function=simple_lambda_function,
+    )
+    stack.add(auto_version)
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == EXPECTED_AUTOVERSION_DEFAULT_TEMPLATE
+    assert auto_version.previous.name == "mypylambdaVersion1"
+    assert auto_version.latest.name == "mypylambdaVersion2"
+
+
+def test_autoversion_single(stack: Stack, simple_lambda_function: PyFunction) -> None:
+    """Test AutoVersion creation with a single version."""
+    auto_version = AutoVersion(
+        1,
+        lambda_function=simple_lambda_function,
+    )
+    stack.add(auto_version)
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == EXPECTED_AUTOVERSION_SINGLE_TEMPLATE
+    assert auto_version.previous.name == "mypylambdaVersion1"
+    assert auto_version.latest.name == "mypylambdaVersion1"
+
+
+def test_autoversion(stack: Stack, simple_lambda_function: PyFunction) -> None:
+    """Test AutoVersion creation."""
+    auto_version = AutoVersion(
+        3,
+        min_version=2,
+        lambda_name=simple_lambda_function.name,
+        lambda_arn=simple_lambda_function.arn,
+        provisioned_concurrency_config=ProvisionedConcurrencyConfiguration(
+            ProvisionedConcurrentExecutions=1
+        ),
+        code_sha256="somesha",
+    )
+    stack.add(auto_version)
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == EXPECTED_AUTOVERSION_TEMPLATE
+    assert auto_version.previous.name == "mypylambdaVersion2"
+    assert auto_version.latest.name == "mypylambdaVersion3"
