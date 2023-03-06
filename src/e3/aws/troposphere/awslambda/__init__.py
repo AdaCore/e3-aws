@@ -669,3 +669,97 @@ class AutoVersion(Construct):
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
         return self.versions
+
+
+class BlueGreenAliasConfiguration(object):
+    """Blue/Green alias configuration."""
+
+    def __init__(
+        self,
+        version: str,
+        name: str | None = None,
+        provisioned_concurrency_config: awslambda.ProvisionedConcurrencyConfiguration
+        | None = None,
+        routing_config: awslambda.AliasRoutingConfiguration | None = None,
+    ) -> None:
+        """Configure a blue/green alias.
+
+        :param version: lambda version pointed by the alias
+        :param name: custom name for the alias
+        :param provisioned_concurrency_config: specifies a provisioned
+            concurrency configuration for a function's alias
+        :param routing_config: the routing configuration of the alias
+        """
+        self.version = version
+        self.name = name
+        self.provisioned_concurrency_config = provisioned_concurrency_config
+        self.routing_config = routing_config
+
+
+class BlueGreenAliases(Construct):
+    """Blue/Green aliases for a lambda."""
+
+    def __init__(
+        self,
+        blue_config: BlueGreenAliasConfiguration,
+        green_config: BlueGreenAliasConfiguration,
+        lambda_name: str | None = None,
+        lambda_arn: str | GetAtt | Ref | None = None,
+        lambda_function: Function | None = None,
+    ) -> None:
+        """Create aliases for blue/green deployment of a lambda.
+
+        Blue if the old version of the lambda used in production,
+        while green is the new version used in development.
+
+        :param blue_config: configuration for the blue alias
+        :param green_config: configuration for the green alias
+        :param lambda_name: the name of the Lambda function
+        :param lambda_arn: the arn of the Lambda function
+        :param lambda_function: the Lambda function
+        """
+        assert lambda_function or (
+            lambda_name is not None and lambda_arn is not None
+        ), "either lambda_function or lambda_name plus lambda_arn should be provided"
+        self.blue_config = blue_config
+        self.green_config = green_config
+        self.lambda_function = lambda_function
+        self.lambda_name = lambda_function.name if lambda_function else lambda_name
+        self.lambda_arn = lambda_function.arn if lambda_function else lambda_arn
+
+        def create_alias(
+            config: BlueGreenAliasConfiguration, default_name: str
+        ) -> Alias:
+            """Return a new alias.
+
+            :param config: alias configuration
+            :param default_name: default alias name if none is specified
+            """
+            name = config.name if config.name is not None else default_name
+            return Alias(
+                name=name_to_id(f"{self.lambda_name}-{name}-alias"),
+                description=f"{name} alias for {self.lambda_name} lambda",
+                lambda_arn=self.lambda_arn,
+                lambda_version=config.version,
+                provisioned_concurrency_config=config.provisioned_concurrency_config,
+                routing_config=config.routing_config,
+            )
+
+        self.aliases = [
+            create_alias(config, default_name)
+            for config, default_name in ((blue_config, "blue"), (green_config, "green"))
+        ]
+
+    @property
+    def blue(self) -> Alias:
+        """Return the blue alias."""
+        return self.aliases[0]
+
+    @property
+    def green(self) -> Alias:
+        """Return the green alias."""
+        return self.aliases[1]
+
+    def resources(self, stack: Stack) -> list[AWSObject]:
+        """Return list of AWSObject associated with the construct."""
+        return self.aliases
