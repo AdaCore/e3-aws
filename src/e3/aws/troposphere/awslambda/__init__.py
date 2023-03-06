@@ -641,7 +641,7 @@ class AutoVersion(Construct):
         self.lambda_arn = lambda_function.arn if lambda_function else lambda_arn
         self.versions = [
             Version(
-                name=f"{self.lambda_name}Version{i}",
+                name=f"{self.lambda_name}-v{i}",
                 description=f"version {i} of {self.lambda_name} lambda",
                 lambda_arn=self.lambda_arn,
             )

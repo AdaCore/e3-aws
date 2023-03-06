@@ -203,14 +203,14 @@ EXPECTED_ALIAS_TEMPLATE = {
 }
 
 EXPECTED_AUTOVERSION_DEFAULT_TEMPLATE = {
-    "MypylambdaVersion1": {
+    "MypylambdaV1": {
         "Properties": {
             "Description": "version 1 of mypylambda lambda",
             "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
         },
         "Type": "AWS::Lambda::Version",
     },
-    "MypylambdaVersion2": {
+    "MypylambdaV2": {
         "Properties": {
             "Description": "version 2 of mypylambda lambda",
             "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
@@ -220,7 +220,7 @@ EXPECTED_AUTOVERSION_DEFAULT_TEMPLATE = {
 }
 
 EXPECTED_AUTOVERSION_SINGLE_TEMPLATE = {
-    "MypylambdaVersion1": {
+    "MypylambdaV1": {
         "Properties": {
             "Description": "version 1 of mypylambda lambda",
             "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
@@ -230,14 +230,14 @@ EXPECTED_AUTOVERSION_SINGLE_TEMPLATE = {
 }
 
 EXPECTED_AUTOVERSION_TEMPLATE = {
-    "MypylambdaVersion2": {
+    "MypylambdaV2": {
         "Properties": {
             "Description": "version 2 of mypylambda lambda",
             "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
         },
         "Type": "AWS::Lambda::Version",
     },
-    "MypylambdaVersion3": {
+    "MypylambdaV3": {
         "Properties": {
             "Description": "version 3 of mypylambda lambda",
             "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
@@ -474,8 +474,8 @@ def test_autoversion_default(stack: Stack, simple_lambda_function: PyFunction) -
     stack.add(auto_version)
     print(stack.export()["Resources"])
     assert stack.export()["Resources"] == EXPECTED_AUTOVERSION_DEFAULT_TEMPLATE
-    assert auto_version.previous.name == "mypylambdaVersion1"
-    assert auto_version.latest.name == "mypylambdaVersion2"
+    assert auto_version.previous.name == "mypylambda-v1"
+    assert auto_version.latest.name == "mypylambda-v2"
 
 
 def test_autoversion_single(stack: Stack, simple_lambda_function: PyFunction) -> None:
@@ -487,8 +487,8 @@ def test_autoversion_single(stack: Stack, simple_lambda_function: PyFunction) ->
     stack.add(auto_version)
     print(stack.export()["Resources"])
     assert stack.export()["Resources"] == EXPECTED_AUTOVERSION_SINGLE_TEMPLATE
-    assert auto_version.previous.name == "mypylambdaVersion1"
-    assert auto_version.latest.name == "mypylambdaVersion1"
+    assert auto_version.previous.name == "mypylambda-v1"
+    assert auto_version.latest.name == "mypylambda-v1"
 
 
 def test_autoversion(stack: Stack, simple_lambda_function: PyFunction) -> None:
@@ -506,5 +506,5 @@ def test_autoversion(stack: Stack, simple_lambda_function: PyFunction) -> None:
     stack.add(auto_version)
     print(stack.export()["Resources"])
     assert stack.export()["Resources"] == EXPECTED_AUTOVERSION_TEMPLATE
-    assert auto_version.previous.name == "mypylambdaVersion2"
-    assert auto_version.latest.name == "mypylambdaVersion3"
+    assert auto_version.previous.name == "mypylambda-v2"
+    assert auto_version.latest.name == "mypylambda-v3"
