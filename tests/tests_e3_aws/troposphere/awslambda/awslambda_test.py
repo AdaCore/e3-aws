@@ -19,6 +19,8 @@ from e3.aws.troposphere.awslambda import (
     Alias,
     Version,
     AutoVersion,
+    BlueGreenAliases,
+    BlueGreenAliasConfiguration,
 )
 
 
@@ -245,6 +247,70 @@ EXPECTED_AUTOVERSION_TEMPLATE = {
             "CodeSha256": "somesha",
         },
         "Type": "AWS::Lambda::Version",
+    },
+}
+
+EXPECTED_BLUEGREENALIASES_DEFAULT_TEMPLATE = {
+    "MypylambdaBlueAlias": {
+        "Properties": {
+            "Name": "MypylambdaBlueAlias",
+            "Description": "blue alias for mypylambda lambda",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
+            "FunctionVersion": {"Ref": "MypylambdaVersion1"},
+        },
+        "Type": "AWS::Lambda::Alias",
+    },
+    "MypylambdaGreenAlias": {
+        "Properties": {
+            "Name": "MypylambdaGreenAlias",
+            "Description": "green alias for mypylambda lambda",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
+            "FunctionVersion": {"Ref": "MypylambdaVersion2"},
+        },
+        "Type": "AWS::Lambda::Alias",
+    },
+}
+
+EXPECTED_BLUEGREENALIASES_TEMPLATE = {
+    "MypylambdaProdAlias": {
+        "Properties": {
+            "Name": "MypylambdaProdAlias",
+            "Description": "prod alias for mypylambda lambda",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
+            "FunctionVersion": {"Ref": "MypylambdaVersion1"},
+            "ProvisionedConcurrencyConfig": {"ProvisionedConcurrentExecutions": 1},
+            "RoutingConfig": {
+                "AdditionalVersionWeights": [
+                    {
+                        "FunctionVersion": {
+                            "Fn::GetAtt": ["MypylambdaVersion1", "Version"]
+                        },
+                        "FunctionWeight": 1,
+                    }
+                ]
+            },
+        },
+        "Type": "AWS::Lambda::Alias",
+    },
+    "MypylambdaBetaAlias": {
+        "Properties": {
+            "Name": "MypylambdaBetaAlias",
+            "Description": "beta alias for mypylambda lambda",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
+            "FunctionVersion": {"Ref": "MypylambdaVersion2"},
+            "ProvisionedConcurrencyConfig": {"ProvisionedConcurrentExecutions": 1},
+            "RoutingConfig": {
+                "AdditionalVersionWeights": [
+                    {
+                        "FunctionVersion": {
+                            "Fn::GetAtt": ["MypylambdaVersion2", "Version"]
+                        },
+                        "FunctionWeight": 1,
+                    }
+                ]
+            },
+        },
+        "Type": "AWS::Lambda::Alias",
     },
 }
 
@@ -508,3 +574,68 @@ def test_autoversion(stack: Stack, simple_lambda_function: PyFunction) -> None:
     assert stack.export()["Resources"] == EXPECTED_AUTOVERSION_TEMPLATE
     assert auto_version.previous.name == "mypylambdaVersion2"
     assert auto_version.latest.name == "mypylambdaVersion3"
+
+
+def test_bluegreenaliases_default(
+    stack: Stack, simple_lambda_function: PyFunction
+) -> None:
+    """Test BlueGreenAliases creation with default settings."""
+    auto_version = AutoVersion(
+        2,
+        lambda_function=simple_lambda_function,
+    )
+    aliases = BlueGreenAliases(
+        blue_config=BlueGreenAliasConfiguration(version=auto_version.previous.ref),
+        green_config=BlueGreenAliasConfiguration(version=auto_version.latest.ref),
+        lambda_function=simple_lambda_function,
+    )
+    stack.add(aliases)
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == EXPECTED_BLUEGREENALIASES_DEFAULT_TEMPLATE
+    assert aliases.blue.name == "MypylambdaBlueAlias"
+    assert aliases.green.name == "MypylambdaGreenAlias"
+
+
+def test_bluegreenaliases(stack: Stack, simple_lambda_function: PyFunction) -> None:
+    """Test BlueGreenAliases creation for prod/beta deployment."""
+    auto_version = AutoVersion(
+        2,
+        lambda_function=simple_lambda_function,
+    )
+    aliases = BlueGreenAliases(
+        blue_config=BlueGreenAliasConfiguration(
+            version=auto_version.previous.ref,
+            name="prod",
+            provisioned_concurrency_config=ProvisionedConcurrencyConfiguration(
+                ProvisionedConcurrentExecutions=1
+            ),
+            routing_config=AliasRoutingConfiguration(
+                AdditionalVersionWeights=[
+                    VersionWeight(
+                        FunctionVersion=auto_version.previous.version, FunctionWeight=1
+                    )
+                ]
+            ),
+        ),
+        green_config=BlueGreenAliasConfiguration(
+            version=auto_version.latest.ref,
+            name="beta",
+            provisioned_concurrency_config=ProvisionedConcurrencyConfiguration(
+                ProvisionedConcurrentExecutions=1
+            ),
+            routing_config=AliasRoutingConfiguration(
+                AdditionalVersionWeights=[
+                    VersionWeight(
+                        FunctionVersion=auto_version.latest.version, FunctionWeight=1
+                    )
+                ]
+            ),
+        ),
+        lambda_name=simple_lambda_function.name,
+        lambda_arn=simple_lambda_function.arn,
+    )
+    stack.add(aliases)
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == EXPECTED_BLUEGREENALIASES_TEMPLATE
+    assert aliases.blue.name == "MypylambdaProdAlias"
+    assert aliases.green.name == "MypylambdaBetaAlias"
