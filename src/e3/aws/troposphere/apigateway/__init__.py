@@ -98,6 +98,32 @@ class POST(Route):
         )
 
 
+class StageConfiguration(object):
+    """HTTP API stage configuration."""
+
+    def __init__(
+        self,
+        name: str,
+        api_mapping_key: str | None = None,
+        lambda_arn_permission: str | GetAtt | Ref | None = None,
+        variables: dict[str, str] | None = None,
+    ) -> None:
+        """Create a stage configuration.
+
+        :param name: name of the stage (use $default for the default stage)
+        :param api_mapping_key: the API mapping key (only used when creating an HTTP API
+            with a domain name and hosted zone id)
+        :param lambda_arn_permission: lambda arn for which to add InvokeFunction
+            permission for this stage (can be different from the lambda arn executed
+            by the HTTP API)
+        :param variables: a map that defines the stage variables
+        """
+        self.name = name
+        self.api_mapping_key = api_mapping_key
+        self.lambda_arn_permission = lambda_arn_permission
+        self.variables = variables
+
+
 class HttpApi(Construct):
     """HTTP API support."""
 
@@ -111,7 +137,7 @@ class HttpApi(Construct):
         rate_limit: int = 10,
         domain_name: str | None = None,
         hosted_zone_id: str | None = None,
-        stage_variables: dict[str, str] | None = None,
+        stages_config: list[StageConfiguration] | None = None,
         integration_uri: str | None = None,
     ):
         """Initialize an HTTP API.
@@ -125,6 +151,7 @@ class HttpApi(Construct):
         The API use only one stage ($default)
 
         :param name: the resource name
+        :param description: the resource description
         :param lambda_arn: arn of the lambda executed for all routes
         :param route_list: a list of route to declare
         :param burst_limit: maximum concurrent requests at a given time
@@ -137,8 +164,7 @@ class HttpApi(Construct):
             disabled.
         :param hosted_zone_id: id of the hosted zone that contains domain_name.
             This parameter is required if domain_name is not None
-        :param stage_variables: a map that defines the stage variables for the
-            $default stage
+        :param stages_config: configurations of the different stages
         :param integration_uri: URI of a Lambda function
         """
         self.name = name
@@ -156,7 +182,10 @@ class HttpApi(Construct):
             ), "hosted zone id required when domain_name is not None"
         self.hosted_zone_id = hosted_zone_id
         self.authorizers: dict[str, Any] = {}
-        self.stage_variables = stage_variables
+        # By default, make sure to have a $default stage
+        self.stages_config = (
+            stages_config if stages_config else [StageConfiguration("$default")]
+        )
         self.integration_uri = (
             integration_uri if integration_uri is not None else lambda_arn
         )
@@ -272,27 +301,33 @@ class HttpApi(Construct):
 
         result.append(apigatewayv2.Route(id_prefix + "Route", **route_params))
 
-        result.append(
-            awslambda.Permission(
-                id_prefix + "LambdaPermission",
-                Action="lambda:InvokeFunction",
-                FunctionName=self.lambda_arn,
-                Principal="apigateway.amazonaws.com",
-                SourceArn=Sub(
-                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:"
-                    "${api}/$default/${route_arn}",
-                    dict_values={
-                        "api": self.ref,
-                        "route_arn": f"{route.method}{route.route}",
-                    },
-                ),
+        for config in self.stages_config:
+            result.append(
+                awslambda.Permission(
+                    # Retain old behavior for the $default stage
+                    name_to_id(
+                        "{}-{}LambdaPermission".format(
+                            id_prefix, "" if config.name == "$default" else config.name
+                        )
+                    ),
+                    Action="lambda:InvokeFunction",
+                    FunctionName=config.lambda_arn_permission
+                    if config.lambda_arn_permission is not None
+                    else self.lambda_arn,
+                    Principal="apigateway.amazonaws.com",
+                    SourceArn=Sub(
+                        "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:"
+                        f"${{api}}/{config.name}/${{route_arn}}",
+                        dict_values={
+                            "api": self.ref,
+                            "route_arn": f"{route.method}{route.route}",
+                        },
+                    ),
+                )
             )
-        )
         return result
 
-    def declare_domain(
-        self, domain_name: str, hosted_zone_id: str, stage_name: str
-    ) -> list[AWSObject]:
+    def declare_domain(self, domain_name: str, hosted_zone_id: str) -> list[AWSObject]:
         """Declare a custom domain for one of the API stage.
 
         Note that when a custom domain is created then a certificate is automatically
@@ -300,7 +335,6 @@ class HttpApi(Construct):
 
         :param domain_name: domain name
         :param hosted_zone_id: hosted zone in which the domain belongs to
-        :param stage_name: stage that should be associated with that domain
         :return: a list of AWSObject
         """
         result = []
@@ -324,14 +358,30 @@ class HttpApi(Construct):
             ],
         )
         result.append(domain)
-        result.append(
-            apigatewayv2.ApiMapping(
-                name_to_id(self.name + domain_name + "ApiMapping"),
-                DomainName=domain.ref(),
-                ApiId=self.ref,
-                Stage=self.stage_ref(stage_name),
+        for config in self.stages_config:
+            mapping_params = {
+                "DomainName": domain.ref(),
+                "ApiId": self.ref,
+                "Stage": self.stage_ref(config.name),
+            }
+
+            if config.api_mapping_key is not None:
+                mapping_params["ApiMappingKey"] = config.api_mapping_key
+
+            result.append(
+                apigatewayv2.ApiMapping(
+                    # Retain old behavior for the $default stage
+                    name_to_id(
+                        "{}{}-{}ApiMapping".format(
+                            self.name,
+                            domain_name,
+                            "" if config.name == "$default" else config.name,
+                        )
+                    ),
+                    **mapping_params,
+                )
             )
-        )
+
         result.append(
             route53.RecordSetType(
                 name_to_id(self.name + domain_name + "DNS"),
@@ -383,14 +433,15 @@ class HttpApi(Construct):
         }
         result.append(apigatewayv2.Api(name_to_id(self.name), **api_params))
 
-        # Declare the default stage
-        result.append(
-            self.declare_stage(
-                stage_name="$default",
-                log_arn=GetAtt(logical_id + "LogGroup", "Arn"),
-                stage_variables=self.stage_variables,
+        # Declare the different stages
+        for config in self.stages_config:
+            result.append(
+                self.declare_stage(
+                    stage_name=config.name,
+                    log_arn=GetAtt(logical_id + "LogGroup", "Arn"),
+                    stage_variables=config.variables,
+                )
             )
-        )
 
         # Declare one integration
         result.append(
@@ -413,9 +464,7 @@ class HttpApi(Construct):
         if self.domain_name is not None:
             assert self.hosted_zone_id is not None
             result += self.declare_domain(
-                domain_name=self.domain_name,
-                hosted_zone_id=self.hosted_zone_id,
-                stage_name="$default",
+                domain_name=self.domain_name, hosted_zone_id=self.hosted_zone_id
             )
 
         # Declare the authorizers
