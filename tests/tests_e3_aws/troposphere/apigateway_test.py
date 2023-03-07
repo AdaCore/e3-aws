@@ -3,7 +3,7 @@ import json
 import os
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.awslambda import (
-    Py38Function,
+    PyFunction,
     BlueGreenAliases,
     BlueGreenAliasConfiguration,
     AutoVersion,
@@ -292,12 +292,14 @@ def test_http_api(stack: Stack) -> None:
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
 
-    lambda_fun = Py38Function(
+    lambda_fun = PyFunction(
         name="mypylambda",
         description="this is a test",
         role="somearn",
         code_dir="my_code_dir",
         handler="app.main",
+        runtime="python3.8",
+        logs_retention_in_days=None,
     )
     stack.add(lambda_fun)
     stack.add(
@@ -317,12 +319,14 @@ def test_http_api_stage(stack: Stack) -> None:
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
 
-    lambda_fun = Py38Function(
+    lambda_fun = PyFunction(
         name="mypylambda",
         description="this is a test",
         role="somearn",
         code_dir="my_code_dir",
         handler="app.main",
+        runtime="python3.8",
+        logs_retention_in_days=None,
     )
 
     http_api = HttpApi(
@@ -347,12 +351,14 @@ def test_http_api_lambda_alias(stack: Stack) -> None:
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
 
-    lambda_fun = Py38Function(
+    lambda_fun = PyFunction(
         name="mypylambda",
         description="this is a test",
         role="somearn",
         code_dir="my_code_dir",
         handler="app.main",
+        runtime="python3.8",
+        logs_retention_in_days=None,
     )
 
     lambda_versions = AutoVersion(2, lambda_function=lambda_fun)
@@ -399,12 +405,14 @@ def test_http_api_custom_domain(stack: Stack) -> None:
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
 
-    lambda_fun = Py38Function(
+    lambda_fun = PyFunction(
         name="mypylambda",
         description="this is a test",
         role="somearn",
         code_dir="my_code_dir",
         handler="app.main",
+        runtime="python3.8",
+        logs_retention_in_days=None,
     )
     stack.add(lambda_fun)
     http_api = HttpApi(
@@ -438,12 +446,14 @@ def test_http_api_custom_domain_stages(stack: Stack) -> None:
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
 
-    lambda_fun = Py38Function(
+    lambda_fun = PyFunction(
         name="mypylambda",
         description="this is a test",
         role="somearn",
         code_dir="my_code_dir",
         handler="app.main",
+        runtime="python3.8",
+        logs_retention_in_days=None,
     )
     stack.add(lambda_fun)
     http_api = HttpApi(
