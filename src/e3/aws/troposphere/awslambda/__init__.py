@@ -650,6 +650,17 @@ class AutoVersion(Construct):
         self.latest.provisioned_concurrency_config = provisioned_concurrency_config
         self.latest.code_sha256 = code_sha256
 
+    def get_version(self, number: int) -> Version | None:
+        """Return a version.
+
+        :param number: version number
+        """
+        return (
+            self.versions[number - 1]
+            if number > 0 and number <= len(self.versions)
+            else None
+        )
+
     @property
     def previous(self) -> Version:
         """Return the previous version.
