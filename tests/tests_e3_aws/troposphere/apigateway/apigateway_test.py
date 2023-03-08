@@ -8,11 +8,14 @@ from e3.aws.troposphere.awslambda import (
     BlueGreenAliasConfiguration,
     AutoVersion,
 )
+from e3.aws.troposphere.iam.policy_statement import Allow, PolicyStatement
 from e3.aws.troposphere.apigateway import (
     JWT_AUTH,
     HttpApi,
+    RestApi,
     GET,
     POST,
+    Method,
     StageConfiguration,
 )
 
@@ -481,6 +484,68 @@ def test_http_api_custom_domain_stages(stack: Stack) -> None:
 
     with open(
         os.path.join(TEST_DIR, "apigateway_test_custom_domain_stages.json")
+    ) as fd:
+        expected = json.load(fd)
+
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == expected
+
+
+def test_rest_api_custom_domain_stages(stack: Stack) -> None:
+    """Test REST api custom domain and stage."""
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+
+    lambda_fun = PyFunction(
+        name="mypylambda",
+        description="this is a test",
+        role="somearn",
+        code_dir="my_code_dir",
+        handler="app.main",
+        runtime="python3.8",
+        logs_retention_in_days=None,
+    )
+    stack.add(lambda_fun)
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        domain_name="api.example.com",
+        hosted_zone_id="ABCDEFG",
+        method_list=[
+            Method("ANY", authorizer_name="testauthorizer"),
+        ],
+        stages_config=[
+            StageConfiguration("$default"),
+            StageConfiguration("beta", api_mapping_key="beta"),
+        ],
+        policy=[
+            Allow(
+                principal="*",
+                action=[
+                    "execute-api:Invoke",
+                ],
+                resource="execute-api:/*/*/*",
+            ),
+            # allow API invocation only from a specific IP
+            PolicyStatement(
+                effect="Deny",
+                principal="*",
+                action="execute-api:Invoke",
+                resource="execute-api:/*/*/*",
+                condition={"NotIpAddress": {"aws:SourceIp": ["1.2.3.4"]}},
+            ),
+        ],
+    )
+    rest_api.add_jwt_authorizer(
+        name="testauthorizer",
+        providers_arn=[
+            "arn:aws:cognito-idp:eu-west-1:123456789012:userpool/eu-west-1_abc123"
+        ],
+    )
+    stack.add(rest_api)
+    with open(
+        os.path.join(TEST_DIR, "apigatewayv1_test_custom_domain_stages.json"),
     ) as fd:
         expected = json.load(fd)
 
