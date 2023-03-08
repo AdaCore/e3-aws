@@ -1,0 +1,309 @@
+{
+    "Mypylambda": {
+        "Properties": {
+            "Code": {
+                "S3Bucket": "cfn_bucket",
+                "S3Key": "templates/mypylambda_lambda.zip"
+            },
+            "Timeout": 3,
+            "Description": "this is a test",
+            "Role": "somearn",
+            "FunctionName": "mypylambda",
+            "Runtime": "python3.8",
+            "Handler": "app.main"
+        },
+        "Type": "AWS::Lambda::Function"
+    },
+    "TestapiLogGroup": {
+        "Properties": {
+            "LogGroupName": "testapi"
+        },
+        "Type": "AWS::Logs::LogGroup"
+    },
+    "Testapi": {
+        "Properties": {
+            "Description": "this is a test",
+            "Name": "testapi",
+            "DisableExecuteApiEndpoint": true,
+            "Policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": "*",
+                        "Action": [
+                            "execute-api:Invoke"
+                        ],
+                        "Resource": "execute-api:/*/*/*"
+                    },
+                    {
+                        "Effect": "Deny",
+                        "Principal": "*",
+                        "Action": "execute-api:Invoke",
+                        "Resource": "execute-api:/*/*/*",
+                        "Condition": {
+                            "NotIpAddress": {
+                                "aws:SourceIp": [
+                                    "1.2.3.4"
+                                ]
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::ApiGateway::RestApi"
+    },
+    "TestapiResource": {
+        "Properties": {
+            "ParentId": {
+                "Fn::GetAtt": [
+                    "Testapi",
+                    "RootResourceId"
+                ]
+            },
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "PathPart": "{proxy+}"
+        },
+        "Type": "AWS::ApiGateway::Resource"
+    },
+    "TestapiDefaultDeployment": {
+        "Properties": {
+            "Description": "Deployment resource of $default stage",
+            "RestApiId": {
+                "Ref": "Testapi"
+            }
+        },
+        "Type": "AWS::ApiGateway::Deployment",
+        "DependsOn": [
+            "TestapiANYMethod"
+        ]
+    },
+    "TestapiDefaultStage": {
+        "Properties": {
+            "AccessLogSetting": {
+                "DestinationArn": {
+                    "Fn::GetAtt": [
+                        "TestapiLogGroup",
+                        "Arn"
+                    ]
+                },
+                "Format": "{\"source_ip\": \"$context.identity.sourceIp\", \"request_time\": \"$context.requestTime\", \"method\": \"$context.httpMethod\", \"route\": \"$context.routeKey\", \"protocol\": \"$context.protocol\", \"status\": \"$context.status\", \"response_length\": \"$context.responseLength\", \"request_id\": \"$context.requestId\", \"integration_error_msg\": \"$context.integrationErrorMessage\"}"
+            },
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "DeploymentId": {
+                "Ref": "TestapiDefaultDeployment"
+            },
+            "Description": "stage $default",
+            "MethodSettings": [
+                {
+                    "ResourcePath": "/*",
+                    "HttpMethod": "*",
+                    "MetricsEnabled": true,
+                    "ThrottlingBurstLimit": 10,
+                    "ThrottlingRateLimit": 10
+                }
+            ],
+            "StageName": "default"
+        },
+        "Type": "AWS::ApiGateway::Stage"
+    },
+    "TestapiBetaDeployment": {
+        "Properties": {
+            "Description": "Deployment resource of beta stage",
+            "RestApiId": {
+                "Ref": "Testapi"
+            }
+        },
+        "Type": "AWS::ApiGateway::Deployment",
+        "DependsOn": [
+            "TestapiANYMethod"
+        ]
+    },
+    "TestapiBetaStage": {
+        "Properties": {
+            "AccessLogSetting": {
+                "DestinationArn": {
+                    "Fn::GetAtt": [
+                        "TestapiLogGroup",
+                        "Arn"
+                    ]
+                },
+                "Format": "{\"source_ip\": \"$context.identity.sourceIp\", \"request_time\": \"$context.requestTime\", \"method\": \"$context.httpMethod\", \"route\": \"$context.routeKey\", \"protocol\": \"$context.protocol\", \"status\": \"$context.status\", \"response_length\": \"$context.responseLength\", \"request_id\": \"$context.requestId\", \"integration_error_msg\": \"$context.integrationErrorMessage\"}"
+            },
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "DeploymentId": {
+                "Ref": "TestapiBetaDeployment"
+            },
+            "Description": "stage beta",
+            "MethodSettings": [
+                {
+                    "ResourcePath": "/*",
+                    "HttpMethod": "*",
+                    "MetricsEnabled": true,
+                    "ThrottlingBurstLimit": 10,
+                    "ThrottlingRateLimit": 10
+                }
+            ],
+            "StageName": "beta"
+        },
+        "Type": "AWS::ApiGateway::Stage"
+    },
+    "TestapiANYMethod": {
+        "Properties": {
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "AuthorizationType": "COGNITO_USER_POOLS",
+            "HttpMethod": "ANY",
+            "Integration": {
+                "CacheKeyParameters": [],
+                "CacheNamespace": "none",
+                "IntegrationHttpMethod": "POST",
+                "PassthroughBehavior": "NEVER",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                    "Fn::Sub": [
+                        "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations",
+                        {
+                            "lambdaArn": {
+                                "Ref": "Mypylambda"
+                            }
+                        }
+                    ]
+                }
+            },
+            "ResourceId": {
+                "Ref": "TestapiResource"
+            },
+            "AuthorizerId": {
+                "Ref": "Testauthorizer"
+            }
+        },
+        "Type": "AWS::ApiGateway::Method"
+    },
+    "TestapiANYLambdaPermission": {
+        "Properties": {
+            "Action": "lambda:InvokeFunction",
+            "FunctionName": {
+                "Ref": "Mypylambda"
+            },
+            "Principal": "apigateway.amazonaws.com",
+            "SourceArn": {
+                "Fn::Sub": [
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/*",
+                    {
+                        "api": {
+                            "Ref": "Testapi"
+                        }
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::Lambda::Permission"
+    },
+    "TestapiapiexamplecomCertificate": {
+        "Properties": {
+            "DomainName": "api.example.com",
+            "DomainValidationOptions": [
+                {
+                    "DomainName": "api.example.com",
+                    "HostedZoneId": "ABCDEFG"
+                }
+            ],
+            "ValidationMethod": "DNS"
+        },
+        "Type": "AWS::CertificateManager::Certificate"
+    },
+    "TestapiapiexamplecomDomain": {
+        "Properties": {
+            "DomainName": "api.example.com",
+            "CertificateArn": {
+                "Ref": "TestapiapiexamplecomCertificate"
+            }
+        },
+        "Type": "AWS::ApiGateway::DomainName"
+    },
+    "TestapiapiexamplecomBasePathMapping": {
+        "Properties": {
+            "DomainName": {
+                "Ref": "TestapiapiexamplecomDomain"
+            },
+            "Stage": {
+                "Ref": "TestapiDefaultStage"
+            },
+            "RestApiId": {
+                "Ref": "Testapi"
+            }
+        },
+        "Type": "AWS::ApiGateway::BasePathMapping"
+    },
+    "TestapiapiexamplecomBetaBasePathMapping": {
+        "Properties": {
+            "DomainName": {
+                "Ref": "TestapiapiexamplecomDomain"
+            },
+            "Stage": {
+                "Ref": "TestapiBetaStage"
+            },
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "BasePath": "beta"
+        },
+        "Type": "AWS::ApiGateway::BasePathMapping"
+    },
+    "TestapiapiexamplecomDNS": {
+        "Properties": {
+            "Name": "api.example.com",
+            "Type": "A",
+            "HostedZoneId": "ABCDEFG",
+            "AliasTarget": {
+                "DNSName": {
+                    "Fn::GetAtt": [
+                        "TestapiapiexamplecomDomain",
+                        "DistributionDomainName"
+                    ]
+                },
+                "HostedZoneId": {
+                    "Fn::GetAtt": [
+                        "TestapiapiexamplecomDomain",
+                        "DistributionHostedZoneId"
+                    ]
+                },
+                "EvaluateTargetHealth": false
+            }
+        },
+        "Type": "AWS::Route53::RecordSet"
+    },
+    "Testauthorizer": {
+        "Properties": {
+            "AuthorizerUri": {
+                "Fn::Sub": [
+                    "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations",
+                    {
+                        "lambdaArn": {
+                            "Ref": "Mypylambda"
+                        }
+                    }
+                ]
+            },
+            "IdentitySource": "$request.header.Authorization",
+            "Name": "testauthorizer",
+            "ProviderARNs": [
+                "arn:aws:cognito-idp:eu-west-1:123456789012:userpool/eu-west-1_abc123"
+            ],
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "Type": "COGNITO_USER_POOLS"
+        },
+        "Type": "AWS::ApiGateway::Authorizer"
+    }
+}
