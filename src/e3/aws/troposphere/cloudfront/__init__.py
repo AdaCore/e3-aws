@@ -15,6 +15,7 @@ from e3.aws.troposphere.s3.bucket import Bucket
 from e3.aws.troposphere.sns import Topic
 
 if TYPE_CHECKING:
+    from typing import Any
     from troposphere import AWSObject
     from e3.aws.troposphere import Stack
 
@@ -36,6 +37,9 @@ class S3WebsiteDistribution(Construct):
         lambda_edge_function_arns: list[str] | None = None,
         root_object: str = "index.html",
         r53_route_from: list[tuple[str, str]] | None = None,
+        logging_bucket: str | None = None,
+        logging_prefix: str | None = None,
+        logging_include_cookies: bool | None = None,
     ):
         """Initialize a S3WebsiteCFDistribution.
 
@@ -55,6 +59,12 @@ class S3WebsiteDistribution(Construct):
             your origin
         :param r53_route_from: list of (hosted_zone_id, domain_id) for which to
             create route53 records
+        :param logging_bucket: the Amazon S3 bucket to store the access logs in,
+            for example, myawslogbucket.s3.amazonaws.com
+        :param logging_prefix: an optional string that you want CloudFront to
+            prefix to the access log filenames
+        :param logging_include_cookies: specifies whether you want CloudFront
+            to include cookies in access logs, specify true for IncludeCookies
         """
         self.name = name
         self.aliases = aliases
@@ -66,6 +76,9 @@ class S3WebsiteDistribution(Construct):
         self.r53_route_from = r53_route_from
         self._origin_access_identity = None
         self._cache_policy = None
+        self.logging_bucket = logging_bucket
+        self.logging_prefix = logging_prefix
+        self.logging_include_cookies = logging_include_cookies
 
     def add_oai_access_to_bucket(self) -> None:
         """Add policy granting cloudfront OAI read access to the bucket."""
@@ -144,6 +157,17 @@ class S3WebsiteDistribution(Construct):
             ]
 
         default_cache_behavior = cloudfront.DefaultCacheBehavior(**cache_params)
+
+        params: dict[str, Any] = {}
+        if self.logging_bucket is not None:
+            params["Logging"] = cloudfront.Logging(
+                Bucket=self.logging_bucket,
+                Prefix=self.logging_prefix if self.logging_prefix is not None else "",
+                IncludeCookies=self.logging_include_cookies
+                if self.logging_include_cookies is not None
+                else False,
+            )
+
         return cloudfront.Distribution(
             name_to_id(self.name),
             DistributionConfig=cloudfront.DistributionConfig(
@@ -158,6 +182,7 @@ class S3WebsiteDistribution(Construct):
                     SslSupportMethod="sni-only",
                     MinimumProtocolVersion="TLSv1.2_2021",
                 ),
+                **params,
             ),
         )
 

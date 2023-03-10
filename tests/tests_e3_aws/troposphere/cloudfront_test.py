@@ -28,3 +28,49 @@ def test_s3_website_distribution(stack: Stack) -> None:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
+
+
+def test_s3_website_distribution_logging_default(stack: Stack) -> None:
+    """Test Cloudfront S3WebsiteDistribution construct with default logging."""
+    stack.add(
+        S3WebsiteDistribution(
+            name="test-s3w-dist",
+            aliases=["test.s3w.com"],
+            bucket_name="host-bucket",
+            certificate_arn="acm_arn",
+            default_ttl=360,
+            lambda_edge_function_arns=["lamba_arn"],
+            r53_route_from=[("hosted_zone_id", "test.s3w.com")],
+            logging_bucket="myawslogbucket.s3.amazonaws.com",
+        )
+    )
+
+    with open(
+        os.path.join(TEST_DIR, "s3websitedistribution_logging_default.json")
+    ) as fd:
+        expected_template = json.load(fd)
+
+    assert stack.export()["Resources"] == expected_template
+
+
+def test_s3_website_distribution_logging(stack: Stack) -> None:
+    """Test Cloudfront S3WebsiteDistribution construct with logging."""
+    stack.add(
+        S3WebsiteDistribution(
+            name="test-s3w-dist",
+            aliases=["test.s3w.com"],
+            bucket_name="host-bucket",
+            certificate_arn="acm_arn",
+            default_ttl=360,
+            lambda_edge_function_arns=["lamba_arn"],
+            r53_route_from=[("hosted_zone_id", "test.s3w.com")],
+            logging_bucket="myawslogbucket.s3.amazonaws.com",
+            logging_prefix="myprefix",
+            logging_include_cookies=True,
+        )
+    )
+
+    with open(os.path.join(TEST_DIR, "s3websitedistribution_logging.json")) as fd:
+        expected_template = json.load(fd)
+
+    assert stack.export()["Resources"] == expected_template
