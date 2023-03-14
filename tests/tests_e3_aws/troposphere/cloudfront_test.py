@@ -4,6 +4,7 @@ import json
 import os
 
 from e3.aws.troposphere import Stack
+from e3.aws.troposphere.s3 import Bucket
 from e3.aws.troposphere.cloudfront import S3WebsiteDistribution
 
 
@@ -32,6 +33,8 @@ def test_s3_website_distribution(stack: Stack) -> None:
 
 def test_s3_website_distribution_logging_default(stack: Stack) -> None:
     """Test Cloudfront S3WebsiteDistribution construct with default logging."""
+    bucket = Bucket(name="test-bucket")
+
     stack.add(
         S3WebsiteDistribution(
             name="test-s3w-dist",
@@ -41,7 +44,7 @@ def test_s3_website_distribution_logging_default(stack: Stack) -> None:
             default_ttl=360,
             lambda_edge_function_arns=["lamba_arn"],
             r53_route_from=[("hosted_zone_id", "test.s3w.com")],
-            logging_bucket="myawslogbucket.s3.amazonaws.com",
+            logging_bucket=bucket.domain_name,
         )
     )
 
@@ -55,6 +58,8 @@ def test_s3_website_distribution_logging_default(stack: Stack) -> None:
 
 def test_s3_website_distribution_logging(stack: Stack) -> None:
     """Test Cloudfront S3WebsiteDistribution construct with logging."""
+    bucket = Bucket(name="test-bucket")
+
     stack.add(
         S3WebsiteDistribution(
             name="test-s3w-dist",
@@ -64,7 +69,7 @@ def test_s3_website_distribution_logging(stack: Stack) -> None:
             default_ttl=360,
             lambda_edge_function_arns=["lamba_arn"],
             r53_route_from=[("hosted_zone_id", "test.s3w.com")],
-            logging_bucket="myawslogbucket.s3.amazonaws.com",
+            logging_bucket=bucket.regional_domain_name,
             logging_prefix="myprefix",
             logging_include_cookies=True,
         )
