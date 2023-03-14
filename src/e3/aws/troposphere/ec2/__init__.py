@@ -116,9 +116,12 @@ class VPCEndpointsSubnet(Construct):
         self.region = region
         self.cidr_block = cidr_block
         self.vpc = vpc
+        self.has_ses_endpoint = False
 
         if interface_endpoints:
             self.interface_endpoints = interface_endpoints
+            if "ses" in [endpoint[0] for endpoint in self.interface_endpoints]:
+                self.has_ses_endpoint = True
         else:
             self.interface_endpoints = []
 
@@ -141,6 +144,29 @@ class VPCEndpointsSubnet(Construct):
             GroupDescription=f"{self.name} vpc endpoints security group",
             SecurityGroupEgress=[],
             SecurityGroupIngress=[],
+            VpcId=Ref(self.vpc),
+        )
+
+    @cached_property
+    def ses_security_group(self) -> ec2.SecurityGroup:
+        """Return a security group for SES VPC endpoint."""
+        return ec2.SecurityGroup(
+            name_to_id(f"{self.name}SESSecurityGroup"),
+            GroupDescription=f"{self.name} SES vpc endpoint security group",
+            SecurityGroupEgress=[
+                ec2.SecurityGroupRule(
+                    CidrIp=self.vpc.CidrBlock,
+                    IpProtocol="-1",
+                )
+            ],
+            SecurityGroupIngress=[
+                ec2.SecurityGroupRule(
+                    CidrIp=self.vpc.CidrBlock,
+                    FromPort="587",
+                    ToPort="587",
+                    IpProtocol="tcp",
+                )
+            ],
             VpcId=Ref(self.vpc),
         )
 
@@ -189,11 +215,17 @@ class VPCEndpointsSubnet(Construct):
                 opt_params = {"PolicyDocument": pd.as_dict}
             else:
                 opt_params = {}
+
+            if self.has_ses_endpoint:
+                security_group_id = Ref(self.ses_security_group)
+            else:
+                security_group_id = Ref(self.security_group)
+
             endpoints.append(
                 ec2.VPCEndpoint(
                     name_to_id(f"{service_name}Endpoint"),
                     PrivateDnsEnabled="true",
-                    SecurityGroupIds=[Ref(self.security_group)],
+                    SecurityGroupIds=[security_group_id],
                     ServiceName=f"com.amazonaws.{self.region}.{service_name}",
                     SubnetIds=[Ref(self.subnet)],
                     VpcEndpointType="Interface",
@@ -213,6 +245,9 @@ class VPCEndpointsSubnet(Construct):
             self.https_ingress_rule,
             *self.interface_vpc_endpoints,
         ]
+
+        if self.has_ses_endpoint:
+            result.append(self.ses_security_group)
 
         return result
 
@@ -516,6 +551,19 @@ class VPC(Construct):
                     DestinationPrefixListId="pl-6da54004",
                     FromPort="443",
                     ToPort="443",
+                    IpProtocol="tcp",
+                )
+            )
+        if self.vpc_endpoints_subnet.has_ses_endpoint:
+            rules.append(
+                ec2.SecurityGroupRule(
+                    DestinationSecurityGroupId=Ref(
+                        self.vpc_endpoints_subnet.ses_security_group
+                    ),
+                    Description="Allows traffic to the subnet holding the SES VPC "
+                    "interface endpoints",
+                    FromPort="587",
+                    ToPort="587",
                     IpProtocol="tcp",
                 )
             )
