@@ -122,34 +122,27 @@ class VPCEndpointsSubnet(Construct):
         else:
             self.interface_endpoints = []
 
-        self._subnet: ec2.Subnet | None = None
-        self._security_group: ec2.SecurityGroup | None = None
-
-    @property
+    @cached_property
     def subnet(self) -> ec2.Subnet:
         """Return a Subnet for VPC endpoints."""
-        if self._subnet is None:
-            subnet_name = f"{self.name}Subnet"
-            self._subnet = ec2.Subnet(
-                name_to_id(subnet_name),
-                VpcId=Ref(self.vpc),
-                CidrBlock=self.cidr_block,
-                Tags=Tags({"Name": subnet_name}),
-            )
-        return self._subnet
+        subnet_name = f"{self.name}Subnet"
+        return ec2.Subnet(
+            name_to_id(subnet_name),
+            VpcId=Ref(self.vpc),
+            CidrBlock=self.cidr_block,
+            Tags=Tags({"Name": subnet_name}),
+        )
 
-    @property
+    @cached_property
     def security_group(self) -> ec2.SecurityGroup:
         """Return a security group for VPC endpoints."""
-        if self._security_group is None:
-            self._security_group = ec2.SecurityGroup(
-                name_to_id(f"{self.name}SecurityGroup"),
-                GroupDescription=f"{self.name} vpc endpoints security group",
-                SecurityGroupEgress=[],
-                SecurityGroupIngress=[],
-                VpcId=Ref(self.vpc),
-            )
-        return self._security_group
+        return ec2.SecurityGroup(
+            name_to_id(f"{self.name}SecurityGroup"),
+            GroupDescription=f"{self.name} vpc endpoints security group",
+            SecurityGroupEgress=[],
+            SecurityGroupIngress=[],
+            VpcId=Ref(self.vpc),
+        )
 
     @cached_property
     def https_ingress_rule(self) -> ec2.SecurityGroupIngress:
@@ -175,7 +168,7 @@ class VPCEndpointsSubnet(Construct):
             GroupId=Ref(self.security_group),
         )
 
-    @property
+    @cached_property
     def default_egress_rule(self) -> ec2.SecurityGroupEgress:
         """Return egress that disables default egress Rule."""
         return ec2.SecurityGroupEgress(
@@ -185,7 +178,7 @@ class VPCEndpointsSubnet(Construct):
             GroupId=Ref(self.security_group),
         )
 
-    @property
+    @cached_property
     def interface_vpc_endpoints(self) -> list[ec2.VPCEndpoint]:
         """Return interface endpoints."""
         endpoints = []
@@ -276,34 +269,30 @@ class Subnet(Construct):
         self._nat_gateway: ec2.NatGateway | None = None
         self._nat_eip: ec2.EIP | None = None
 
-    @property
+    @cached_property
     def subnet(self) -> ec2.Subnet:
         """Return a private subnet."""
-        if self._subnet is None:
-            self._subnet = ec2.Subnet(
-                name_to_id(self.name),
-                VpcId=Ref(self.vpc),
-                CidrBlock=self.cidr_block,
-                Tags=Tags({"Name": self.name}),
-                AvailabilityZone=self.availability_zone,
-            )
-        return self._subnet
+        return ec2.Subnet(
+            name_to_id(self.name),
+            VpcId=Ref(self.vpc),
+            CidrBlock=self.cidr_block,
+            Tags=Tags({"Name": self.name}),
+            AvailabilityZone=self.availability_zone,
+        )
 
-    @property
+    @cached_property
     def route_table(self) -> ec2.RouteTable:
         """Return a route table for this subnet."""
-        if self._route_table is None:
-            if self.internet_gateway:
-                # By default only one route table is used to route traffic
-                # from public subnets to the Internet Gateway.
-                self._route_table = self.internet_gateway.route_table
-            else:
-                self._route_table = ec2.RouteTable(
-                    name_to_id(f"{self.name}RouteTable"), VpcId=Ref(self.vpc)
-                )
-        return self._route_table
+        if self.internet_gateway:
+            # By default only one route table is used to route traffic
+            # from public subnets to the Internet Gateway.
+            return self.internet_gateway.route_table
+        else:
+            return ec2.RouteTable(
+                name_to_id(f"{self.name}RouteTable"), VpcId=Ref(self.vpc)
+            )
 
-    @property
+    @cached_property
     def route_table_assoc(self) -> ec2.SubnetRouteTableAssociation:
         """Return association of route table to this subnet."""
         return ec2.SubnetRouteTableAssociation(
@@ -312,25 +301,21 @@ class Subnet(Construct):
             SubnetId=Ref(self.subnet),
         )
 
-    @property
+    @cached_property
     def nat_eip(self) -> ec2.EIP | None:
         """Return an elastic IP for the NAT gateway."""
-        if self.use_nat and self._nat_eip is None:
-            self._nat_eip = ec2.EIP(name_to_id(f"{self.name}EIP"))
-        return self._nat_eip
+        return ec2.EIP(name_to_id(f"{self.name}EIP"))
 
-    @property
+    @cached_property
     def nat_gateway(self) -> ec2.NatGateway | None:
         """Return a NAT gateway for this subnet."""
-        if self.use_nat and self._nat_gateway is None:
-            self._nat_gateway = ec2.NatGateway(
-                name_to_id(f"{self.name}NAT"),
-                AllocationId=GetAtt(self.nat_eip, "AllocationId"),
-                SubnetId=Ref(self.subnet),
-            )
-        return self._nat_gateway
+        return ec2.NatGateway(
+            name_to_id(f"{self.name}NAT"),
+            AllocationId=GetAtt(self.nat_eip, "AllocationId"),
+            SubnetId=Ref(self.subnet),
+        )
 
-    @property
+    @cached_property
     def ID(self) -> Ref:
         """Return subnet's ID."""
         return Ref(self.subnet)
@@ -479,7 +464,7 @@ class VPC(Construct):
             interface_endpoints=interface_endpoints,
         )
 
-    @property
+    @cached_property
     def main_subnet(self) -> ec2.Subnet:
         """Return the subnet where instances/task that access Internet should run.
 
@@ -492,20 +477,18 @@ class VPC(Construct):
             return self.public_subnet.subnet
 
     # Security groups and traffic control
-    @property
+    @cached_property
     def security_group(self) -> ec2.SecurityGroup:
         """Return main security group."""
-        if self._security_group is None:
-            sg_name = f"{self.name}SecurityGroup"
-            self._security_group = ec2.SecurityGroup(
-                name_to_id(f"{self.name}SecurityGroup"),
-                GroupDescription=f"{self.name} main security group",
-                SecurityGroupEgress=[],
-                SecurityGroupIngress=[],
-                VpcId=Ref(self.vpc),
-                Tags=Tags({"Name": sg_name}),
-            )
-        return self._security_group
+        sg_name = f"{self.name}SecurityGroup"
+        return ec2.SecurityGroup(
+            name_to_id(f"{self.name}SecurityGroup"),
+            GroupDescription=f"{self.name} main security group",
+            SecurityGroupEgress=[],
+            SecurityGroupIngress=[],
+            VpcId=Ref(self.vpc),
+            Tags=Tags({"Name": sg_name}),
+        )
 
     @cached_property
     def egress_to_vpc_endpoints(self) -> list[ec2.SecurityGroupRule]:
@@ -538,7 +521,7 @@ class VPC(Construct):
             )
         return rules
 
-    @property
+    @cached_property
     def endpoints_egress_rule(self) -> ec2.SecurityGroupEgress:
         """Return egress allowing traffic to VPC interface endpoints ."""
         return ec2.SecurityGroupEgress(
@@ -551,7 +534,7 @@ class VPC(Construct):
             GroupId=Ref(self.security_group),
         )
 
-    @property
+    @cached_property
     def s3_egress_rule(self) -> ec2.SecurityGroupEgress | None:
         """Return security group egress rule allowing outgoing S3 traffic."""
         if self.s3_endpoint_policy_document:
@@ -567,7 +550,7 @@ class VPC(Construct):
         else:
             return None
 
-    @property
+    @cached_property
     def s3_route_table(self) -> ec2.RouteTable:
         """Return the route table for the s3 endpoint.
 
@@ -578,7 +561,7 @@ class VPC(Construct):
         else:
             return self.public_subnet.route_table
 
-    @property
+    @cached_property
     def s3_vpc_endpoint(self) -> ec2.VPCEndPoint | None:
         """Return S3 VPC Endpoint.
 
