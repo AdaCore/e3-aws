@@ -58,9 +58,11 @@ class Bucket(Construct):
             self.authorized_encryptions = [EncryptionAlgorithm.AES256]
         else:
             self.authorized_encryptions = authorized_encryptions
-        self.lambda_configurations: list[tuple[dict[str, str], Function, str]] = []
-        self.topic_configurations: list[tuple[dict[str, str], Topic, str]] = []
-        self.queue_configurations: list[tuple[dict[str, str], Queue, str]] = []
+        self.lambda_configurations: list[
+            tuple[dict[str, str], Function | None, str]
+        ] = []
+        self.topic_configurations: list[tuple[dict[str, str], Topic | None, str]] = []
+        self.queue_configurations: list[tuple[dict[str, str], Queue | None, str]] = []
         self.depends_on: list[str] = []
 
         # Add minimal policy statements
@@ -148,12 +150,21 @@ class Bucket(Construct):
         if isinstance(target, Topic):
             params["Topic"] = target.arn
             self.topic_configurations.append((params, target, permission_suffix))
-        if isinstance(target, Function):
+        elif isinstance(target, Function):
             params["Function"] = target.arn
             self.lambda_configurations.append((params, target, permission_suffix))
         elif isinstance(target, Queue):
             params["Queue"] = target.arn
             self.queue_configurations.append((params, target, permission_suffix))
+        elif ":sns:" in target:
+            params["Topic"] = target
+            self.topic_configurations.append((params, None, permission_suffix))
+        elif ":lambda:" in target:
+            params["Function"] = target
+            self.lambda_configurations.append((params, None, permission_suffix))
+        elif ":sqs:" in target:
+            params["Queue"] = target
+            self.queue_configurations.append((params, None, permission_suffix))
 
     @property
     def notification_setup(
@@ -174,14 +185,15 @@ class Bucket(Construct):
             )
             # Add Permission invoke for lambdas
             for _, function, suffix in self.lambda_configurations:
-                notification_resources.append(
-                    function.invoke_permission(
-                        name_suffix=suffix,
-                        service="s3",
-                        source_arn=self.arn,
-                        source_account=AccountId,
+                if function:
+                    notification_resources.append(
+                        function.invoke_permission(
+                            name_suffix=suffix,
+                            service="s3",
+                            source_arn=self.arn,
+                            source_account=AccountId,
+                        )
                     )
-                )
         if self.topic_configurations:
             params.update(
                 {
@@ -193,13 +205,14 @@ class Bucket(Construct):
             )
             # Add policy allowing to publish to topics
             for _, topic, suffix in self.topic_configurations:
-                topic_policy = topic.allow_publish_policy(
-                    service="s3",
-                    name_suffix=suffix,
-                    condition={"ArnLike": {"aws:SourceArn": self.arn}},
-                )
-                notification_resources.append(topic_policy)
-                self.depends_on.append(topic_policy)
+                if topic:
+                    topic_policy = topic.allow_publish_policy(
+                        service="s3",
+                        name_suffix=suffix,
+                        condition={"ArnLike": {"aws:SourceArn": self.arn}},
+                    )
+                    notification_resources.append(topic_policy)
+                    self.depends_on.append(topic_policy)
         if self.queue_configurations:
             params.update(
                 {
@@ -210,14 +223,14 @@ class Bucket(Construct):
                 }
             )
             for _, queue, suffix in self.queue_configurations:
-
-                queue_policy = queue.allow_service_to_write(
-                    service="s3",
-                    name_suffix=suffix,
-                    condition={"ArnLike": {"aws:SourceArn": self.arn}},
-                )
-                notification_resources.append(queue_policy)
-                self.depends_on.append(queue_policy)
+                if queue:
+                    queue_policy = queue.allow_service_to_write(
+                        service="s3",
+                        name_suffix=suffix,
+                        condition={"ArnLike": {"aws:SourceArn": self.arn}},
+                    )
+                    notification_resources.append(queue_policy)
+                    self.depends_on.append(queue_policy)
 
         if params:
             notification_config = s3.NotificationConfiguration(

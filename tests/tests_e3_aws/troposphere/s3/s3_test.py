@@ -81,3 +81,29 @@ def test_bucket_multi_encryption(stack: Stack) -> None:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
+
+
+def test_bucket_notification_string_arns(stack: Stack) -> None:
+    """Test bucket notification with string arns instead of objects."""
+    bucket = Bucket(name="test-bucket")
+    bucket.add_notification_configuration(
+        event="s3:ObjectCreated:*",
+        target="arn:aws:sns:us-east-2:123456789012:MyTopic",
+        permission_suffix="TpUpload",
+    )
+    bucket.add_notification_configuration(
+        event="s3:ObjectCreated:*",
+        target="arn:aws:lambda:us-east-2:123456789012:MyFunction",
+        permission_suffix="TpUpload",
+    )
+    bucket.add_notification_configuration(
+        event="s3:ObjectCreated:*",
+        target="arn:aws:sqs:us-east-2:123456789012:MyQueue",
+        permission_suffix="FileEvent",
+    )
+    stack.add(bucket)
+
+    with open(os.path.join(TEST_DIR, "bucket_notification_string_arns.json")) as fd:
+        expected_template = json.load(fd)
+
+    assert stack.export()["Resources"] == expected_template
