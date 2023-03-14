@@ -154,7 +154,12 @@
                 "Enabled": true,
                 "HttpVersion": "http2",
                 "Logging": {
-                    "Bucket": "myawslogbucket.s3.amazonaws.com",
+                    "Bucket": {
+                        "Fn::GetAtt": [
+                            "TestBucket",
+                            "DomainName"
+                        ]
+                    },
                     "Prefix": "",
                     "IncludeCookies": false
                 },

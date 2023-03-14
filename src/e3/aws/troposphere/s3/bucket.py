@@ -5,7 +5,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 
-from troposphere import AccountId, AWSObject, s3, Ref
+from troposphere import AccountId, AWSObject, s3, Ref, GetAtt
 
 from e3.aws import name_to_id
 from e3.aws.troposphere.awslambda import Function
@@ -313,6 +313,14 @@ class Bucket(Construct):
     @property
     def all_objects_arn(self):
         return f"{self.arn}/*"
+
+    @property
+    def domain_name(self):
+        return GetAtt(name_to_id(self.name), "DomainName")
+
+    @property
+    def regional_domain_name(self):
+        return GetAtt(name_to_id(self.name), "RegionalDomainName")
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         return PolicyDocument(
