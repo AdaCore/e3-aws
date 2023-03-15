@@ -11,6 +11,21 @@ if TYPE_CHECKING:
     from typing import Any
 
 
+def get_raw_query_string(mlt_vqsp: dict[str, list]) -> str:
+    """Create the raw query string from the multiValueQueryStringParameters.
+
+    :param mlt_vqsp: the multiValueQueryStringParameters of a REST's API event
+    :return: a raw query string
+    """
+    if mlt_vqsp:
+        rawquerystring = ""
+        for el in mlt_vqsp:
+            rawquerystring += "&".join([f"{el}={v}" for v in mlt_vqsp[el]])
+            rawquerystring += "&"
+        return rawquerystring[:-1]
+    return ""
+
+
 class FlaskLambdaHandler:
     """Flask lambda handler."""
 
@@ -51,7 +66,7 @@ class FlaskLambdaHandler:
         """Create a WSGI environment from AWS lambda input.
 
         Currently this function supports creation of WSGI environment from
-        API Gateway HTTP API 2.0.
+        API Gateway HTTP API 2.0 and a REST API
 
         :param event: as received by the lambda
         :param context: as received by the lambda
@@ -59,21 +74,27 @@ class FlaskLambdaHandler:
         request_ctx = event["requestContext"]
         remote_user: str | None = None
 
+        # http is True if the event comes from HTTP API gateway
+        # otherwise it is false and the event is from a REST API
+        http = "version" in event
+
         if "authorizer" in request_ctx:
             remote_user = request_ctx["authorizer"].get("principalId")
         elif "identity" in request_ctx:
             remote_user = request_ctx["identity"].get("userArn")
 
         # Compute script_name and path
-        path = event["rawPath"]
+        path = event["rawPath" if http else "path"]
         script_name = ""
         stage = request_ctx.get("stage", "$default")
-        if stage != "$default":
+        if stage not in ["$default", "default"]:
             script_name = f"/{stage}"
             path = path.replace(script_name, "", 1)
 
         # HTTP method used
-        http_method = request_ctx["http"]["method"]
+        http_method = (
+            request_ctx["http"]["method"] if http else request_ctx["httpMethod"]
+        )
 
         # Normalized headers
         headers = {k.title(): v for k, v in event["headers"].items()}
@@ -82,13 +103,17 @@ class FlaskLambdaHandler:
         body = event.get("body", "")
         if event.get("isBase64Encoded", "false") == "true":
             body = base64.b64decode(body)
-        else:
+        elif body:
             body = body.encode("utf-8")
+        else:
+            body = b""
 
         environ = {
             "PATH_INFO": path,
-            "QUERY_STRING": event["rawQueryString"],
-            "REMOTE_ADDR": request_ctx["http"]["sourceIp"],
+            "QUERY_STRING": event["rawQueryString"]
+            if http
+            else get_raw_query_string(event["multiValueQueryStringParameters"]),
+            "REMOTE_ADDR": request_ctx["identity"]["sourceIp"],
             "REQUEST_METHOD": http_method,
             "SCRIPT_NAME": script_name,
             "HTTP_HOST": headers["Host"],
