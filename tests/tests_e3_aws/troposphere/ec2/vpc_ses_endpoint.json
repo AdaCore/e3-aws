@@ -1,0 +1,304 @@
+{
+    "TestVPC": {
+        "Properties": {
+            "CidrBlock": "10.10.0.0/16",
+            "EnableDnsHostnames": true,
+            "EnableDnsSupport": true,
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestVPC"
+                }
+            ]
+        },
+        "Type": "AWS::EC2::VPC"
+    },
+    "TestVPCSecurityGroup": {
+        "Properties": {
+            "GroupDescription": "TestVPC main security group",
+            "SecurityGroupEgress": [],
+            "SecurityGroupIngress": [],
+            "VpcId": {
+                "Ref": "TestVPC"
+            },
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestVPCSecurityGroup"
+                }
+            ]
+        },
+        "Type": "AWS::EC2::SecurityGroup"
+    },
+    "TestVPCPrivateSubnet": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPC"
+            },
+            "CidrBlock": "10.10.0.0/18",
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestVPCPrivateSubnet"
+                }
+            ],
+            "AvailabilityZone": "eu-west-1a"
+        },
+        "Type": "AWS::EC2::Subnet"
+    },
+    "TestVPCPrivateSubnetRouteTableAssoc": {
+        "Properties": {
+            "RouteTableId": {
+                "Ref": "TestVPCPrivateSubnetRouteTable"
+            },
+            "SubnetId": {
+                "Ref": "TestVPCPrivateSubnet"
+            }
+        },
+        "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "TestVPCPrivateSubnetRouteTable": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPC"
+            }
+        },
+        "Type": "AWS::EC2::RouteTable"
+    },
+    "TestVPCPrivateSubnetNATRoute": {
+        "Properties": {
+            "RouteTableId": {
+                "Ref": "TestVPCPrivateSubnetRouteTable"
+            },
+            "DestinationCidrBlock": "0.0.0.0/0",
+            "NatGatewayId": {
+                "Ref": "TestVPCPublicSubnetNAT"
+            }
+        },
+        "Type": "AWS::EC2::Route"
+    },
+    "TestVPCPublicSubnet": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPC"
+            },
+            "CidrBlock": "10.10.64.0/18",
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestVPCPublicSubnet"
+                }
+            ],
+            "AvailabilityZone": "eu-west-1a"
+        },
+        "Type": "AWS::EC2::Subnet"
+    },
+    "TestVPCPublicSubnetRouteTableAssoc": {
+        "Properties": {
+            "RouteTableId": {
+                "Ref": "TestVPCPublicSubnetsRouteTable"
+            },
+            "SubnetId": {
+                "Ref": "TestVPCPublicSubnet"
+            }
+        },
+        "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "TestVPCPublicSubnetNAT": {
+        "Properties": {
+            "AllocationId": {
+                "Fn::GetAtt": [
+                    "TestVPCPublicSubnetEIP",
+                    "AllocationId"
+                ]
+            },
+            "SubnetId": {
+                "Ref": "TestVPCPublicSubnet"
+            }
+        },
+        "Type": "AWS::EC2::NatGateway"
+    },
+    "TestVPCPublicSubnetEIP": {
+        "Type": "AWS::EC2::EIP"
+    },
+    "TestVPCPublicSubnetsRouteTable": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPC"
+            }
+        },
+        "Type": "AWS::EC2::RouteTable"
+    },
+    "TestVPCSecondaryPublicSubnet": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPC"
+            },
+            "CidrBlock": "10.10.128.0/18",
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestVPCSecondaryPublicSubnet"
+                }
+            ],
+            "AvailabilityZone": "eu-west-1b"
+        },
+        "Type": "AWS::EC2::Subnet"
+    },
+    "TestVPCSecondaryPublicSubnetRouteTableAssoc": {
+        "Properties": {
+            "RouteTableId": {
+                "Ref": "TestVPCPublicSubnetsRouteTable"
+            },
+            "SubnetId": {
+                "Ref": "TestVPCSecondaryPublicSubnet"
+            }
+        },
+        "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "TestVPCIgw": {
+        "Type": "AWS::EC2::InternetGateway"
+    },
+    "TestVPCIgwAttachement": {
+        "Properties": {
+            "InternetGatewayId": {
+                "Ref": "TestVPCIgw"
+            },
+            "VpcId": {
+                "Ref": "TestVPC"
+            }
+        },
+        "Type": "AWS::EC2::VPCGatewayAttachment"
+    },
+    "TestVPCIgwRoute": {
+        "Properties": {
+            "RouteTableId": {
+                "Ref": "TestVPCPublicSubnetsRouteTable"
+            },
+            "DestinationCidrBlock": "0.0.0.0/0",
+            "GatewayId": {
+                "Ref": "TestVPCIgw"
+            }
+        },
+        "Type": "AWS::EC2::Route"
+    },
+    "TestVPCVPCEndpointsSubnetSubnet": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPC"
+            },
+            "CidrBlock": "10.10.192.0/18",
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestVPCVPCEndpointsSubnetSubnet"
+                }
+            ]
+        },
+        "Type": "AWS::EC2::Subnet"
+    },
+    "TestVPCVPCEndpointsSubnetSecurityGroup": {
+        "Properties": {
+            "GroupDescription": "TestVPCVPCEndpointsSubnet vpc endpoints security group",
+            "SecurityGroupEgress": [],
+            "SecurityGroupIngress": [],
+            "VpcId": {
+                "Ref": "TestVPC"
+            }
+        },
+        "Type": "AWS::EC2::SecurityGroup"
+    },
+    "TestVPCVPCEndpointsSubnetDefaultEgress": {
+        "Properties": {
+            "CidrIp": "10.10.192.0/18",
+            "IpProtocol": "-1",
+            "GroupId": {
+                "Ref": "TestVPCVPCEndpointsSubnetSecurityGroup"
+            }
+        },
+        "Type": "AWS::EC2::SecurityGroupEgress"
+    },
+    "TestVPCVPCEndpointsSubnetEgressToVPC": {
+        "Properties": {
+            "CidrIp": "10.10.0.0/16",
+            "FromPort": "443",
+            "ToPort": "443",
+            "IpProtocol": "tcp",
+            "GroupId": {
+                "Ref": "TestVPCVPCEndpointsSubnetSecurityGroup"
+            }
+        },
+        "Type": "AWS::EC2::SecurityGroupEgress"
+    },
+    "TestVPCVPCEndpointsSubnetIngressFromVPC": {
+        "Properties": {
+            "CidrIp": "10.10.0.0/16",
+            "FromPort": "443",
+            "ToPort": "443",
+            "IpProtocol": "tcp",
+            "GroupId": {
+                "Ref": "TestVPCVPCEndpointsSubnetSecurityGroup"
+            }
+        },
+        "Type": "AWS::EC2::SecurityGroupIngress"
+    },
+    "SesEndpoint": {
+        "Properties": {
+            "PrivateDnsEnabled": true,
+            "SecurityGroupIds": [
+                {
+                    "Ref": "TestVPCVPCEndpointsSubnetSESSecurityGroup"
+                }
+            ],
+            "ServiceName": "com.amazonaws.eu-west-1.ses",
+            "SubnetIds": [
+                {
+                    "Ref": "TestVPCVPCEndpointsSubnetSubnet"
+                }
+            ],
+            "VpcEndpointType": "Interface",
+            "VpcId": {
+                "Ref": "TestVPC"
+            }
+        },
+        "Type": "AWS::EC2::VPCEndpoint"
+    },
+    "TestVPCVPCEndpointsSubnetSESSecurityGroup": {
+        "Properties": {
+            "GroupDescription": "TestVPCVPCEndpointsSubnet SES vpc endpoint security group",
+            "SecurityGroupEgress": [
+                {
+                    "CidrIp": "10.10.0.0/16",
+                    "IpProtocol": "-1"
+                }
+            ],
+            "SecurityGroupIngress": [
+                {
+                    "CidrIp": "10.10.0.0/16",
+                    "FromPort": "587",
+                    "ToPort": "587",
+                    "IpProtocol": "tcp"
+                }
+            ],
+            "VpcId": {
+                "Ref": "TestVPC"
+            }
+        },
+        "Type": "AWS::EC2::SecurityGroup"
+    },
+    "TestVPCEndpointsEgress": {
+        "Properties": {
+            "DestinationSecurityGroupId": {
+                "Ref": "TestVPCVPCEndpointsSubnetSecurityGroup"
+            },
+            "Description": "Allows traffic to the subnet holding VPC interface endpoints",
+            "FromPort": "443",
+            "ToPort": "443",
+            "IpProtocol": "tcp",
+            "GroupId": {
+                "Ref": "TestVPCSecurityGroup"
+            }
+        },
+        "Type": "AWS::EC2::SecurityGroupEgress"
+    }
+}
