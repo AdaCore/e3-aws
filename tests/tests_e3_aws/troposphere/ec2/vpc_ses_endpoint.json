@@ -242,7 +242,7 @@
         },
         "Type": "AWS::EC2::SecurityGroupIngress"
     },
-    "SesEndpoint": {
+    "EmailSmtpEndpoint": {
         "Properties": {
             "PrivateDnsEnabled": true,
             "SecurityGroupIds": [
@@ -250,7 +250,7 @@
                     "Ref": "TestVPCVPCEndpointsSubnetSESSecurityGroup"
                 }
             ],
-            "ServiceName": "com.amazonaws.eu-west-1.ses",
+            "ServiceName": "com.amazonaws.eu-west-1.email-smtp",
             "SubnetIds": [
                 {
                     "Ref": "TestVPCVPCEndpointsSubnetSubnet"

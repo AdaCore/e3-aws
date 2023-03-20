@@ -101,7 +101,7 @@ def test_vpc_with_ses_endpoint(stack: Stack) -> None:
         region="eu-west-1",
         nat_gateway=False,
         interface_endpoints=[
-            ("ses", None),
+            ("email-smtp", None),
         ],
     )
     stack.add(vpc)

@@ -120,7 +120,7 @@ class VPCEndpointsSubnet(Construct):
 
         if interface_endpoints:
             self.interface_endpoints = interface_endpoints
-            if "ses" in [endpoint[0] for endpoint in self.interface_endpoints]:
+            if "email-smtp" in [endpoint[0] for endpoint in self.interface_endpoints]:
                 self.has_ses_endpoint = True
         else:
             self.interface_endpoints = []
