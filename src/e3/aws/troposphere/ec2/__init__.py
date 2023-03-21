@@ -216,7 +216,7 @@ class VPCEndpointsSubnet(Construct):
             else:
                 opt_params = {}
 
-            if self.has_ses_endpoint:
+            if service_name == "email-smtp":
                 security_group_id = Ref(self.ses_security_group)
             else:
                 security_group_id = Ref(self.security_group)
