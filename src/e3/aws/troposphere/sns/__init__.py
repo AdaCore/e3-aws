@@ -39,13 +39,10 @@ class Topic(Construct):
         :param delivery_policy: The delivery policy to assign to the subscription
         """
         sub_params = {
-            key: val
-            for key, val in {
-                "Endpoint": function.arn,
-                "Protocol": "lambda",
-                "TopicArn": self.arn,
-                "DeliveryPolicy": delivery_policy,
-            }.items()
+            "Endpoint": function.arn,
+            "Protocol": "lambda",
+            "TopicArn": self.arn,
+            "DeliveryPolicy": delivery_policy,
         }
 
         self.optional_resources.extend(
