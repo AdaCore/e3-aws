@@ -210,7 +210,6 @@ class VPCEndpointsSubnet(Construct):
         endpoints = []
 
         for service_name, pd in self.interface_endpoints:
-
             if pd is not None:
                 opt_params = {"PolicyDocument": pd.as_dict}
             else:

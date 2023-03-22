@@ -102,7 +102,6 @@ class StackSet(Construct):
                 )
 
             if self.accounts is not None:
-
                 stack_instances_group.append(
                     cloudformation.StackInstances(
                         DeploymentTargets=cloudformation.DeploymentTargets(
