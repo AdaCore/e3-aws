@@ -39,7 +39,7 @@ from . import PyFunction
 
 STARTUP_CODE = """
 from %(app_module)s import %(app_name)s
-from flask_apigateway2_http_wrapper import FlaskLambdaHandler
+from flask_apigateway_wrapper import FlaskLambdaHandler
 
 lambda_handler = FlaskLambdaHandler(%(app_name)s)
 lambda_handler_fun = lambda_handler.lambda_handler
@@ -116,7 +116,7 @@ class PyFlaskFunction(PyFunction):
             )
         wrapper_file = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
-            "flask_apigateway2_http_wrapper.py",
+            "flask_apigateway_wrapper.py",
         )
         cp(wrapper_file, package_dir)
         sync_tree(package_dir, "/tmp/nico/package")
