@@ -52,9 +52,4 @@ jobs:
       - uses: actions/setup-python@v2
         with:
            python-version: 3.9
-      - name: Install typing packages
-        run: |
-             python -m pip install -U pip
-             python -m pip install types-requests types-python-dateutil \
-                                   types-PyYAML types-setuptools
       - uses: pre-commit/action@v2.0.0
