@@ -197,7 +197,6 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 )
 
             if self.args.command in ("push", "update"):
-
                 # Synchronize resources to the S3 bucket
                 s3 = self.aws_env.client("s3")
                 with tempfile.TemporaryDirectory() as tempd:
@@ -207,7 +206,6 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     stack.create_data_dir(root_dir=tempd)
 
                     if self.s3_data_key is not None:
-
                         # synchronize data to the bucket before creating the stack
                         for f in find(tempd):
                             with open(f, "rb") as fd:

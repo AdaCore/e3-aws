@@ -43,7 +43,6 @@ class Principal(object):
         """
         result = {}
         for principal in principals:
-
             if principal.kind == PrincipalKind.EVERYONE:
                 # If EVERYONE is present then it should be alone because
                 # it will mask any other principal.
