@@ -22,7 +22,6 @@ from e3.aws.troposphere.awslambda import (
     BlueGreenAliases,
     BlueGreenAliasConfiguration,
 )
-from e3.aws.troposphere.awslambda.flask_apigateway_wrapper import get_raw_query_string
 
 SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "source_dir")
 
@@ -641,9 +640,3 @@ def test_bluegreenaliases(stack: Stack, simple_lambda_function: PyFunction) -> N
     assert stack.export()["Resources"] == EXPECTED_BLUEGREENALIASES_TEMPLATE
     assert aliases.blue.name == "MypylambdaProdAlias"
     assert aliases.green.name == "MypylambdaBetaAlias"
-
-
-def test_get_raw_query_string():
-    query_parameters = {"po": ["1", "mml"], "test": ["hehe"], "n": [1]}
-    query_string = "po=1&po=mml&test=hehe&n=1"
-    assert get_raw_query_string(query_parameters) == query_string
