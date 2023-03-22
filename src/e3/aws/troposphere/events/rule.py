@@ -13,7 +13,6 @@ from e3.aws.troposphere.ecs.cluster import FargateCluster
 from e3.aws.troposphere.ecs.vpc import EcsVPC
 
 if TYPE_CHECKING:
-
     from e3.aws.troposphere import Stack
 
 
