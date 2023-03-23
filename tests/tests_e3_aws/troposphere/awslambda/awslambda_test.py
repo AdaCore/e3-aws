@@ -645,7 +645,6 @@ def test_bluegreenaliases(stack: Stack, simple_lambda_function: PyFunction) -> N
 
 
 def test_create_flask_wsgi_environ_with_rest_api_event():
-
     # get REST API lambda event
     with open(
         os.path.join(SOURCE_DIR, "event.json"),  # an event from a REST API
