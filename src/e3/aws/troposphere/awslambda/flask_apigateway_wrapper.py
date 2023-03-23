@@ -6,24 +6,10 @@ import json
 import io
 import sys
 import base64
+from urllib.parse import urlencode
 
 if TYPE_CHECKING:
     from typing import Any
-
-
-def get_raw_query_string(mlt_vqsp: dict[str, list]) -> str:
-    """Create the raw query string from the multiValueQueryStringParameters.
-
-    :param mlt_vqsp: the multiValueQueryStringParameters of a REST's API event
-    :return: a raw query string
-    """
-    if mlt_vqsp:
-        rawquerystring = ""
-        for el in mlt_vqsp:
-            rawquerystring += "&".join([f"{el}={v}" for v in mlt_vqsp[el]])
-            rawquerystring += "&"
-        return rawquerystring[:-1]
-    return ""
 
 
 class FlaskLambdaHandler:
@@ -112,7 +98,7 @@ class FlaskLambdaHandler:
             "PATH_INFO": path,
             "QUERY_STRING": event["rawQueryString"]
             if http
-            else get_raw_query_string(event["multiValueQueryStringParameters"]),
+            else urlencode(event["multiValueQueryStringParameters"], doseq=True),
             "REMOTE_ADDR": request_ctx["identity"]["sourceIp"],
             "REQUEST_METHOD": http_method,
             "SCRIPT_NAME": script_name,
