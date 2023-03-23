@@ -94,11 +94,14 @@ class FlaskLambdaHandler:
         else:
             body = b""
 
+        query_string_param = event.get("multiValueQueryStringParameters")
         environ = {
             "PATH_INFO": path,
             "QUERY_STRING": event["rawQueryString"]
             if http
-            else urlencode(event["multiValueQueryStringParameters"], doseq=True),
+            else urlencode(query_string_param, doseq=True)
+            if query_string_param
+            else "",
             "REMOTE_ADDR": request_ctx["identity"]["sourceIp"],
             "REQUEST_METHOD": http_method,
             "SCRIPT_NAME": script_name,
