@@ -1,0 +1,278 @@
+{
+  "Mypylambda": {
+    "Properties": {
+      "Code": {
+        "S3Bucket": "cfn_bucket",
+        "S3Key": "templates/mypylambda_lambda.zip"
+      },
+      "Timeout": 3,
+      "Description": "this is a test",
+      "Role": "somearn",
+      "FunctionName": "mypylambda",
+      "Runtime": "python3.8",
+      "Handler": "app.main"
+    },
+    "Type": "AWS::Lambda::Function"
+  },
+  "TestapiLogGroup": {
+    "Properties": {
+      "LogGroupName": "testapi"
+    },
+    "Type": "AWS::Logs::LogGroup"
+  },
+  "Testapi": {
+    "Properties": {
+      "Description": "this is a test",
+      "ProtocolType": "HTTP",
+      "Name": "testapi",
+      "DisableExecuteApiEndpoint": true
+    },
+    "Type": "AWS::ApiGatewayV2::Api"
+  },
+  "TestapiDefaultStage": {
+    "Properties": {
+      "AccessLogSettings": {
+        "DestinationArn": {
+          "Fn::GetAtt": [
+            "TestapiLogGroup",
+            "Arn"
+          ]
+        },
+        "Format": "{\"source_ip\": \"$context.identity.sourceIp\", \"request_time\": \"$context.requestTime\", \"method\": \"$context.httpMethod\", \"route\": \"$context.routeKey\", \"protocol\": \"$context.protocol\", \"status\": \"$context.status\", \"response_length\": \"$context.responseLength\", \"request_id\": \"$context.requestId\", \"integration_error_msg\": \"$context.integrationErrorMessage\"}"
+      },
+      "ApiId": {
+        "Ref": "Testapi"
+      },
+      "AutoDeploy": true,
+      "Description": "stage $default",
+      "DefaultRouteSettings": {
+        "DetailedMetricsEnabled": true,
+        "ThrottlingBurstLimit": 10,
+        "ThrottlingRateLimit": 10
+      },
+      "StageName": "$default"
+    },
+    "Type": "AWS::ApiGatewayV2::Stage"
+  },
+  "TestapiIntegration": {
+    "Properties": {
+      "ApiId": {
+        "Ref": "Testapi"
+      },
+      "IntegrationType": "AWS_PROXY",
+      "IntegrationUri": {
+        "Ref": "Mypylambda"
+      },
+      "PayloadFormatVersion": "2.0"
+    },
+    "Type": "AWS::ApiGatewayV2::Integration"
+  },
+  "TestapiGETapi1Route": {
+    "Properties": {
+      "ApiId": {
+        "Ref": "Testapi"
+      },
+      "AuthorizationType": "NONE",
+      "RouteKey": "GET /api1",
+      "Target": {
+        "Fn::Sub": [
+          "integrations/${integration}",
+          {
+            "integration": {
+              "Ref": "TestapiIntegration"
+            }
+          }
+        ]
+      }
+    },
+    "Type": "AWS::ApiGatewayV2::Route"
+  },
+  "TestapiGETapi1LambdaPermission": {
+    "Properties": {
+      "Action": "lambda:InvokeFunction",
+      "FunctionName": {
+        "Ref": "Mypylambda"
+      },
+      "Principal": "apigateway.amazonaws.com",
+      "SourceArn": {
+        "Fn::Sub": [
+          "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/$default/${route_arn}",
+          {
+            "api": {
+              "Ref": "Testapi"
+            },
+            "route_arn": "GET/api1"
+          }
+        ]
+      }
+    },
+    "Type": "AWS::Lambda::Permission"
+  },
+  "TestapiPOSTapi2Route": {
+    "Properties": {
+      "ApiId": {
+        "Ref": "Testapi"
+      },
+      "AuthorizationType": "NONE",
+      "RouteKey": "POST /api2",
+      "Target": {
+        "Fn::Sub": [
+          "integrations/${integration}",
+          {
+            "integration": {
+              "Ref": "TestapiIntegration"
+            }
+          }
+        ]
+      }
+    },
+    "Type": "AWS::ApiGatewayV2::Route"
+  },
+  "TestapiPOSTapi2LambdaPermission": {
+    "Properties": {
+      "Action": "lambda:InvokeFunction",
+      "FunctionName": {
+        "Ref": "Mypylambda"
+      },
+      "Principal": "apigateway.amazonaws.com",
+      "SourceArn": {
+        "Fn::Sub": [
+          "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/$default/${route_arn}",
+          {
+            "api": {
+              "Ref": "Testapi"
+            },
+            "route_arn": "POST/api2"
+          }
+        ]
+      }
+    },
+    "Type": "AWS::Lambda::Permission"
+  },
+  "TestapiapiexamplecomCertificate": {
+    "Properties": {
+      "DomainName": "api.example.com",
+      "DomainValidationOptions": [
+        {
+          "DomainName": "api.example.com",
+          "HostedZoneId": "ABCDEFG"
+        }
+      ],
+      "ValidationMethod": "DNS"
+    },
+    "Type": "AWS::CertificateManager::Certificate"
+  },
+  "TestapiapiexamplecomDomain": {
+    "Properties": {
+      "DomainName": "api.example.com",
+      "DomainNameConfigurations": [
+        {
+          "CertificateArn": {
+            "Ref": "TestapiapiexamplecomCertificate"
+          }
+        }
+      ]
+    },
+    "Type": "AWS::ApiGatewayV2::DomainName"
+  },
+  "TestapiapiexamplecomApiMapping": {
+    "Properties": {
+      "DomainName": {
+        "Ref": "TestapiapiexamplecomDomain"
+      },
+      "ApiId": {
+        "Ref": "Testapi"
+      },
+      "Stage": {
+        "Ref": "TestapiDefaultStage"
+      }
+    },
+    "Type": "AWS::ApiGatewayV2::ApiMapping"
+  },
+  "TestapiapiexamplecomDNS": {
+    "Properties": {
+      "Name": "api.example.com",
+      "Type": "A",
+      "HostedZoneId": "ABCDEFG",
+      "AliasTarget": {
+        "DNSName": {
+          "Fn::GetAtt": [
+            "TestapiapiexamplecomDomain",
+            "RegionalDomainName"
+          ]
+        },
+        "HostedZoneId": {
+          "Fn::GetAtt": [
+            "TestapiapiexamplecomDomain",
+            "RegionalHostedZoneId"
+          ]
+        },
+        "EvaluateTargetHealth": false
+      }
+    },
+    "Type": "AWS::Route53::RecordSet"
+  },
+  "Testapiapi2examplecomApiMapping": {
+    "Properties": {
+      "ApiId": {
+        "Ref": "Testapi"
+      },
+      "DomainName": {
+        "Ref": "Testapiapi2examplecomDomain"
+      },
+      "Stage": {
+        "Ref": "TestapiDefaultStage"
+      }
+    },
+    "Type": "AWS::ApiGatewayV2::ApiMapping"
+  },
+  "Testapiapi2examplecomCertificate": {
+    "Properties": {
+      "DomainName": "api2.example.com",
+      "DomainValidationOptions": [
+        {
+          "DomainName": "api2.example.com",
+          "HostedZoneId": "BCDEFGH"
+        }
+      ],
+      "ValidationMethod": "DNS"
+    },
+    "Type": "AWS::CertificateManager::Certificate"
+  },
+  "Testapiapi2examplecomDNS": {
+    "Properties": {
+      "AliasTarget": {
+        "DNSName": {
+          "Fn::GetAtt": [
+            "Testapiapi2examplecomDomain",
+            "RegionalDomainName"
+          ]
+        },
+        "EvaluateTargetHealth": false,
+        "HostedZoneId": {
+          "Fn::GetAtt": [
+            "Testapiapi2examplecomDomain",
+            "RegionalHostedZoneId"
+          ]
+        }
+      },
+      "HostedZoneId": "BCDEFGH",
+      "Name": "api2.example.com",
+      "Type": "A"
+    },
+    "Type": "AWS::Route53::RecordSet"
+  },
+  "Testapiapi2examplecomDomain": {
+    "Properties": {
+      "DomainName": "api2.example.com",
+      "DomainNameConfigurations": [
+        {
+          "CertificateArn": {
+            "Ref": "Testapiapi2examplecomCertificate"
+          }
+        }
+      ]
+    },
+    "Type": "AWS::ApiGatewayV2::DomainName"
+  }
+}
