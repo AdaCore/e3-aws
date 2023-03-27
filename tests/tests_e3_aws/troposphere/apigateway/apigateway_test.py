@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 import os
+import pytest
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.awslambda import (
     PyFunction,
@@ -290,12 +291,10 @@ EXPECTED_TEMPLATE_LAMBDA_ALIAS = {
 }
 
 
-def test_http_api(stack: Stack) -> None:
-    """Test basic HTTP API."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
-
-    lambda_fun = PyFunction(
+@pytest.fixture
+def lambda_fun() -> PyFunction:
+    """Return a simple lambda function for testing."""
+    return PyFunction(
         name="mypylambda",
         description="this is a test",
         role="somearn",
@@ -304,6 +303,13 @@ def test_http_api(stack: Stack) -> None:
         runtime="python3.8",
         logs_retention_in_days=None,
     )
+
+
+def test_http_api(stack: Stack, lambda_fun: PyFunction) -> None:
+    """Test basic HTTP API."""
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+
     stack.add(lambda_fun)
     stack.add(
         HttpApi(
@@ -317,20 +323,10 @@ def test_http_api(stack: Stack) -> None:
     assert stack.export()["Resources"] == EXPECTED_TEMPLATE
 
 
-def test_http_api_stage(stack: Stack) -> None:
+def test_http_api_stage(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test HTTP API with stages."""
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
-
-    lambda_fun = PyFunction(
-        name="mypylambda",
-        description="this is a test",
-        role="somearn",
-        code_dir="my_code_dir",
-        handler="app.main",
-        runtime="python3.8",
-        logs_retention_in_days=None,
-    )
 
     http_api = HttpApi(
         name="testapi",
@@ -349,20 +345,10 @@ def test_http_api_stage(stack: Stack) -> None:
     assert stack.export()["Resources"] == EXPECTED_TEMPLATE_STAGE
 
 
-def test_http_api_lambda_alias(stack: Stack) -> None:
+def test_http_api_lambda_alias(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test HTTP API with lambda alias."""
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
-
-    lambda_fun = PyFunction(
-        name="mypylambda",
-        description="this is a test",
-        role="somearn",
-        code_dir="my_code_dir",
-        handler="app.main",
-        runtime="python3.8",
-        logs_retention_in_days=None,
-    )
 
     lambda_versions = AutoVersion(2, lambda_function=lambda_fun)
 
@@ -403,20 +389,11 @@ def test_http_api_lambda_alias(stack: Stack) -> None:
     assert stack.export()["Resources"] == EXPECTED_TEMPLATE_LAMBDA_ALIAS
 
 
-def test_http_api_custom_domain(stack: Stack) -> None:
+def test_http_api_custom_domain(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test basic HTTP API with custom domain."""
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
 
-    lambda_fun = PyFunction(
-        name="mypylambda",
-        description="this is a test",
-        role="somearn",
-        code_dir="my_code_dir",
-        handler="app.main",
-        runtime="python3.8",
-        logs_retention_in_days=None,
-    )
     stack.add(lambda_fun)
     http_api = HttpApi(
         name="testapi",
@@ -444,20 +421,41 @@ def test_http_api_custom_domain(stack: Stack) -> None:
     assert stack.export()["Resources"] == expected
 
 
-def test_http_api_custom_domain_stages(stack: Stack) -> None:
+def test_http_api_multi_domains(stack: Stack, lambda_fun: PyFunction) -> None:
+    """Test basic HTTP API with two domains."""
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+
+    stack.add(lambda_fun)
+    http_api = HttpApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        domain_name="api.example.com",
+        hosted_zone_id="ABCDEFG",
+        route_list=[
+            GET(route="/api1"),
+            POST(route="/api2"),
+        ],
+    )
+    stack.add(http_api)
+    for el in http_api.declare_domain(
+        domain_name="api2.example.com", hosted_zone_id="BCDEFGH"
+    ):
+        stack.add(el)
+
+    with open(os.path.join(TEST_DIR, "apigateway_test_multi_domains.json")) as fd:
+        expected = json.load(fd)
+
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == expected
+
+
+def test_http_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test basic HTTP API with custom domain and stage."""
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
 
-    lambda_fun = PyFunction(
-        name="mypylambda",
-        description="this is a test",
-        role="somearn",
-        code_dir="my_code_dir",
-        handler="app.main",
-        runtime="python3.8",
-        logs_retention_in_days=None,
-    )
     stack.add(lambda_fun)
     http_api = HttpApi(
         name="testapi",
@@ -491,20 +489,11 @@ def test_http_api_custom_domain_stages(stack: Stack) -> None:
     assert stack.export()["Resources"] == expected
 
 
-def test_rest_api_custom_domain_stages(stack: Stack) -> None:
+def test_rest_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test REST api custom domain and stage."""
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
 
-    lambda_fun = PyFunction(
-        name="mypylambda",
-        description="this is a test",
-        role="somearn",
-        code_dir="my_code_dir",
-        handler="app.main",
-        runtime="python3.8",
-        logs_retention_in_days=None,
-    )
     stack.add(lambda_fun)
     rest_api = RestApi(
         name="testapi",
@@ -517,7 +506,9 @@ def test_rest_api_custom_domain_stages(stack: Stack) -> None:
         ],
         stages_config=[
             StageConfiguration("$default"),
-            StageConfiguration("beta", api_mapping_key="beta"),
+            StageConfiguration(
+                "beta", api_mapping_key="beta", variables={"somevar": "somevalue"}
+            ),
         ],
         policy=[
             Allow(
