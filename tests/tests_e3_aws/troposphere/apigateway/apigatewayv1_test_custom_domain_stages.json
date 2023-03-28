@@ -151,7 +151,8 @@
                     "ThrottlingRateLimit": 10
                 }
             ],
-            "StageName": "beta"
+            "StageName": "beta",
+            "Variables": {"somevar": "somevalue"}
         },
         "Type": "AWS::ApiGateway::Stage"
     },
