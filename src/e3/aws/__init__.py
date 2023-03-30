@@ -24,9 +24,27 @@ from e3.os.process import Run
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from typing import Any, Callable
+    from typing import Any, TypedDict, Callable
     import botocore.client
     import botocore.stub
+
+    class AWSCredentials(TypedDict, total=False):
+        """Annotate a dict containing AWS credentials.
+
+        :cvar Version: credentials format version
+        :cvar AccessKeyId: access key ID that identifies the temporary security
+            credentials
+        :cvar SecretAccessKey: secret access key that can be used to sign requests
+        :cvar SessionToken: token that users must pass to the service API to use
+            the temporary credentials
+        :cvar Expiration: date on which the current credentials expire
+        """
+
+        Version: int
+        AccessKeyId: str
+        SecretAccessKey: str
+        SessionToken: str
+        Expiration: str
 
 
 class AWSSessionRunError(E3Error):
@@ -51,7 +69,7 @@ class Session:
         regions: list[str] | None = None,
         stub: bool = False,
         profile: str | None = None,
-        credentials: dict | None = None,
+        credentials: AWSCredentials | None = None,
     ) -> None:
         """Initialize an AWS session.
 
@@ -128,7 +146,7 @@ class Session:
         role_session_name: str,
         session_duration: int | None = None,
         as_env_var: bool = False,
-    ) -> dict[str, Any]:
+    ) -> AWSCredentials:
         """Return credentials for ``role_arn``.
 
         :param role_arn: ARN of the role to assume
