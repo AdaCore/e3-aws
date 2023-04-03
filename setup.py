@@ -13,6 +13,7 @@ setup(
     author="AdaCore's Production Team",
     packages=find_packages(where="src"),
     package_dir={"": "src"},
+    package_data={"e3.aws": ["py.typed"]},
     install_requires=(
         "boto3",
         "botocore",
