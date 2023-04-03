@@ -644,10 +644,34 @@ def test_bluegreenaliases(stack: Stack, simple_lambda_function: PyFunction) -> N
     assert aliases.green.name == "MypylambdaBetaAlias"
 
 
+def test_create_flask_wsgi_environ_with_http_api_event():
+    # get HTTP API lambda event
+    with open(
+        os.path.join(SOURCE_DIR, "event-http.json"),  # an event from an HTTP API
+    ) as fd:
+        rest_api_event = json.load(fd)
+
+    handler = FlaskLambdaHandler("app")
+    flask_environment = handler.create_flask_wsgi_environ(rest_api_event, {})
+
+    # remove values that are not
+    # JSON serializable
+    flask_environment.pop("wsgi.input")
+    flask_environment.pop("wsgi.errors")
+
+    # serialize to a JSON dict
+    flask_environment = json.loads(json.dumps(flask_environment))
+
+    with open(os.path.join(SOURCE_DIR, "http_api_wsgi_flask_environment.json")) as fd:
+        expected_flask_environment = json.load(fd)
+
+    assert flask_environment == expected_flask_environment
+
+
 def test_create_flask_wsgi_environ_with_rest_api_event():
     # get REST API lambda event
     with open(
-        os.path.join(SOURCE_DIR, "event.json"),  # an event from a REST API
+        os.path.join(SOURCE_DIR, "event-rest.json"),  # an event from a REST API
     ) as fd:
         rest_api_event = json.load(fd)
 
