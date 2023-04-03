@@ -69,18 +69,36 @@ class FlaskLambdaHandler:
         elif "identity" in request_ctx:
             remote_user = request_ctx["identity"].get("userArn")
 
+        # Set values for an HTTP event
+        if http:
+            # HTTP method used
+            http_method = request_ctx["http"]["method"]
+            path = event["rawPath"]
+
+            # set environ items
+            query_string = event["rawQueryString"]
+            remote_addr = request_ctx["http"]["sourceIp"]
+
+        # Set values for a REST API event
+        else:
+            # HTTP method used
+            http_method = request_ctx["httpMethod"]
+            path = event["path"]
+
+            # set environ items
+            query_string = (
+                urlencode(q, doseq=True)
+                if (q := event.get("multiValueQueryStringParameters"))
+                else ""
+            )
+            remote_addr = request_ctx["identity"]["sourceIp"]
+
         # Compute script_name and path
-        path = event["rawPath" if http else "path"]
         script_name = ""
         stage = request_ctx.get("stage", "$default")
         if stage not in ["$default", "default"]:
             script_name = f"/{stage}"
             path = path.replace(script_name, "", 1)
-
-        # HTTP method used
-        http_method = (
-            request_ctx["http"]["method"] if http else request_ctx["httpMethod"]
-        )
 
         # Normalized headers
         headers = {k.title(): v for k, v in event["headers"].items()}
@@ -94,15 +112,10 @@ class FlaskLambdaHandler:
         else:
             body = b""
 
-        query_string_param = event.get("multiValueQueryStringParameters")
         environ = {
             "PATH_INFO": path,
-            "QUERY_STRING": event["rawQueryString"]
-            if http
-            else urlencode(query_string_param, doseq=True)
-            if query_string_param
-            else "",
-            "REMOTE_ADDR": request_ctx["identity"]["sourceIp"],
+            "QUERY_STRING": query_string,
+            "REMOTE_ADDR": remote_addr,
             "REQUEST_METHOD": http_method,
             "SCRIPT_NAME": script_name,
             "HTTP_HOST": headers["Host"],
