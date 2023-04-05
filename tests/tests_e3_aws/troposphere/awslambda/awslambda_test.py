@@ -575,6 +575,8 @@ def test_autoversion(stack: Stack, simple_lambda_function: PyFunction) -> None:
     stack.add(auto_version)
     print(stack.export()["Resources"])
     assert stack.export()["Resources"] == EXPECTED_AUTOVERSION_TEMPLATE
+    assert auto_version.get_version(2).name == "mypylambdaVersion2"
+    assert auto_version.get_version(3).name == "mypylambdaVersion3"
     assert auto_version.previous.name == "mypylambdaVersion2"
     assert auto_version.latest.name == "mypylambdaVersion3"
 
