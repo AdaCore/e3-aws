@@ -635,7 +635,7 @@ class AutoVersion(Construct):
             lambda_name is not None and lambda_arn is not None
         ), "either lambda_function or lambda_name plus lambda_arn should be provided"
         self.version = version
-        self.min_version = min_version
+        self.min_version = min_version if min_version is not None else 1
         self.lambda_function = lambda_function
         self.lambda_name = lambda_function.name if lambda_function else lambda_name
         self.lambda_arn = lambda_function.arn if lambda_function else lambda_arn
@@ -645,7 +645,7 @@ class AutoVersion(Construct):
                 description=f"version {i} of {self.lambda_name} lambda",
                 lambda_arn=self.lambda_arn,
             )
-            for i in range(min_version if min_version is not None else 1, version + 1)
+            for i in range(self.min_version, version + 1)
         ]
         self.latest.provisioned_concurrency_config = provisioned_concurrency_config
         self.latest.code_sha256 = code_sha256
@@ -655,9 +655,11 @@ class AutoVersion(Construct):
 
         :param number: version number
         """
+        number = number - self.min_version
+
         return (
-            self.versions[number - 1]
-            if number > 0 and number <= len(self.versions)
+            self.versions[number]
+            if number >= 0 and number < len(self.versions)
             else None
         )
 
