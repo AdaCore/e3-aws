@@ -1,12 +1,18 @@
 from __future__ import annotations
 import os
-
+import json
 from troposphere import Ref
 from e3.aws.troposphere import Stack
-from e3.aws.troposphere.dynamodb import Table
+from e3.aws.troposphere.dynamodb import (
+    Table,
+    GlobalSecondaryIndex,
+    ALL_PROJECTION,
+    INCLUDE_PROJECTION,
+)
 
 
 SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "source_dir")
+TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 EXPECTED_TABLE_DEFAULT_TEMPLATE = {
@@ -82,3 +88,37 @@ def test_table(stack: Stack) -> None:
         )
     )
     assert stack.export()["Resources"] == EXPECTED_TABLE_TEMPLATE
+
+
+def test_table_with_gsi(stack: Stack) -> None:
+    """Create a table with Global Secondary Indexes."""
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+    stack.add(
+        Table(
+            name="mytable",
+            attribute_definitions={"id": "N", "prop1": "S", "prop2": "S", "prop3": "S"},
+            key_schema={"id": "HASH", "prop1": "RANGE"},
+            global_secondary_indexes=[
+                GlobalSecondaryIndex(
+                    index_name="prop1_index",
+                    key_schema={"prop1": "HASH", "id": "RANGE"},
+                    projection_type=ALL_PROJECTION,
+                ),
+                GlobalSecondaryIndex(
+                    index_name="prop2_index",
+                    key_schema={"prop2": "HASH"},
+                    projection_type=INCLUDE_PROJECTION,
+                    non_key_attributes=["prop3"],
+                ),
+            ],
+            point_in_time_recovery_enabled=True,
+        )
+    )
+
+    with open(
+        os.path.join(TEST_DIR, "dynamodb_table_with_gsi.json"),
+    ) as fd:
+        expected_table_template = json.load(fd)
+
+    assert stack.export()["Resources"] == expected_table_template
