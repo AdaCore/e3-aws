@@ -1,0 +1,84 @@
+{
+    "Mytable": {
+        "Properties": {
+            "TableName": "mytable",
+            "AttributeDefinitions": [
+                {
+                    "AttributeName": "id",
+                    "AttributeType": "N"
+                },
+                {
+                    "AttributeName": "prop1",
+                    "AttributeType": "S"
+                },
+                {
+                    "AttributeName": "prop2",
+                    "AttributeType": "S"
+                },
+                {
+                    "AttributeName": "prop3",
+                    "AttributeType": "S"
+                }
+            ],
+            "KeySchema": [
+                {
+                    "AttributeName": "id",
+                    "KeyType": "HASH"
+                },
+                {
+                    "AttributeName": "prop1",
+                    "KeyType": "RANGE"
+                }
+            ],
+            "GlobalSecondaryIndexes": [
+                {
+                    "IndexName": "prop1_index",
+                    "KeySchema": [
+                        {
+                            "AttributeName": "prop1",
+                            "KeyType": "HASH"
+                        },
+                        {
+                            "AttributeName": "id",
+                            "KeyType": "RANGE"
+                        }
+                    ],
+                    "Projection": {
+                        "ProjectionType": "ALL"
+                    },
+                    "ProvisionedThroughput": {
+                        "ReadCapacityUnits": 10,
+                        "WriteCapacityUnits": 10
+                    }
+                },
+                {
+                    "IndexName": "prop2_index",
+                    "KeySchema": [
+                        {
+                            "AttributeName": "prop2",
+                            "KeyType": "HASH"
+                        }
+                    ],
+                    "Projection": {
+                        "ProjectionType": "INCLUDE",
+                        "NonKeyAttributes": [
+                            "prop3"
+                        ]
+                    },
+                    "ProvisionedThroughput": {
+                        "ReadCapacityUnits": 10,
+                        "WriteCapacityUnits": 10
+                    }
+                }
+            ],
+            "PointInTimeRecoverySpecification": {
+                "PointInTimeRecoveryEnabled": true
+            },
+            "ProvisionedThroughput": {
+                "ReadCapacityUnits": 10,
+                "WriteCapacityUnits": 10
+            }
+        },
+        "Type": "AWS::DynamoDB::Table"
+    }
+}
