@@ -47,13 +47,12 @@ def test_run(capfd: CaptureFixture) -> None:
         assert captured.out.startswith("aws-cli/")
 
         with pytest.raises(AWSSessionRunError):
-            p_wrong = aws_env.run(
+            aws_env.run(
                 ["aws", "not_a_command"],
                 "arn:aws:iam::123456789123:role/TestRole",
                 output=None,
                 session_duration=7200,
             )
-            assert p_wrong.status != 0
 
 
 def test_boto3() -> None:

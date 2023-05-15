@@ -130,5 +130,4 @@ def test_select():
 def test_session_without_args():
     """Raise error when no arguments."""
     with pytest.raises(ValueError):
-        session = Session()
-        session.client("ec2")
+        Session()
