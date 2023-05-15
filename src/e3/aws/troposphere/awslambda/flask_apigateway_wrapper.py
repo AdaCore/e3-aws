@@ -1,7 +1,7 @@
 # The following package is packaged automatically with Flask lambda.
 # Do not introduce dependencies outside Python standard library.
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 import json
 import io
 import sys
@@ -9,7 +9,12 @@ import base64
 from urllib.parse import urlencode
 
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, TypedDict
+
+    class FlaskLambdaResponse(TypedDict):
+        statusCode: int
+        headers: dict[str, Any]
+        body: Any
 
 
 class FlaskLambdaHandler:
@@ -32,7 +37,7 @@ class FlaskLambdaHandler:
         self.status = int(status[:3])
         self.response_headers = dict(response_headers)
 
-    def lambda_handler(self, event, context):
+    def lambda_handler(self, event: dict, context: dict) -> FlaskLambdaResponse:
         """Lambda entry point."""
         self.status = None
         self.response_headers = None
@@ -43,8 +48,8 @@ class FlaskLambdaHandler:
             )
         )
         return {
-            "statusCode": self.status,
-            "headers": self.response_headers,
+            "statusCode": cast(int, self.status),
+            "headers": cast(dict, self.response_headers),
             "body": body,
         }
 
