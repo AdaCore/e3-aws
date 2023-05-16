@@ -8,13 +8,7 @@ with open(version_file) as f:
 
 
 extras_require = {
-    "test": [
-        "awscli",
-        "pytest",
-        "mock",
-        "requests_mock",
-        "httpretty",
-    ],
+    "test": ["awscli", "pytest", "mock", "requests_mock", "httpretty", "flask"],
 }
 
 setup(

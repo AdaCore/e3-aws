@@ -1,7 +1,7 @@
 # The following package is packaged automatically with Flask lambda.
 # Do not introduce dependencies outside Python standard library.
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 import json
 import io
 import sys
@@ -9,7 +9,25 @@ import base64
 from urllib.parse import urlencode
 
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, TypedDict
+    from typing_extensions import NotRequired
+
+    class FlaskLambdaResponse(TypedDict):
+        statusCode: int
+        headers: dict[str, Any]
+        body: Any
+        isBase64Encoded: NotRequired[bool]
+
+
+# List of MIME types that should not be base64 encoded. MIME types within `text/*`
+# are included by default.
+TEXT_MIME_TYPES = [
+    "application/json",
+    "application/javascript",
+    "application/xml",
+    "application/vnd.api+json",
+    "image/svg+xml",
+]
 
 
 class FlaskLambdaHandler:
@@ -32,7 +50,7 @@ class FlaskLambdaHandler:
         self.status = int(status[:3])
         self.response_headers = dict(response_headers)
 
-    def lambda_handler(self, event, context):
+    def lambda_handler(self, event: dict, context: dict) -> FlaskLambdaResponse:
         """Lambda entry point."""
         self.status = None
         self.response_headers = None
@@ -42,11 +60,28 @@ class FlaskLambdaHandler:
                 self.create_flask_wsgi_environ(event, context), self.start_response
             )
         )
-        return {
-            "statusCode": self.status,
-            "headers": self.response_headers,
+
+        returndict: FlaskLambdaResponse = {
+            "statusCode": cast(int, self.status),
+            "headers": cast(dict, self.response_headers),
             "body": body,
         }
+
+        # Extract the MIME type from Content-Type header
+        mime_type = (
+            cast(dict, self.response_headers)
+            .get("Content-Type", "text/plain")
+            .split(";")[0]
+        )
+
+        # Base64 encode non-text response
+        if (
+            not mime_type.startswith("text/") and mime_type not in TEXT_MIME_TYPES
+        ) or cast(dict, self.response_headers).get("Content-Encoding", ""):
+            returndict["body"] = base64.b64encode(body).decode("utf-8")
+            returndict["isBase64Encoded"] = True
+
+        return returndict
 
     def create_flask_wsgi_environ(self, event: dict, context: dict) -> dict:
         """Create a WSGI environment from AWS lambda input.

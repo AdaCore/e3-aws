@@ -1,10 +1,13 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 import base64
 import docker
 import os
 import pytest
 import json
+import io
 
+from flask import Flask, send_file
 from troposphere.awslambda import (
     ProvisionedConcurrencyConfiguration,
     AliasRoutingConfiguration,
@@ -24,6 +27,10 @@ from e3.aws.troposphere.awslambda import (
     BlueGreenAliasConfiguration,
 )
 from e3.aws.troposphere.awslambda.flask_apigateway_wrapper import FlaskLambdaHandler
+
+if TYPE_CHECKING:
+    from typing import Iterable
+    from flask import Application, Response
 
 SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "source_dir")
 
@@ -694,3 +701,73 @@ def test_create_flask_wsgi_environ_with_rest_api_event():
         expected_flask_environment = json.load(fd)
 
     assert flask_environment == expected_flask_environment
+
+
+@pytest.fixture
+def base64_response_server() -> Iterable[Application]:
+    """Create a server returning a text or base64 encoded response."""
+    app = Flask("base64-response")
+
+    @app.route("/text-response", methods=["GET"])
+    def get_text_response() -> Response:
+        """Return a fake file."""
+        return send_file(
+            io.BytesIO(b"world"),
+            as_attachment=True,
+            download_name="hello.txt",
+        )
+
+    @app.route("/base64-response", methods=["GET"])
+    def get_base64_response() -> Response:
+        """Return a fake image.
+
+        The response is base64 encoded in flask_apigateway_wrapper.py because
+        the mime type indicates the response contains binary data
+        """
+        return send_file(
+            io.BytesIO("▯PNG␍␊␚␊".encode()),
+            as_attachment=True,
+            download_name="logo.png",
+        )
+
+    app.config.update(
+        {
+            "TESTING": True,
+        }
+    )
+
+    yield app
+
+
+def test_text_response(base64_response_server: Application):
+    """Query a route sending back a plain text response."""
+    with open(
+        os.path.join(
+            SOURCE_DIR, "event-http-text-response.json"
+        ),  # an event from a HTTP API
+    ) as fd:
+        http_api_event = json.load(fd)
+
+    handler = FlaskLambdaHandler(base64_response_server)
+    response = handler.lambda_handler(http_api_event, {})
+    # Check the response is not base64
+    assert response["statusCode"] == 200
+    assert response["headers"]["Content-Type"] == "text/plain; charset=utf-8"
+    assert response["body"] == b"world"
+
+
+def test_base64_response(base64_response_server: Application):
+    """Query a route sending back a base64 encoded response."""
+    with open(
+        os.path.join(
+            SOURCE_DIR, "event-http-base64-response.json"
+        ),  # an event from a HTTP API
+    ) as fd:
+        http_api_event = json.load(fd)
+
+    handler = FlaskLambdaHandler(base64_response_server)
+    response = handler.lambda_handler(http_api_event, {})
+    # Check the response is base64 encoded
+    assert response["statusCode"] == 200
+    assert response["headers"]["Content-Type"] == "image/png"
+    assert response["body"] == "4pavUE5H4pCN4pCK4pCa4pCK"
