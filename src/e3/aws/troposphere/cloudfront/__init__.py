@@ -1,6 +1,6 @@
 from __future__ import annotations
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 
 from troposphere import AccountId, cloudfront, GetAtt, Join, route53, Ref, Sub
@@ -31,9 +31,10 @@ class S3WebsiteDistribution(Construct):
         self,
         name: str,
         aliases: list[str],
-        bucket_name: str,
         certificate_arn: str,
         default_ttl: int = 86400,
+        bucket: Bucket | None = None,
+        bucket_name: str | None = None,
         lambda_edge_function_arns: list[str] | None = None,
         root_object: str = "index.html",
         r53_route_from: list[tuple[str, str]] | None = None,
@@ -46,13 +47,14 @@ class S3WebsiteDistribution(Construct):
         :param name: function name
         :param aliases: CNAMEs (alternate domain names), if any, for this
             distribution.
-        :param bucket_name: name of the bucket to create to host the website
         :param certificate_arn: Amazon Resource Name (ARN) of the ACM
             certificate for aliases. Cloudfront only supports ceritificates
             stored in us-east-1.
         :param default_ttl: The default amount of time, in seconds, that you
             want objects to stay in the CloudFront cache before CloudFront sends
             another request to the origin to see if the object has been updated
+        :param bucket: already existing bucket to host the website
+        :param bucket_name: name of the bucket to create to host the website
         :param lambda_edge_function_arns: ARNs of Lambda@Edge functions to
             associate with the cloudfront distribution default cache behaviour
         :param root_object: The object that you want CloudFront to request from
@@ -66,9 +68,15 @@ class S3WebsiteDistribution(Construct):
         :param logging_include_cookies: specifies whether you want CloudFront
             to include cookies in access logs, specify true for IncludeCookies
         """
+        assert (
+            bucket is not None or bucket_name is not None
+        ), "either bucket or bucket_name should be provided"
         self.name = name
         self.aliases = aliases
-        self.bucket = Bucket(name=bucket_name)
+        # bucket_name can't be None if bucket is None
+        self.bucket = Bucket(name=cast(str, bucket_name)) if bucket is None else bucket
+        # If the bucket must be created by this Construct
+        self._create_bucket = bucket is None
         self.certificate_arn = certificate_arn
         self.default_ttl = default_ttl
         self.lambda_edge_function_arns = lambda_edge_function_arns
@@ -301,7 +309,7 @@ class S3WebsiteDistribution(Construct):
         self.add_oai_access_to_bucket()
 
         result = [
-            *self.bucket.resources(stack),
+            *(self.bucket.resources(stack) if self._create_bucket else []),
             self.cache_policy,
             self.distribution,
             self.origin_access_identity,
