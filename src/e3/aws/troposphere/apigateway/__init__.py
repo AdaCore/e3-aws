@@ -770,7 +770,7 @@ class RestApi(Api):
         """
         self.authorizers[name] = {
             "AuthorizerUri": self.integration_uri,
-            "IdentitySource": f"$request.header.{header}",
+            "IdentitySource": f"method.request.header.{header}",
             "Name": name,
             "ProviderARNs": providers_arn,
             "RestApiId": self.ref,

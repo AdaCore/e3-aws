@@ -319,7 +319,7 @@
                     }
                 ]
             },
-            "IdentitySource": "$request.header.Authorization",
+            "IdentitySource": "method.request.header.Authorization",
             "Name": "testauthorizer",
             "ProviderARNs": [
                 "arn:aws:cognito-idp:eu-west-1:123456789012:userpool/eu-west-1_abc123"
