@@ -632,7 +632,7 @@ def test_rest_api_custom_domain(stack: Stack, lambda_fun: PyFunction) -> None:
             ),
         ],
     )
-    rest_api.add_jwt_authorizer(
+    rest_api.add_cognito_authorizer(
         name="testauthorizer",
         providers_arn=[
             "arn:aws:cognito-idp:eu-west-1:123456789012:userpool/eu-west-1_abc123"
@@ -689,7 +689,7 @@ def test_rest_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> 
             ),
         ],
     )
-    rest_api.add_jwt_authorizer(
+    rest_api.add_cognito_authorizer(
         name="testauthorizer",
         providers_arn=[
             "arn:aws:cognito-idp:eu-west-1:123456789012:userpool/eu-west-1_abc123"
