@@ -249,16 +249,6 @@ class Api(Construct):
         """
         return Ref(self.stage_logical_id(stage_name))
 
-    @abstractmethod
-    def add_jwt_authorizer(self, name: str, header: str = "Authorization") -> None:
-        """Declare a JWT authorizer.
-
-        :param name: authorizer name
-        :param header: the request header holding the authorization token
-            submitted by the client
-        """
-        pass
-
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         """Get policy needed by CloudFormation."""
         return PolicyDocument(
@@ -443,7 +433,7 @@ class HttpApi(Api):
             integration_uri if integration_uri is not None else lambda_arn
         )
 
-    def add_jwt_authorizer(  # type: ignore
+    def add_jwt_authorizer(
         self, name: str, audience: list[str], issuer: str, header: str = "Authorization"
     ) -> None:
         """Declare a JWT authorizer.
@@ -762,7 +752,7 @@ class RestApi(Api):
         self.iam_path = iam_path
         self.policy = policy
 
-    def add_jwt_authorizer(  # type: ignore
+    def add_cognito_authorizer(
         # we ignore the incompatible signature mypy errors
         self,
         name: str,
