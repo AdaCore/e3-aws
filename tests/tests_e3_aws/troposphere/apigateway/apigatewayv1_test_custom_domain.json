@@ -112,52 +112,6 @@
         },
         "Type": "AWS::ApiGateway::Stage"
     },
-    "TestapiBetaDeployment": {
-        "Properties": {
-            "Description": "Deployment resource of beta stage",
-            "RestApiId": {
-                "Ref": "Testapi"
-            }
-        },
-        "Type": "AWS::ApiGateway::Deployment",
-        "DependsOn": [
-            "TestapiANYMethod"
-        ]
-    },
-    "TestapiBetaStage": {
-        "Properties": {
-            "AccessLogSetting": {
-                "DestinationArn": {
-                    "Fn::GetAtt": [
-                        "TestapiLogGroup",
-                        "Arn"
-                    ]
-                },
-                "Format": "{\"source_ip\": \"$context.identity.sourceIp\", \"request_time\": \"$context.requestTime\", \"method\": \"$context.httpMethod\", \"route\": \"$context.routeKey\", \"protocol\": \"$context.protocol\", \"status\": \"$context.status\", \"response_length\": \"$context.responseLength\", \"request_id\": \"$context.requestId\", \"integration_error_msg\": \"$context.integrationErrorMessage\"}"
-            },
-            "RestApiId": {
-                "Ref": "Testapi"
-            },
-            "DeploymentId": {
-                "Ref": "TestapiBetaDeployment"
-            },
-            "Description": "stage beta",
-            "MethodSettings": [
-                {
-                    "ResourcePath": "/*",
-                    "HttpMethod": "*",
-                    "MetricsEnabled": true,
-                    "ThrottlingBurstLimit": 10,
-                    "ThrottlingRateLimit": 10
-                }
-            ],
-            "StageName": "beta",
-            "Variables": {
-                "somevar": "somevalue"
-            }
-        },
-        "Type": "AWS::ApiGateway::Stage"
-    },
     "TestapiANYMethod": {
         "Properties": {
             "RestApiId": {
@@ -190,27 +144,6 @@
             }
         },
         "Type": "AWS::ApiGateway::Method"
-    },
-    "TestapiANYBetaLambdaPermission": {
-        "Properties": {
-            "Action": "lambda:InvokeFunction",
-            "FunctionName": {
-                "Ref": "Mypylambda"
-            },
-            "Principal": "apigateway.amazonaws.com",
-            "SourceArn": {
-                "Fn::Sub": [
-                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/beta/${method}/*",
-                    {
-                        "api": {
-                            "Ref": "Testapi"
-                        },
-                        "method": "ANY"
-                    }
-                ]
-            }
-        },
-        "Type": "AWS::Lambda::Permission"
     },
     "TestapiANYLambdaPermission": {
         "Properties": {
@@ -266,21 +199,6 @@
             "RestApiId": {
                 "Ref": "Testapi"
             }
-        },
-        "Type": "AWS::ApiGateway::BasePathMapping"
-    },
-    "TestapiapiexamplecomBetaBasePathMapping": {
-        "Properties": {
-            "DomainName": {
-                "Ref": "TestapiapiexamplecomDomain"
-            },
-            "Stage": {
-                "Ref": "TestapiBetaStage"
-            },
-            "RestApiId": {
-                "Ref": "Testapi"
-            },
-            "BasePath": "beta"
         },
         "Type": "AWS::ApiGateway::BasePathMapping"
     },
