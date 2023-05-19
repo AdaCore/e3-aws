@@ -27,7 +27,12 @@ import re
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
-    from typing import Any, TypedDict
+    from typing import Any, TypedDict, Literal
+
+    # Possible HTTP methods.
+    HttpMethod = Literal[
+        "GET", "POST", "PUT", "DELETE", "ANY", "HEAD", "OPTIONS", "PATCH"
+    ]
 
 
 class AuthorizationType(Enum):
@@ -51,7 +56,7 @@ class Method:
 
     def __init__(
         self,
-        method: str,
+        method: HttpMethod,
         auth: AuthorizationType | None = None,
         authorizer_name: str | None = None,
     ) -> None:
@@ -72,7 +77,7 @@ class Route(Method):
 
     def __init__(
         self,
-        method: str,
+        method: HttpMethod,
         route: str,
         auth: AuthorizationType = NO_AUTH,
         authorizer_name: str | None = None,
@@ -895,20 +900,28 @@ class RestApi(Api):
 
         result.append(apigateway.Method(id_prefix + "Method", **method_params))
 
-        result.append(
-            awslambda.Permission(
-                id_prefix + "LambdaPermission",
-                Action="lambda:InvokeFunction",
-                FunctionName=self.lambda_arn,
-                Principal="apigateway.amazonaws.com",
-                SourceArn=Sub(
-                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:" "${api}/*",
-                    dict_values={
-                        "api": self.ref,
-                    },
-                ),
+        for config in self.stages_config:
+            result.append(
+                awslambda.Permission(
+                    # Retain old behavior for the $default stage
+                    name_to_id(
+                        "{}-{}LambdaPermission".format(
+                            id_prefix, "" if config.name == "$default" else config.name
+                        )
+                    ),
+                    Action="lambda:InvokeFunction",
+                    FunctionName=self.lambda_arn,
+                    Principal="apigateway.amazonaws.com",
+                    SourceArn=Sub(
+                        "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:"
+                        f"${{api}}/{config.name}/${{method}}/*",
+                        dict_values={
+                            "api": self.ref,
+                            "method": method.method,
+                        },
+                    ),
+                )
             )
-        )
         return result
 
     def _declare_domain_name(

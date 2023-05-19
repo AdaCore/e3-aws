@@ -323,7 +323,7 @@ def test_http_api(stack: Stack, lambda_fun: PyFunction) -> None:
     assert stack.export()["Resources"] == EXPECTED_TEMPLATE
 
 
-def test_http_api_stage(stack: Stack, lambda_fun: PyFunction) -> None:
+def test_http_api_stages(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test HTTP API with stages."""
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
@@ -489,12 +489,173 @@ def test_http_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> 
     assert stack.export()["Resources"] == expected
 
 
+def test_rest_api(stack: Stack, lambda_fun: PyFunction) -> None:
+    """Test basic REST API."""
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        method_list=[
+            Method("ANY"),
+        ],
+    )
+
+    stack.add(lambda_fun)
+    stack.add(rest_api)
+
+    with open(
+        os.path.join(TEST_DIR, "apigatewayv1_test.json"),
+    ) as fd:
+        expected = json.load(fd)
+
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == expected
+
+
+def test_rest_api_stages(stack: Stack, lambda_fun: PyFunction) -> None:
+    """Test REST API with stages."""
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        method_list=[
+            Method("ANY"),
+        ],
+        stages_config=[
+            StageConfiguration("$default"),
+            StageConfiguration(
+                "beta", api_mapping_key="beta", variables={"somevar": "somevalue"}
+            ),
+        ],
+    )
+
+    stack.add(lambda_fun)
+    stack.add(rest_api)
+
+    with open(
+        os.path.join(TEST_DIR, "apigatewayv1_test_stages.json"),
+    ) as fd:
+        expected = json.load(fd)
+
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == expected
+
+
+def test_rest_api_lambda_alias(stack: Stack, lambda_fun: PyFunction) -> None:
+    """Test REST API with lambda alias."""
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+
+    lambda_versions = AutoVersion(2, lambda_function=lambda_fun)
+
+    lambda_aliases = BlueGreenAliases(
+        blue_config=BlueGreenAliasConfiguration(
+            version=lambda_versions.previous.version
+        ),
+        green_config=BlueGreenAliasConfiguration(
+            version=lambda_versions.latest.version
+        ),
+        lambda_function=lambda_fun,
+    )
+
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        method_list=[
+            Method("ANY"),
+        ],
+        stages_config=[
+            StageConfiguration(
+                "$default",
+                lambda_arn_permission=lambda_aliases.blue.ref,
+                variables={"lambdaAlias": lambda_aliases.blue.name},
+            ),
+            StageConfiguration(
+                "beta",
+                lambda_arn_permission=lambda_aliases.green.ref,
+                variables={"lambdaAlias": lambda_aliases.green.name},
+            ),
+        ],
+        integration_uri="arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/"
+        f"functions/arn:aws:lambda:us-east-1:123456789012:function:"
+        f"{lambda_fun.name}:${{stageVariables.lambdaAlias}}/invocations",
+    )
+
+    stack.add(lambda_fun)
+    stack.add(rest_api)
+
+    with open(
+        os.path.join(TEST_DIR, "apigatewayv1_test_lambda_alias.json"),
+    ) as fd:
+        expected = json.load(fd)
+
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == expected
+
+
+def test_rest_api_custom_domain(stack: Stack, lambda_fun: PyFunction) -> None:
+    """Test REST api custom domain."""
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        domain_name="api.example.com",
+        hosted_zone_id="ABCDEFG",
+        method_list=[
+            Method("ANY", authorizer_name="testauthorizer"),
+        ],
+        policy=[
+            Allow(
+                principal="*",
+                action=[
+                    "execute-api:Invoke",
+                ],
+                resource="execute-api:/*/*/*",
+            ),
+            # allow API invocation only from a specific IP
+            PolicyStatement(
+                effect="Deny",
+                principal="*",
+                action="execute-api:Invoke",
+                resource="execute-api:/*/*/*",
+                condition={"NotIpAddress": {"aws:SourceIp": ["1.2.3.4"]}},
+            ),
+        ],
+    )
+    rest_api.add_jwt_authorizer(
+        name="testauthorizer",
+        providers_arn=[
+            "arn:aws:cognito-idp:eu-west-1:123456789012:userpool/eu-west-1_abc123"
+        ],
+    )
+
+    stack.add(lambda_fun)
+    stack.add(rest_api)
+
+    with open(
+        os.path.join(TEST_DIR, "apigatewayv1_test_custom_domain.json"),
+    ) as fd:
+        expected = json.load(fd)
+
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == expected
+
+
 def test_rest_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test REST api custom domain and stage."""
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
 
-    stack.add(lambda_fun)
     rest_api = RestApi(
         name="testapi",
         description="this is a test",
@@ -534,7 +695,10 @@ def test_rest_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> 
             "arn:aws:cognito-idp:eu-west-1:123456789012:userpool/eu-west-1_abc123"
         ],
     )
+
+    stack.add(lambda_fun)
     stack.add(rest_api)
+
     with open(
         os.path.join(TEST_DIR, "apigatewayv1_test_custom_domain_stages.json"),
     ) as fd:
