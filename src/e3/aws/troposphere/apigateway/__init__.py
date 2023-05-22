@@ -769,7 +769,6 @@ class RestApi(Api):
             submitted by the client
         """
         self.authorizers[name] = {
-            "AuthorizerUri": self.integration_uri,
             "IdentitySource": f"method.request.header.{header}",
             "Name": name,
             "ProviderARNs": providers_arn,

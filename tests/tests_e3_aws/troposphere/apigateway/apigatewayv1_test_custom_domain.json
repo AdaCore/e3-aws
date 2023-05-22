@@ -227,16 +227,6 @@
     },
     "Testauthorizer": {
         "Properties": {
-            "AuthorizerUri": {
-                "Fn::Sub": [
-                    "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations",
-                    {
-                        "lambdaArn": {
-                            "Ref": "Mypylambda"
-                        }
-                    }
-                ]
-            },
             "IdentitySource": "method.request.header.Authorization",
             "Name": "testauthorizer",
             "ProviderARNs": [
