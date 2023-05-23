@@ -25,6 +25,7 @@ class BucketWithRoles(Construct):
         trusted_accounts: list[str],
         iam_read_root_name: str = "Read",
         iam_write_root_name: str = "Write",
+        bucket_exists: bool | None = None,
         **bucket_kwargs: Any,
     ) -> None:
         """Initialize BucketWithRoles instance.
@@ -35,11 +36,13 @@ class BucketWithRoles(Construct):
         :param trusted_accounts: accounts to be trusted by access roles
         :param iam_read_root_name: root name for read access roles and policy
         :param iam_write_root_name: root name for write access roles and policy
+        :param bucket_exists: if True then the bucket is not created
         :param bucket_kwargs: keyword arguments to pass to the bucket constructor
         """
         self.name = name
         self.iam_names_prefix = iam_names_prefix
         self.trusted_accounts = trusted_accounts
+        self.bucket_exists = bucket_exists
 
         self.bucket = Bucket(name=self.name, **bucket_kwargs)
         self.read_policy = ManagedPolicy(
@@ -93,8 +96,7 @@ class BucketWithRoles(Construct):
 
     def resources(self, stack: Stack) -> list[AWSObject | Construct]:
         """Return resources associated with the construct."""
-        return [
-            self.bucket,
+        return ([] if self.bucket_exists else [self.bucket]) + [
             self.read_policy,
             self.read_role,
             self.push_policy,
