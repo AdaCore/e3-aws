@@ -41,6 +41,7 @@ class S3WebsiteDistribution(Construct):
         logging_bucket: str | None = None,
         logging_prefix: str | None = None,
         logging_include_cookies: bool | None = None,
+        iam_path: str | None = None,
     ):
         """Initialize a S3WebsiteCFDistribution.
 
@@ -67,6 +68,8 @@ class S3WebsiteDistribution(Construct):
             prefix to the access log filenames
         :param logging_include_cookies: specifies whether you want CloudFront
             to include cookies in access logs, specify true for IncludeCookies
+        :param iam_path: IAM path for cloudwatch permission and role
+            (must be either / or a string starting and ending with /)
         """
         assert (
             bucket is not None or bucket_name is not None
@@ -87,6 +90,7 @@ class S3WebsiteDistribution(Construct):
         self.logging_bucket = logging_bucket
         self.logging_prefix = logging_prefix
         self.logging_include_cookies = logging_include_cookies
+        self.iam_path = iam_path
 
     def add_oai_access_to_bucket(self) -> None:
         """Add policy granting cloudfront OAI read access to the bucket."""
@@ -216,11 +220,13 @@ class S3WebsiteDistribution(Construct):
         A lambda is called at each s3 object update to invalidate cloudformation
         cache for the updated object.
         """
+        iam_path = f"/{stack.name}/" if self.iam_path is None else self.iam_path
+
         lambda_name = f"{self.name}-cache-invalidation-lambda"
         lambda_policy = ManagedPolicy(
             name=f"{lambda_name}-policy",
             description=f"managed policy used by {lambda_name}",
-            path=f"/{stack.name}/",
+            path=iam_path,
             statements=[
                 Allow(
                     action=["cloudfront:CreateInvalidation"],
@@ -234,7 +240,7 @@ class S3WebsiteDistribution(Construct):
         lambda_role = Role(
             name=f"{lambda_name}-role",
             description=f"role assumed by {lambda_name}",
-            path=f"/{stack.name}/",
+            path=iam_path,
             trust=Trust(services=["lambda"]),
             managed_policy_arns=[lambda_policy.arn],
         )
