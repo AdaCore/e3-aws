@@ -68,6 +68,25 @@ def test_bucket_with_roles(stack: Stack) -> None:
     assert stack.export()["Resources"] == expected_template
 
 
+def test_bucket_with_roles_exists(stack: Stack) -> None:
+    """Test BucketWithRoles when the bucket already exists."""
+    bucket = BucketWithRoles(
+        name="test-bucket-with-roles",
+        iam_names_prefix="TestBucket",
+        iam_read_root_name="Restore",
+        iam_write_root_name="Push",
+        iam_path="/test/",
+        trusted_accounts=["123456789"],
+        bucket_exists=True,
+    )
+    stack.add(bucket)
+
+    with open(os.path.join(TEST_DIR, "bucket-with-roles-exists.json")) as fd:
+        expected_template = json.load(fd)
+
+    assert stack.export()["Resources"] == expected_template
+
+
 def test_bucket_multi_encryption(stack: Stack) -> None:
     """Test bucket accepting multiple types of encryptions and without default."""
     bucket = Bucket(

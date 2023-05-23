@@ -1,0 +1,119 @@
+{
+    "TestBucketRestorePolicy": {
+        "Properties": {
+            "Description": "Grants read access permissions to test-bucket-with-roles bucket",
+            "ManagedPolicyName": "TestBucketRestorePolicy",
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:GetObject"
+                        ],
+                        "Resource": "arn:aws:s3:::test-bucket-with-roles/*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:ListBucket"
+                        ],
+                        "Resource": "arn:aws:s3:::test-bucket-with-roles"
+                    }
+                ]
+            },
+            "Path": "/test/"
+        },
+        "Type": "AWS::IAM::ManagedPolicy"
+    },
+    "TestBucketRestoreRole": {
+        "Properties": {
+            "RoleName": "TestBucketRestoreRole",
+            "Description": "Role with read access to test-bucket-with-roles bucket.",
+            "ManagedPolicyArns": [
+                {
+                    "Ref": "TestBucketRestorePolicy"
+                }
+            ],
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "sts:AssumeRole",
+                        "Principal": {
+                            "AWS": [
+                                "arn:aws:iam::123456789:root"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestBucketRestoreRole"
+                }
+            ],
+            "Path": "/test/"
+        },
+        "Type": "AWS::IAM::Role"
+    },
+    "TestBucketPushPolicy": {
+        "Properties": {
+            "Description": "Grants write access permissions to test-bucket-with-roles bucket",
+            "ManagedPolicyName": "TestBucketPushPolicy",
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:PutObject",
+                            "s3:DeleteObject"
+                        ],
+                        "Resource": "arn:aws:s3:::test-bucket-with-roles/*"
+                    }
+                ]
+            },
+            "Path": "/test/"
+        },
+        "Type": "AWS::IAM::ManagedPolicy"
+    },
+    "TestBucketPushRole": {
+        "Properties": {
+            "RoleName": "TestBucketPushRole",
+            "Description": "Role with read and write access to test-bucket-with-roles bucket.",
+            "ManagedPolicyArns": [
+                {
+                    "Ref": "TestBucketPushPolicy"
+                },
+                {
+                    "Ref": "TestBucketRestorePolicy"
+                }
+            ],
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "sts:AssumeRole",
+                        "Principal": {
+                            "AWS": [
+                                "arn:aws:iam::123456789:root"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestBucketPushRole"
+                }
+            ],
+            "Path": "/test/"
+        },
+        "Type": "AWS::IAM::Role"
+    }
+}
