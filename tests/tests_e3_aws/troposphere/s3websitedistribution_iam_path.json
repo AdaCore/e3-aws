@@ -1,0 +1,377 @@
+{
+    "HostBucket": {
+        "Properties": {
+            "BucketName": "host-bucket",
+            "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                    {
+                        "ServerSideEncryptionByDefault": {
+                            "SSEAlgorithm": "AES256"
+                        }
+                    }
+                ]
+            },
+            "PublicAccessBlockConfiguration": {
+                "BlockPublicAcls": true,
+                "BlockPublicPolicy": true,
+                "IgnorePublicAcls": true,
+                "RestrictPublicBuckets": true
+            },
+            "VersioningConfiguration": {
+                "Status": "Enabled"
+            }
+        },
+        "Type": "AWS::S3::Bucket"
+    },
+    "HostBucketPolicy": {
+        "Properties": {
+            "Bucket": {
+                "Ref": "HostBucket"
+            },
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Deny",
+                        "Principal": {
+                            "AWS": "*"
+                        },
+                        "Action": "s3:*",
+                        "Resource": "arn:aws:s3:::host-bucket/*",
+                        "Condition": {
+                            "Bool": {
+                                "aws:SecureTransport": "false"
+                            }
+                        }
+                    },
+                    {
+                        "Effect": "Deny",
+                        "Principal": {
+                            "AWS": "*"
+                        },
+                        "Action": "s3:PutObject",
+                        "Resource": "arn:aws:s3:::host-bucket/*",
+                        "Condition": {
+                            "StringNotEquals": {
+                                "s3:x-amz-server-side-encryption": "AES256"
+                            }
+                        }
+                    },
+                    {
+                        "Effect": "Deny",
+                        "Principal": {
+                            "AWS": "*"
+                        },
+                        "Action": "s3:PutObject",
+                        "Resource": "arn:aws:s3:::host-bucket/*",
+                        "Condition": {
+                            "Null": {
+                                "s3:x-amz-server-side-encryption": "true"
+                            }
+                        }
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "CanonicalUser": {
+                                "Fn::GetAtt": [
+                                    "TestS3wDistCloudfrontOai",
+                                    "S3CanonicalUserId"
+                                ]
+                            }
+                        },
+                        "Action": "s3:GetObject",
+                        "Resource": "arn:aws:s3:::host-bucket/*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Principal": {
+                            "CanonicalUser": {
+                                "Fn::GetAtt": [
+                                    "TestS3wDistCloudfrontOai",
+                                    "S3CanonicalUserId"
+                                ]
+                            }
+                        },
+                        "Action": "s3:ListBucket",
+                        "Resource": "arn:aws:s3:::host-bucket"
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::S3::BucketPolicy"
+    },
+    "TestS3wDistCloudfrontCachePolicy": {
+        "Properties": {
+            "CachePolicyConfig": {
+                "Comment": "test-s3w-dist s3 website cloudfront cache policy",
+                "DefaultTTL": 360,
+                "MaxTTL": 31536000,
+                "MinTTL": 1,
+                "Name": "s3-cache-policy",
+                "ParametersInCacheKeyAndForwardedToOrigin": {
+                    "CookiesConfig": {
+                        "CookieBehavior": "none"
+                    },
+                    "EnableAcceptEncodingBrotli": true,
+                    "EnableAcceptEncodingGzip": true,
+                    "HeadersConfig": {
+                        "HeaderBehavior": "none"
+                    },
+                    "QueryStringsConfig": {
+                        "QueryStringBehavior": "none"
+                    }
+                }
+            }
+        },
+        "Type": "AWS::CloudFront::CachePolicy"
+    },
+    "TestS3wDist": {
+        "Properties": {
+            "DistributionConfig": {
+                "Aliases": [
+                    "test.s3w.com"
+                ],
+                "DefaultRootObject": "index.html",
+                "DefaultCacheBehavior": {
+                    "AllowedMethods": [
+                        "GET",
+                        "HEAD",
+                        "OPTIONS"
+                    ],
+                    "CachePolicyId": {
+                        "Ref": "TestS3wDistCloudfrontCachePolicy"
+                    },
+                    "TargetOriginId": "S3Origin",
+                    "ViewerProtocolPolicy": "redirect-to-https",
+                    "LambdaFunctionAssociations": [
+                        {
+                            "EventType": "viewer-request",
+                            "LambdaFunctionARN": "lamba_arn"
+                        }
+                    ]
+                },
+                "Enabled": true,
+                "HttpVersion": "http2",
+                "Origins": [
+                    {
+                        "S3OriginConfig": {
+                            "OriginAccessIdentity": {
+                                "Fn::Join": [
+                                    "",
+                                    [
+                                        "origin-access-identity/cloudfront/",
+                                        {
+                                            "Ref": "TestS3wDistCloudfrontOai"
+                                        }
+                                    ]
+                                ]
+                            }
+                        },
+                        "DomainName": "host-bucket.s3.amazonaws.com",
+                        "Id": "S3Origin"
+                    }
+                ],
+                "ViewerCertificate": {
+                    "AcmCertificateArn": "acm_arn",
+                    "SslSupportMethod": "sni-only",
+                    "MinimumProtocolVersion": "TLSv1.2_2021"
+                }
+            }
+        },
+        "Type": "AWS::CloudFront::Distribution"
+    },
+    "TestS3wDistCloudfrontOai": {
+        "Properties": {
+            "CloudFrontOriginAccessIdentityConfig": {
+                "Comment": "test-s3w-dist Cloudfront origin access identity"
+            }
+        },
+        "Type": "AWS::CloudFront::CloudFrontOriginAccessIdentity"
+    },
+    "TestS3wDistCacheInvalidationLambdaPolicy": {
+        "Properties": {
+            "Description": "managed policy used by test-s3w-dist-cache-invalidation-lambda",
+            "ManagedPolicyName": "test-s3w-dist-cache-invalidation-lambda-policy",
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "cloudfront:CreateInvalidation"
+                        ],
+                        "Resource": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "arn:aws:cloudfront::",
+                                    {
+                                        "Ref": "AWS::AccountId"
+                                    },
+                                    ":distribution ",
+                                    {
+                                        "Ref": "TestS3wDist"
+                                    }
+                                ]
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Path": "/another-path/"
+        },
+        "Type": "AWS::IAM::ManagedPolicy"
+    },
+    "TestS3wDistCacheInvalidationLambdaRole": {
+        "Properties": {
+            "RoleName": "test-s3w-dist-cache-invalidation-lambda-role",
+            "Description": "role assumed by test-s3w-dist-cache-invalidation-lambda",
+            "ManagedPolicyArns": [
+                {
+                    "Ref": "TestS3wDistCacheInvalidationLambdaPolicy"
+                }
+            ],
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "sts:AssumeRole",
+                        "Principal": {
+                            "Service": [
+                                "lambda.amazonaws.com"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "test-s3w-dist-cache-invalidation-lambda-role"
+                }
+            ],
+            "Path": "/another-path/"
+        },
+        "Type": "AWS::IAM::Role"
+    },
+    "TestS3wDistCacheInvalidationLambda": {
+        "Properties": {
+            "Code": {
+                "ZipFile": {
+                    "Fn::Join": [
+                        "\n",
+                        [
+                            "import boto3",
+                            "import time  # noqa: F401",
+                            "",
+                            "",
+                            "def handler(event, context):",
+                            "    path = []",
+                            "    client = boto3.client(\"cloudfront\")  # noqa: F841",
+                            "    for items in event[\"Records\"]:",
+                            "        if items[\"s3\"][\"object\"][\"key\"] == \"index.html\":",
+                            "            path.append(\"/\")",
+                            "        else:",
+                            "            path.append(\"/\" + items[\"s3\"][\"object\"][\"key\"])",
+                            "    client.create_invalidation(",
+                            {
+                                "Fn::Sub": [
+                                    "        DistributionId='${distribution_id}',",
+                                    {
+                                        "distribution_id": {
+                                            "Ref": "TestS3wDist"
+                                        }
+                                    }
+                                ]
+                            },
+                            "        InvalidationBatch={",
+                            "            'Paths': {'Quantity': 1, 'Items': path},",
+                            "            'CallerReference': str(time.time()),",
+                            "        },",
+                            "    )"
+                        ]
+                    ]
+                }
+            },
+            "Timeout": 3,
+            "Description": "lambda invalidating cloudfront cache when host-bucket objects are updated",
+            "Role": {
+                "Fn::GetAtt": [
+                    "TestS3wDistCacheInvalidationLambdaRole",
+                    "Arn"
+                ]
+            },
+            "FunctionName": "TestS3wDistCacheInvalidationLambda",
+            "Runtime": "python3.9",
+            "Handler": "invalidate.handler"
+        },
+        "Type": "AWS::Lambda::Function"
+    },
+    "TestS3wDistCacheInvalidationLambdaLogGroup": {
+        "DeletionPolicy": "Retain",
+        "Properties": {
+            "LogGroupName": "/aws/lambda/TestS3wDistCacheInvalidationLambda",
+            "RetentionInDays": 731
+        },
+        "Type": "AWS::Logs::LogGroup"
+    },
+    "TestS3wDistInvalidationTopic": {
+        "Properties": {
+            "TopicName": "test-s3w-dist-invalidation-topic",
+            "Subscription": []
+        },
+        "Type": "AWS::SNS::Topic"
+    },
+    "TestS3wDistCacheInvalidationLambdaSub": {
+        "Properties": {
+            "Endpoint": {
+                "Fn::GetAtt": [
+                    "TestS3wDistCacheInvalidationLambda",
+                    "Arn"
+                ]
+            },
+            "Protocol": "lambda",
+            "TopicArn": {
+                "Ref": "TestS3wDistInvalidationTopic"
+            },
+            "DeliveryPolicy": {
+                "throttlePolicy": {
+                    "maxReceivesPerSecond": 10
+                }
+            }
+        },
+        "Type": "AWS::SNS::Subscription"
+    },
+    "TestS3wDistCacheInvalidationLambdatestS3wDistInvalidationTopic": {
+        "Properties": {
+            "Action": "lambda:InvokeFunction",
+            "FunctionName": {
+                "Ref": "TestS3wDistCacheInvalidationLambda"
+            },
+            "Principal": "sns.amazonaws.com",
+            "SourceArn": {
+                "Ref": "TestS3wDistInvalidationTopic"
+            }
+        },
+        "Type": "AWS::Lambda::Permission"
+    },
+    "TestS3wDistTests3wcomR53Rset": {
+        "Properties": {
+            "AliasTarget": {
+                "DNSName": {
+                    "Fn::GetAtt": [
+                        "TestS3wDist",
+                        "DomainName"
+                    ]
+                },
+                "HostedZoneId": "Z2FDTNDATAQYW2"
+            },
+            "Name": "test.s3w.com",
+            "HostedZoneId": "hosted_zone_id",
+            "Type": "A"
+        },
+        "Type": "AWS::Route53::RecordSet"
+    }
+}
