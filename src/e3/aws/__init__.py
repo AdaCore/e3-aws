@@ -460,6 +460,43 @@ def assume_role_main():
             print(f"export {k}={v}")
 
 
+def get_temporary_session_credentials():
+    """Get temporary credentials for the currently running session."""
+    argument_parser = argparse.ArgumentParser()
+    argument_parser.add_argument(
+        "--json", action="store_true", help="Output credentials as JSON"
+    )
+    argument_parser.add_argument(
+        "--session-duration",
+        type=int,
+        default=900,
+        help="The duration of the credentials in seconds, default 900",
+    )
+
+    args = argument_parser.parse_args()
+
+    client = boto3.client("sts")
+    response = client.get_session_token(
+        DurationSeconds=args.session_duration,
+    )
+
+    key_to_envvar = {
+        "AccessKeyId": "AWS_ACCESS_KEY_ID",
+        "SecretAccessKey": "AWS_SECRET_ACCESS_KEY",
+        "SessionToken": "AWS_SESSION_TOKEN",
+    }
+    credentials = response["Credentials"]
+
+    credentials = {
+        key_to_envvar[k]: v for k, v in credentials.items() if k in key_to_envvar
+    }
+    if args.json:
+        print(json.dumps(credentials))
+    else:
+        for k, v in credentials.items():
+            print(f"export {k}={v}")
+
+
 def iterate(fun: Callable, key: str, **kwargs: Any) -> Any:
     """Create an iterator other paginate botocore function.
 

@@ -36,6 +36,7 @@ setup(
         "console_scripts": [
             "e3-aws-assume-profile = e3.aws:assume_profile_main",
             "e3-aws-assume-role = e3.aws:assume_role_main",
+            "e3-aws-get-session-credentials = e3.aws:get_temporary_session_credentials",
         ],
     },
 )
