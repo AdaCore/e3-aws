@@ -95,21 +95,28 @@ class AMI(EC2Element):
 
     @classmethod
     @session()
-    def ls(cls, filters=None, session=None):
+    def ls(cls, filters=None, session=None, owners=None):
         """List user AMIs.
 
         :param filters: same as Filters parameters of describe_images
             (see botocore)
         :type filters: dict
         :return a list of images
+        :param owners: a list of accounts owning the AMIs we want to list,
+            by default it is set at 'self' to list all the AMIs belonging to
+            the account we are in. This is the same as Owners parameter of
+            describe_images (see botocore)
+        :type owners: list[str]
         :rtype: list[AMI]
         """
         if filters is None:
             filters = []
+        if owners is None:
+            owners = ["self"]
         result = []
         for r in session.regions:
             c = session.client("ec2", r)
-            region_result = c.describe_images(Owners=["self"], Filters=filters)
+            region_result = c.describe_images(Owners=owners, Filters=filters)
             for ami in region_result["Images"]:
                 result.append(AMI(ami["ImageId"], r, data=ami, session=session))
         return result
@@ -123,6 +130,7 @@ class AMI(EC2Element):
         kind=None,
         region=None,
         session=None,
+        owners=None,
         **kwargs
     ):
         """Find AMIs.
@@ -143,6 +151,9 @@ class AMI(EC2Element):
         :param kwargs: additional filters on tags. parameter name if the tag
             name and the associated value the regexp
         :type kwargs: dict
+        :param owners: a list of accounts owning the AMIs we want to find,
+            same as Owners parameter of describe_images (see botocore)
+        :type owners: list[str]
         :return: a list of AMI
         :rtype: list[AMI]
         """
@@ -156,7 +167,7 @@ class AMI(EC2Element):
         if kind is not None:
             filters.append({"Name": "tag-key", "Values": ["kind"]})
 
-        all_images = AMI.ls(filters=filters, session=session)
+        all_images = AMI.ls(filters=filters, session=session, owners=owners)
 
         tag_filters = dict(kwargs)
         if platform is not None:
@@ -192,7 +203,14 @@ class AMI(EC2Element):
     @classmethod
     @session()
     def select(
-        cls, platform, os_version, kind=None, region=None, session=None, **kwargs
+        cls,
+        platform,
+        os_version,
+        kind=None,
+        region=None,
+        session=None,
+        owners=None,
+        **kwargs
     ):
         """Select one AMI based on platform, os_version and kind.
 
@@ -204,6 +222,10 @@ class AMI(EC2Element):
         :type kind: str
         :param region: region name or None (default region)
         :type region: str | None
+        :param owners: a list of accounts owning the AMIs we want to select,
+            same as Owners parameter of describe_images (see botocore)
+        :type owners: list[str]
+        :return: a list of AMI
         :return: one AMI
         :rtype: AMI
         """
@@ -217,6 +239,7 @@ class AMI(EC2Element):
             kind=kind_filter,
             region=region,
             session=session,
+            owners=owners,
             **kwargs
         )
         assert (
