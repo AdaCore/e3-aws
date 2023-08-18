@@ -127,6 +127,54 @@ def test_select():
         assert ami.id == "ami-5"
 
 
+def test_find_with_owners():
+    """Test AMI.select."""
+    aws_env = AWSEnv(regions=["us-east-1"], stub=True)
+    stub = aws_env.stub("ec2", region="us-east-1")
+
+    Images = {
+        "Images": [
+            {
+                "ImageId": "ami-1",
+                "OwnerId": "1111",
+                "RootDeviceName": "/dev/sda1",
+                "Tags": [
+                    {"Key": "platform", "Value": "x86_64-linux"},
+                    {"Key": "os_version", "Value": "suse11"},
+                    {"Key": "timestamp", "Value": "4"},
+                ],
+            },
+            {
+                "ImageId": "ami-2",
+                "OwnerId": "2222",
+                "RootDeviceName": "/dev/sda1",
+                "Tags": [
+                    {"Key": "platform", "Value": "x86_64-linux"},
+                    {"Key": "os_version", "Value": "suse11"},
+                    {"Key": "timestamp", "Value": "5"},
+                ],
+            },
+        ]
+    }
+
+    stub.add_response(
+        "describe_images",
+        Images,
+        {
+            "Filters": [
+                {"Name": "tag-key", "Values": ["platform"]},
+                {"Name": "tag-key", "Values": ["timestamp"]},
+                {"Name": "tag-key", "Values": ["os_version"]},
+            ],
+            "Owners": ["2222"],
+        },
+    )
+
+    with default_region("us-east-1"):
+        ami = AMI.select(platform="x86_64-linux", os_version="suse11", owners=["2222"])
+        assert ami.owner_id == "2222"
+
+
 def test_session_without_args():
     """Raise error when no arguments."""
     with pytest.raises(ValueError):
