@@ -8,7 +8,15 @@ with open(version_file) as f:
 
 
 extras_require = {
-    "test": ["awscli", "pytest", "mock", "requests_mock", "httpretty", "flask"],
+    "test": [
+        "awscli",
+        "pytest",
+        "mock",
+        "requests_mock",
+        "httpretty",
+        "flask",
+        "moto[sts, dynamodb]",
+    ],
 }
 
 setup(
