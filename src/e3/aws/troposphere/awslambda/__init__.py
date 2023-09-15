@@ -412,12 +412,14 @@ class PyFunction(Function):
 
         # Install the requirements
         if self.requirement_file is not None:
+            assert self.runtime is not None
             p = Run(
                 [
                     sys.executable,
                     "-m",
                     "pip",
                     "install",
+                    f"--python-version={self.runtime.lstrip('python')}",
                     f"--target={package_dir}",
                     "-r",
                     self.requirement_file,
