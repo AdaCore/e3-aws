@@ -7,8 +7,9 @@ import boto3
 from e3.aws.dynamodb import DynamoDB
 
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, Generator
     from collections.abc import Iterable
+    from pytest import LogCaptureFixture
 
 TABLE_NAME = "customer"
 PRIMARY_KEYS = ["name"]
@@ -81,6 +82,37 @@ def test_get_item_missing(client: DynamoDB) -> None:
         )
         == {}
     )
+
+
+def test_batch_get_item(client: DynamoDB) -> None:
+    """Test getting an item that doesn't exist."""
+    assert client.batch_get_items(
+        items=[{"name": "Doe"}, {"name": "Dupont"}],
+        table_name=TABLE_NAME,
+        keys=PRIMARY_KEYS,
+    ) == [{"age": 23, "name": "Doe"}]
+
+
+def test_batch_get_item_error(
+    client: DynamoDB, caplog: Generator[LogCaptureFixture, Any, Any]
+) -> None:
+    """Test getting an item that doesn't exist."""
+    items = client.batch_get_items(
+        items=[{"name": "Dupont"}], table_name="Fake_Table", keys=PRIMARY_KEYS
+    )
+
+    messages = []
+
+    # capture logs and ensure that are what we expect
+    messages.extend([x.message for x in caplog.get_records("call")])  # type: ignore
+
+    assert len(messages) == 2
+    assert (
+        "An error occurred (ResourceNotFoundException) when "
+        "calling the BatchGetItem operation: Requested resource not found" in messages
+    )
+
+    assert items == []
 
 
 def test_update_item(client: DynamoDB) -> None:

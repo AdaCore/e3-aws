@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 import logging
 import re
+import time
 from botocore.exceptions import ClientError
 
 if TYPE_CHECKING:
@@ -92,7 +93,7 @@ class DynamoDB:
         :return: retrieved item
         """
         table = self.client.Table(table_name)
-        logger.info(f"Retrievieng item {item} from {table_name}...")
+        logger.info(f"Retrieving item {item} from {table_name}...")
         try:
             response = table.get_item(
                 Key={key: item[key] for key in keys if key in item.keys()}
@@ -103,6 +104,66 @@ class DynamoDB:
             return {}
         else:
             return response.get("Item", {})
+
+    def batch_get_items(
+        self, items: list[dict[str, Any]], table_name: str, keys: list[str]
+    ) -> list[dict[str, Any]]:
+        """Retrieve multiple items from a table.
+
+        When Amazon DynamoDB cannot process all items in a batch, a set of unprocessed
+        keys is returned. This function uses an exponential backoff algorithm to retry
+        getting the unprocessed keys until all are retrieved or the specified
+        number of tries is reached.
+
+        :param items: items we want to retrieve
+        :param table_name: table containing the items
+        :param keys: the primary keys of the items
+        :return: retrieved item
+        """
+        logger.info(f"Retrieving items {items} from {table_name}...")
+        res = []
+
+        tries = 0
+        max_tries = 5
+        sleepy_time = 1  # Start with 1 second of sleep, then exponentially increase.
+        batch_keys = {
+            table_name: {
+                "Keys": [
+                    {key: item[key] for key in keys if key in item.keys()}
+                    for item in items
+                ],
+                "ConsistentRead": True,
+            }
+        }
+        print(batch_keys)
+        while tries < max_tries:
+            try:
+                response = self.client.batch_get_item(
+                    RequestItems=batch_keys,
+                )
+                res.extend(response.get("Responses", {table_name: []})[table_name])
+                logger.debug(f"Get_item response: {response}")
+                unprocessed = response["UnprocessedKeys"]
+                if len(unprocessed) > 0:
+                    batch_keys = unprocessed
+                    unprocessed_count = sum(
+                        [len(batch_key["Keys"]) for batch_key in batch_keys.values()]  # type: ignore
+                    )
+                    logger.info(
+                        "%s unprocessed keys returned. Sleep, then retry.",
+                        unprocessed_count,
+                    )
+                    tries += 1
+                    if tries < max_tries:
+                        logger.info("Sleeping for %s seconds.", sleepy_time)
+                        time.sleep(sleepy_time)
+                        sleepy_time = min(sleepy_time * 2, 32)
+                else:
+                    break
+            except ClientError as e:
+                logger.error(e)
+                return []
+        return res
 
     def update_item(
         self,
