@@ -327,6 +327,17 @@ class DockerFunction(Function):
 class PyFunction(Function):
     """Lambda with a Python runtime."""
 
+    AMAZON_LINUX_2_RUNTIMES = ("3.8", "3.9", "3.10", "3.11")
+    RUNTIME_CONFIGS = {
+        f"python{version}": {
+            "implementation": "cp",
+            # Amazon Linux 2 glibc version is 2.26 and we support only x86_64
+            # architecture for now.
+            "platforms": ("manylinux_2_17_x86_64", "manylinux_2_24_x86_64"),
+        }
+        for version in AMAZON_LINUX_2_RUNTIMES
+    }
+
     def __init__(
         self,
         name: str,
@@ -412,12 +423,21 @@ class PyFunction(Function):
 
         # Install the requirements
         if self.requirement_file is not None:
+            assert self.runtime is not None
+            runtime_config = PyFunction.RUNTIME_CONFIGS[self.runtime]
             p = Run(
                 [
                     sys.executable,
                     "-m",
                     "pip",
                     "install",
+                    f"--python-version={self.runtime.lstrip('python')}",
+                    *(
+                        f"--platform={platform}"
+                        for platform in runtime_config["platforms"]
+                    ),
+                    f"--implementation={runtime_config['implementation']}",
+                    "--only-binary=:all:",
                     f"--target={package_dir}",
                     "-r",
                     self.requirement_file,

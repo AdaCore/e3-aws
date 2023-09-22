@@ -6,6 +6,8 @@ import os
 import pytest
 import json
 import io
+from unittest.mock import patch
+import sys
 
 from flask import Flask, send_file
 from troposphere.awslambda import (
@@ -393,6 +395,43 @@ def test_pyfunction(stack: Stack) -> None:
     )
     print(stack.export()["Resources"])
     assert stack.export()["Resources"] == EXPECTED_PYFUNCTION_TEMPLATE
+
+
+def test_pyfunction_with_requirements(tmp_path, stack: Stack) -> None:
+    """Test PyFunction creation."""
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+    code_dir = tmp_path
+
+    with patch("e3.aws.troposphere.awslambda.Run") as mock_run:
+        mock_run.return_value.status = 0
+        PyFunction(
+            name="mypylambda",
+            description="this is a test",
+            role="somearn",
+            runtime="python3.11",
+            code_dir=str(code_dir),
+            handler="app.main",
+            requirement_file="requirements.txt",
+        ).create_data_dir("dummy")
+    # Ensure the right pip command is called
+    mock_run.assert_called_once_with(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--python-version=3.11",
+            "--platform=manylinux_2_17_x86_64",
+            "--platform=manylinux_2_24_x86_64",
+            "--implementation=cp",
+            "--only-binary=:all:",
+            "--target=dummy/Mypylambda/package",
+            "-r",
+            "requirements.txt",
+        ],
+        output=None,
+    )
 
 
 def test_pyfunction_policy_document(stack: Stack) -> None:
