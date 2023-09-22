@@ -135,7 +135,7 @@ class DynamoDB:
                 "ConsistentRead": True,
             }
         }
-        print(batch_keys)
+
         while tries < max_tries:
             try:
                 response = self.client.batch_get_item(
