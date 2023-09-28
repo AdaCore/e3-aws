@@ -222,7 +222,7 @@ class VPCEndpointsSubnet(Construct):
 
             endpoints.append(
                 ec2.VPCEndpoint(
-                    name_to_id(f"{service_name}Endpoint"),
+                    name_to_id(f"{self.vpc.name}-{service_name}Endpoint"),
                     PrivateDnsEnabled="true",
                     SecurityGroupIds=[security_group_id],
                     ServiceName=f"com.amazonaws.{self.region}.{service_name}",

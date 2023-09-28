@@ -242,7 +242,7 @@
         },
         "Type": "AWS::EC2::SecurityGroupIngress"
     },
-    "EmailSmtpEndpoint": {
+    "TestVPCEmailSmtpEndpoint": {
         "Properties": {
             "PrivateDnsEnabled": true,
             "SecurityGroupIds": [
@@ -263,7 +263,7 @@
         },
         "Type": "AWS::EC2::VPCEndpoint"
     },
-    "LogsEndpoint": {
+    "TestVPCLogsEndpoint": {
         "Properties": {
             "PrivateDnsEnabled": true,
             "SecurityGroupIds": [
@@ -284,7 +284,7 @@
         },
         "Type": "AWS::EC2::VPCEndpoint"
     },
-    "StsEndpoint": {
+    "TestVPCStsEndpoint": {
         "Properties": {
             "PrivateDnsEnabled": true,
             "SecurityGroupIds": [
