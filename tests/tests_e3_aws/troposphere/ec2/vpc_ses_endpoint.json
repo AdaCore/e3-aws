@@ -242,7 +242,7 @@
         },
         "Type": "AWS::EC2::SecurityGroupIngress"
     },
-    "EmailSmtpEndpoint": {
+    "TestVPCEmailSmtpEndpoint": {
         "Properties": {
             "PrivateDnsEnabled": true,
             "SecurityGroupIds": [

@@ -242,7 +242,7 @@
         },
         "Type": "AWS::EC2::SecurityGroupIngress"
     },
-    "LogsEndpoint": {
+    "TestVPCLogsEndpoint": {
         "Properties": {
             "PrivateDnsEnabled": true,
             "SecurityGroupIds": [
@@ -278,7 +278,7 @@
         },
         "Type": "AWS::EC2::VPCEndpoint"
     },
-    "EcrapiEndpoint": {
+    "TestVPCEcrapiEndpoint": {
         "Properties": {
             "PrivateDnsEnabled": true,
             "SecurityGroupIds": [
@@ -314,7 +314,7 @@
         },
         "Type": "AWS::EC2::VPCEndpoint"
     },
-    "EcrdkrEndpoint": {
+    "TestVPCEcrdkrEndpoint": {
         "Properties": {
             "PrivateDnsEnabled": true,
             "SecurityGroupIds": [
@@ -350,7 +350,7 @@
         },
         "Type": "AWS::EC2::VPCEndpoint"
     },
-    "StsEndpoint": {
+    "TestVPCStsEndpoint": {
         "Properties": {
             "PrivateDnsEnabled": true,
             "SecurityGroupIds": [
@@ -371,7 +371,7 @@
         },
         "Type": "AWS::EC2::VPCEndpoint"
     },
-    "SecretsmanagerEndpoint": {
+    "TestVPCSecretsmanagerEndpoint": {
         "Properties": {
             "PrivateDnsEnabled": true,
             "SecurityGroupIds": [
