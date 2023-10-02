@@ -1,0 +1,78 @@
+{
+    "MyBucket": {
+        "Properties": {
+            "BucketName": "my-bucket",
+            "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                    {
+                        "ServerSideEncryptionByDefault": {
+                            "SSEAlgorithm": "AES256"
+                        }
+                    }
+                ]
+            },
+            "PublicAccessBlockConfiguration": {
+                "BlockPublicAcls": true,
+                "BlockPublicPolicy": true,
+                "IgnorePublicAcls": true,
+                "RestrictPublicBuckets": true
+            },
+            "VersioningConfiguration": {
+                "Status": "Enabled"
+            }
+        },
+        "Type": "AWS::S3::Bucket"
+    },
+    "MyBucketPolicy": {
+        "Properties": {
+            "Bucket": {
+                "Ref": "MyBucket"
+            },
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Deny",
+                        "Principal": {
+                            "AWS": "*"
+                        },
+                        "Action": "s3:*",
+                        "Resource": "arn:aws:s3:::my-bucket/*",
+                        "Condition": {
+                            "Bool": {
+                                "aws:SecureTransport": "false"
+                            }
+                        }
+                    },
+                    {
+                        "Effect": "Deny",
+                        "Principal": {
+                            "AWS": "*"
+                        },
+                        "Action": "s3:PutObject",
+                        "Resource": "arn:aws:s3:::my-bucket/*",
+                        "Condition": {
+                            "StringNotEquals": {
+                                "s3:x-amz-server-side-encryption": "AES256"
+                            }
+                        }
+                    },
+                    {
+                        "Effect": "Deny",
+                        "Principal": {
+                            "AWS": "*"
+                        },
+                        "Action": "s3:PutObject",
+                        "Resource": "arn:aws:s3:::my-bucket/*",
+                        "Condition": {
+                            "Null": {
+                                "s3:x-amz-server-side-encryption": "true"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::S3::BucketPolicy"
+    }
+}

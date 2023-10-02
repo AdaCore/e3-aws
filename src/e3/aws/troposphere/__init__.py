@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from itertools import chain
-from troposphere import AWSObject, Template
+from troposphere import AWSObject, Output, Template
 
 from e3.aws import cfn, name_to_id, Session
 from e3.aws.cfn.main import CFNMain
@@ -129,6 +129,13 @@ class Stack(cfn.Stack):
         self.template.add_resource(resources)
 
         return self
+
+    def add_output(self, output: Output | list[Output]) -> None:
+        """Add outputs to stack template.
+
+        :param output: output to add to the template
+        """
+        self.template.add_output(output)
 
     def add_condition(self, condition_name: str, condition: ConditionFunction) -> None:
         """Add condition to stack template.
