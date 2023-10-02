@@ -22,10 +22,12 @@ class BucketWithRoles(Construct):
         name: str,
         iam_names_prefix: str,
         iam_path: str,
-        trusted_accounts: list[str],
+        trusted_accounts: list[str] | None = None,
         iam_read_root_name: str = "Read",
         iam_write_root_name: str = "Write",
         bucket_exists: bool | None = None,
+        read_trusted_accounts: list[str] | None = None,
+        write_trusted_accounts: list[str] | None = None,
         **bucket_kwargs: Any,
     ) -> None:
         """Initialize BucketWithRoles instance.
@@ -37,11 +39,19 @@ class BucketWithRoles(Construct):
         :param iam_read_root_name: root name for read access roles and policy
         :param iam_write_root_name: root name for write access roles and policy
         :param bucket_exists: if True then the bucket is not created
+        :param read_trusted_accounts: additional trusted accounts for read access
+        :param write_trusted_accounts: additional trusted accounts for write access
         :param bucket_kwargs: keyword arguments to pass to the bucket constructor
         """
         self.name = name
         self.iam_names_prefix = iam_names_prefix
-        self.trusted_accounts = trusted_accounts
+        self.trusted_accounts = trusted_accounts if trusted_accounts is not None else []
+        self.read_trusted_accounts = (
+            read_trusted_accounts if read_trusted_accounts is not None else []
+        )
+        self.write_trusted_accounts = (
+            write_trusted_accounts if write_trusted_accounts is not None else []
+        )
         self.bucket_exists = bucket_exists
 
         self.bucket = Bucket(name=self.name, **bucket_kwargs)
@@ -57,7 +67,7 @@ class BucketWithRoles(Construct):
         self.read_role = Role(
             name=f"{self.iam_names_prefix}{iam_read_root_name}Role",
             description=f"Role with read access to {self.name} bucket.",
-            trust=Trust(accounts=self.trusted_accounts),
+            trust=Trust(accounts=self.trusted_accounts + self.read_trusted_accounts),
             managed_policy_arns=[self.read_policy.arn],
             path=iam_path,
         )
@@ -75,7 +85,7 @@ class BucketWithRoles(Construct):
         self.push_role = Role(
             name=f"{self.iam_names_prefix}{iam_write_root_name}Role",
             description=f"Role with read and write access to {self.name} bucket.",
-            trust=Trust(accounts=self.trusted_accounts),
+            trust=Trust(accounts=self.trusted_accounts + self.write_trusted_accounts),
             managed_policy_arns=[self.push_policy.arn, self.read_policy.arn],
             path=iam_path,
         )
