@@ -130,3 +130,26 @@ def test_vpc_with_ses_and_other_endpoints(stack: Stack) -> None:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
+
+
+def test_vpc_with_vpc_prefixed_endpoints(stack: Stack) -> None:
+    """Test creation of a VPC with endpoints prefixed by vpc name."""
+    vpc = VPC(
+        name="TestVPC",
+        region="eu-west-1",
+        nat_gateway=False,
+        interface_endpoints=[
+            ("email-smtp", None),
+            ("logs", None),
+            ("sts", None),
+        ],
+        vpc_prefixed_endpoints=True,
+    )
+    stack.add(vpc)
+
+    with open(
+        os.path.join(TEST_DIR, "vpc_ses_and_other_endpoints_prefixed.json")
+    ) as fd:
+        expected_template = json.load(fd)
+
+    assert stack.export()["Resources"] == expected_template
