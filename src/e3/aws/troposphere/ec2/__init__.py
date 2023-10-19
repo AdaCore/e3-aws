@@ -102,6 +102,7 @@ class VPCEndpointsSubnet(Construct):
         cidr_block: str,
         vpc: ec2.vpc,
         interface_endpoints: list[tuple[str, PolicyDocument | None]] | None = None,
+        vpc_prefixed_endpoints: bool | None = None,
     ) -> None:
         """Initialize VPCEndpointsSubnet Construct.
 
@@ -111,11 +112,15 @@ class VPCEndpointsSubnet(Construct):
         :param vpc: attach the subnet to this vpc
         :param interface_endpoint: list of (<service_name>, <endpoint_policy_document>)
             tuples for each interface endpoint to create in the vpc endpoints subnet.
+        :param vpc_prefixed_endpoints: If True prefix endpoint names by VPC name.
+            This is to avoid conflicts in stacks with multiple VPCs with endpoints for
+            the same services. This is not the default for backward compatibility.
         """
         self.name = name
         self.region = region
         self.cidr_block = cidr_block
         self.vpc = vpc
+        self.vpc_prefixed_endpoints = vpc_prefixed_endpoints
         self.has_ses_endpoint = False
 
         if interface_endpoints:
@@ -220,9 +225,14 @@ class VPCEndpointsSubnet(Construct):
             else:
                 security_group_id = Ref(self.security_group)
 
+            if self.vpc_prefixed_endpoints:
+                endpoint_name = f"{self.vpc.name}-{service_name}Endpoint"
+            else:
+                endpoint_name = f"{service_name}Endpoint"
+
             endpoints.append(
                 ec2.VPCEndpoint(
-                    name_to_id(f"{self.vpc.name}-{service_name}Endpoint"),
+                    name_to_id(endpoint_name),
                     PrivateDnsEnabled="true",
                     SecurityGroupIds=[security_group_id],
                     ServiceName=f"com.amazonaws.{self.region}.{service_name}",
@@ -404,6 +414,7 @@ class VPC(Construct):
         s3_endpoint_policy_document: PolicyDocument | None = None,
         interface_endpoints: list[tuple[str, PolicyDocument | None]] | None = None,
         tags: dict[str, str] | None = None,
+        vpc_prefixed_endpoints: bool | None = None,
     ) -> None:
         """Initialize VPC Construct.
 
@@ -424,6 +435,9 @@ class VPC(Construct):
         :param interface_endpoint: list of (<service_name>, <endpoint_policy_document>)
             tuples for each interface endpoint to create in the vpc endpoints subnet.
         :param tags: tags for the VPC
+        :param vpc_prefixed_endpoints: It should be set to True if multiple VPCs in
+            the same stack have endpoints for the same services to avoid name
+            conflicts. It is None by default for backward compatibility.
         """
         self.name = name
         self.region = region
@@ -496,6 +510,7 @@ class VPC(Construct):
             cidr_block=vpc_endpoints_subnet_cidr_block,
             vpc=self.vpc,
             interface_endpoints=interface_endpoints,
+            vpc_prefixed_endpoints=vpc_prefixed_endpoints,
         )
 
     @cached_property
