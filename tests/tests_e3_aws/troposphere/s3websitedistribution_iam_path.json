@@ -1,5 +1,6 @@
 {
     "HostBucket": {
+        "DeletionPolicy": "Retain",
         "Properties": {
             "BucketName": "host-bucket",
             "BucketEncryption": {

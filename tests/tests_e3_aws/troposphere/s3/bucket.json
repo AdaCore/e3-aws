@@ -29,6 +29,7 @@
         "Type": "AWS::Lambda::Function"
     },
     "TestBucket": {
+        "DeletionPolicy": "Retain",
         "Properties": {
             "BucketName": "test-bucket",
             "BucketEncryption": {

@@ -1,5 +1,6 @@
 {
     "TestBucket": {
+        "DeletionPolicy": "Retain",
         "Properties": {
             "BucketName": "test-bucket",
             "PublicAccessBlockConfiguration": {
