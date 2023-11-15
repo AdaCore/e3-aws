@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 CFN_INIT_STARTUP_SCRIPT = """#!/bin/sh
 sed -i 's/scripts-user$/[scripts-user, always]/' /etc/cloud/cloud.cfg
+sed -i 's/scripts_user$/[scripts_user, always]/' /etc/cloud/cloud.cfg
 ${Cfninit} -v --stack ${AWS::StackName} \\
                 --region ${AWS::Region} \\
                 --resource ${Resource} \\
