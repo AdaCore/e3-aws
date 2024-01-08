@@ -1,0 +1,274 @@
+{
+    "Mypylambda": {
+        "Properties": {
+            "Code": {
+                "S3Bucket": "cfn_bucket",
+                "S3Key": "templates/mypylambda_lambda.zip"
+            },
+            "Timeout": 3,
+            "Description": "this is a test",
+            "Role": "somearn",
+            "FunctionName": "mypylambda",
+            "Runtime": "python3.8",
+            "Handler": "app.main"
+        },
+        "Type": "AWS::Lambda::Function"
+    },
+    "TestapiLogGroup": {
+        "Properties": {
+            "LogGroupName": "testapi"
+        },
+        "Type": "AWS::Logs::LogGroup"
+    },
+    "Testapi": {
+        "Properties": {
+            "Description": "this is a test",
+            "Name": "testapi",
+            "DisableExecuteApiEndpoint": false
+        },
+        "Type": "AWS::ApiGateway::RestApi"
+    },
+    "TestapiAccountsResource": {
+        "Properties": {
+            "ParentId": {
+                "Fn::GetAtt": [
+                    "Testapi",
+                    "RootResourceId"
+                ]
+            },
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "PathPart": "accounts"
+        },
+        "Type": "AWS::ApiGateway::Resource"
+    },
+    "TestapiProductsResource": {
+        "Properties": {
+            "ParentId": {
+                "Fn::GetAtt": [
+                    "Testapi",
+                    "RootResourceId"
+                ]
+            },
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "PathPart": "products"
+        },
+        "Type": "AWS::ApiGateway::Resource"
+    },
+    "TestapiProductsAbcdResource": {
+        "Properties": {
+            "ParentId": {
+                "Fn::GetAtt": [
+                    "TestapiProductsResource",
+                    "ResourceId"
+                ]
+            },
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "PathPart": "abcd"
+        },
+        "Type": "AWS::ApiGateway::Resource"
+    },
+    "TestapiDefaultDeployment": {
+        "Properties": {
+            "Description": "Deployment resource of $default stage",
+            "RestApiId": {
+                "Ref": "Testapi"
+            }
+        },
+        "Type": "AWS::ApiGateway::Deployment",
+        "DependsOn": [
+            "TestapiAccountsANYMethod",
+            "TestapiProductsANYMethod",
+            "TestapiProductsAbcdANYMethod"
+        ]
+    },
+    "TestapiDefaultStage": {
+        "Properties": {
+            "AccessLogSetting": {
+                "DestinationArn": {
+                    "Fn::GetAtt": [
+                        "TestapiLogGroup",
+                        "Arn"
+                    ]
+                },
+                "Format": "{\"source_ip\": \"$context.identity.sourceIp\", \"request_time\": \"$context.requestTime\", \"method\": \"$context.httpMethod\", \"route\": \"$context.routeKey\", \"protocol\": \"$context.protocol\", \"status\": \"$context.status\", \"response_length\": \"$context.responseLength\", \"request_id\": \"$context.requestId\", \"integration_error_msg\": \"$context.integrationErrorMessage\"}"
+            },
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "DeploymentId": {
+                "Ref": "TestapiDefaultDeployment"
+            },
+            "Description": "stage $default",
+            "MethodSettings": [
+                {
+                    "ResourcePath": "/*",
+                    "HttpMethod": "*",
+                    "MetricsEnabled": true,
+                    "ThrottlingBurstLimit": 10,
+                    "ThrottlingRateLimit": 10
+                }
+            ],
+            "StageName": "default"
+        },
+        "Type": "AWS::ApiGateway::Stage"
+    },
+    "TestapiAccountsANYMethod": {
+        "Properties": {
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "AuthorizationType": "NONE",
+            "HttpMethod": "ANY",
+            "Integration": {
+                "CacheKeyParameters": [],
+                "CacheNamespace": "none",
+                "IntegrationHttpMethod": "POST",
+                "PassthroughBehavior": "NEVER",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                    "Fn::Sub": [
+                        "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations",
+                        {
+                            "lambdaArn": {
+                                "Ref": "Mypylambda"
+                            }
+                        }
+                    ]
+                }
+            },
+            "ResourceId": {
+                "Ref": "TestapiAccountsResource"
+            }
+        },
+        "Type": "AWS::ApiGateway::Method"
+    },
+    "TestapiProductsANYMethod": {
+        "Properties": {
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "AuthorizationType": "NONE",
+            "HttpMethod": "ANY",
+            "Integration": {
+                "CacheKeyParameters": [],
+                "CacheNamespace": "none",
+                "IntegrationHttpMethod": "POST",
+                "PassthroughBehavior": "NEVER",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                    "Fn::Sub": [
+                        "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations",
+                        {
+                            "lambdaArn": {
+                                "Ref": "Productslambda"
+                            }
+                        }
+                    ]
+                }
+            },
+            "ResourceId": {
+                "Ref": "TestapiProductsResource"
+            }
+        },
+        "Type": "AWS::ApiGateway::Method"
+    },
+    "TestapiProductsAbcdANYMethod": {
+        "Properties": {
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "AuthorizationType": "NONE",
+            "HttpMethod": "ANY",
+            "Integration": {
+                "CacheKeyParameters": [],
+                "CacheNamespace": "none",
+                "IntegrationHttpMethod": "POST",
+                "PassthroughBehavior": "NEVER",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                    "Fn::Sub": [
+                        "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations",
+                        {
+                            "lambdaArn": {
+                                "Ref": "Mypylambda"
+                            }
+                        }
+                    ]
+                }
+            },
+            "ResourceId": {
+                "Ref": "TestapiProductsAbcdResource"
+            }
+        },
+        "Type": "AWS::ApiGateway::Method"
+    },
+    "TestapiAccountsANYLambdaPermission": {
+        "Properties": {
+            "Action": "lambda:InvokeFunction",
+            "FunctionName": {
+                "Ref": "Mypylambda"
+            },
+            "Principal": "apigateway.amazonaws.com",
+            "SourceArn": {
+                "Fn::Sub": [
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/$default/${method}/accounts",
+                    {
+                        "api": {
+                            "Ref": "Testapi"
+                        },
+                        "method": "ANY"
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::Lambda::Permission"
+    },
+    "TestapiProductsANYLambdaPermission": {
+        "Properties": {
+            "Action": "lambda:InvokeFunction",
+            "FunctionName": {
+                "Ref": "Productslambda"
+            },
+            "Principal": "apigateway.amazonaws.com",
+            "SourceArn": {
+                "Fn::Sub": [
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/$default/${method}/products",
+                    {
+                        "api": {
+                            "Ref": "Testapi"
+                        },
+                        "method": "ANY"
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::Lambda::Permission"
+    },
+    "TestapiProductsAbcdANYLambdaPermission": {
+        "Properties": {
+            "Action": "lambda:InvokeFunction",
+            "FunctionName": {
+                "Ref": "Mypylambda"
+            },
+            "Principal": "apigateway.amazonaws.com",
+            "SourceArn": {
+                "Fn::Sub": [
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/$default/${method}/products/abcd",
+                    {
+                        "api": {
+                            "Ref": "Testapi"
+                        },
+                        "method": "ANY"
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::Lambda::Permission"
+    }
+}
