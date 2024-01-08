@@ -17,6 +17,7 @@ from e3.aws.troposphere.apigateway import (
     GET,
     POST,
     Method,
+    Resource,
     StageConfiguration,
 )
 
@@ -701,6 +702,50 @@ def test_rest_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> 
 
     with open(
         os.path.join(TEST_DIR, "apigatewayv1_test_custom_domain_stages.json"),
+    ) as fd:
+        expected = json.load(fd)
+
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == expected
+
+
+def test_rest_api_nested_resources(stack: Stack, lambda_fun: PyFunction) -> None:
+    """Test REST API with nested resources."""
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+
+    # Lambda for the products resource
+    products_lambda = PyFunction(
+        name="productslambda",
+        description="this is a test",
+        role="somearn",
+        code_dir="my_code_dir",
+        handler="app.main",
+        runtime="python3.8",
+        logs_retention_in_days=None,
+    )
+
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        resource_list=[
+            Resource(path="accounts", method_list=[Method("ANY")]),
+            Resource(
+                path="products",
+                # Specific lambda for this resource
+                lambda_arn=products_lambda.ref,
+                method_list=[Method("ANY")],
+                resource_list=[Resource(path="abcd", method_list=[Method("ANY")])],
+            ),
+        ],
+    )
+
+    stack.add(lambda_fun)
+    stack.add(rest_api)
+
+    with open(
+        os.path.join(TEST_DIR, "apigatewayv1_test_nested_resources.json"),
     ) as fd:
         expected = json.load(fd)
 
