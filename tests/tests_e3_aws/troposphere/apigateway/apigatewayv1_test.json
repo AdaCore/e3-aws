@@ -45,7 +45,7 @@
     },
     "TestapiDefaultDeployment": {
         "Properties": {
-            "Description": "Deployment resource of $default stage",
+            "Description": "Deployment resource of default stage",
             "RestApiId": {
                 "Ref": "Testapi"
             }
@@ -72,7 +72,7 @@
             "DeploymentId": {
                 "Ref": "TestapiDefaultDeployment"
             },
-            "Description": "stage $default",
+            "Description": "stage default",
             "MethodSettings": [
                 {
                     "ResourcePath": "/*",
@@ -116,7 +116,7 @@
         },
         "Type": "AWS::ApiGateway::Method"
     },
-    "TestapiANYLambdaPermission": {
+    "TestapiANYDefaultLambdaPermission": {
         "Properties": {
             "Action": "lambda:InvokeFunction",
             "FunctionName": {
@@ -125,7 +125,7 @@
             "Principal": "apigateway.amazonaws.com",
             "SourceArn": {
                 "Fn::Sub": [
-                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/$default/${method}/*",
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/default/${method}/*",
                     {
                         "api": {
                             "Ref": "Testapi"

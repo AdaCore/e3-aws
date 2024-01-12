@@ -23,7 +23,6 @@ from e3.aws.troposphere.iam.role import Role
 from troposphere import AWSObject
 from troposphere.certificatemanager import Certificate, DomainValidationOption
 import json
-import re
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
@@ -195,6 +194,9 @@ class Api(Construct):
             DNSName: str
             HostedZoneId: str
 
+    # The default stage name
+    DEFAULT_STAGE_NAME = "$default"
+
     def __init__(
         self,
         name: str,
@@ -240,7 +242,9 @@ class Api(Construct):
         self.authorizers: dict[str, Any] = {}
         # By default, make sure to have a $default stage
         self.stages_config = (
-            stages_config if stages_config else [StageConfiguration("$default")]
+            stages_config
+            if stages_config
+            else [StageConfiguration(self.DEFAULT_STAGE_NAME)]
         )
 
     @cached_property
@@ -697,6 +701,9 @@ class HttpApi(Api):
 class RestApi(Api):
     """Rest API support."""
 
+    # Apigateway v1 only allows a-zA-Z0-9_
+    DEFAULT_STAGE_NAME = "default"
+
     def __init__(
         self,
         name: str,
@@ -878,8 +885,7 @@ class RestApi(Api):
                 DeploymentId=Ref(deployment_name),
                 Description=f"stage {stage_name}",
                 MethodSettings=[method_settings],
-                # Stage name only allows a-zA-Z0-9_
-                StageName=re.sub("[^a-zA-Z0-9_]", "", stage_name),
+                StageName=stage_name,
                 **parameters,
             )
         )
@@ -948,12 +954,7 @@ class RestApi(Api):
         for config in self.stages_config:
             result.append(
                 awslambda.Permission(
-                    # Retain old behavior for the $default stage
-                    name_to_id(
-                        "{}-{}LambdaPermission".format(
-                            id_prefix, "" if config.name == "$default" else config.name
-                        )
-                    ),
+                    name_to_id(f"{id_prefix}-{config.name}LambdaPermission"),
                     Action="lambda:InvokeFunction",
                     FunctionName=lambda_arn,
                     Principal="apigateway.amazonaws.com",
@@ -1006,11 +1007,7 @@ class RestApi(Api):
                 apigateway.BasePathMapping(
                     # Retain old behavior for the $default stage
                     name_to_id(
-                        "{}{}-{}BasePathMapping".format(
-                            self.name,
-                            domain_name.DomainName,
-                            "" if config.name == "$default" else config.name,
-                        )
+                        f"{self.name}{domain_name.DomainName}-{config.name}BasePathMapping"
                     ),
                     **mapping_params,
                 )

@@ -529,7 +529,7 @@ def test_rest_api_stages(stack: Stack, lambda_fun: PyFunction) -> None:
             Method("ANY"),
         ],
         stages_config=[
-            StageConfiguration("$default"),
+            StageConfiguration("default"),
             StageConfiguration(
                 "beta", api_mapping_key="beta", variables={"somevar": "somevalue"}
             ),
@@ -574,7 +574,7 @@ def test_rest_api_lambda_alias(stack: Stack, lambda_fun: PyFunction) -> None:
         ],
         stages_config=[
             StageConfiguration(
-                "$default",
+                "default",
                 lambda_arn_permission=lambda_aliases.blue.ref,
                 variables={"lambdaAlias": lambda_aliases.blue.name},
             ),
@@ -667,7 +667,7 @@ def test_rest_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> 
             Method("ANY", authorizer_name="testauthorizer"),
         ],
         stages_config=[
-            StageConfiguration("$default"),
+            StageConfiguration("default"),
             StageConfiguration(
                 "beta", api_mapping_key="beta", variables={"somevar": "somevalue"}
             ),

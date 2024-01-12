@@ -75,7 +75,7 @@
     },
     "TestapiDefaultDeployment": {
         "Properties": {
-            "Description": "Deployment resource of $default stage",
+            "Description": "Deployment resource of default stage",
             "RestApiId": {
                 "Ref": "Testapi"
             }
@@ -104,7 +104,7 @@
             "DeploymentId": {
                 "Ref": "TestapiDefaultDeployment"
             },
-            "Description": "stage $default",
+            "Description": "stage default",
             "MethodSettings": [
                 {
                     "ResourcePath": "/*",
@@ -208,7 +208,7 @@
         },
         "Type": "AWS::ApiGateway::Method"
     },
-    "TestapiAccountsANYLambdaPermission": {
+    "TestapiAccountsANYDefaultLambdaPermission": {
         "Properties": {
             "Action": "lambda:InvokeFunction",
             "FunctionName": {
@@ -217,7 +217,7 @@
             "Principal": "apigateway.amazonaws.com",
             "SourceArn": {
                 "Fn::Sub": [
-                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/$default/${method}/accounts",
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/default/${method}/accounts",
                     {
                         "api": {
                             "Ref": "Testapi"
@@ -229,7 +229,7 @@
         },
         "Type": "AWS::Lambda::Permission"
     },
-    "TestapiProductsANYLambdaPermission": {
+    "TestapiProductsANYDefaultLambdaPermission": {
         "Properties": {
             "Action": "lambda:InvokeFunction",
             "FunctionName": {
@@ -238,7 +238,7 @@
             "Principal": "apigateway.amazonaws.com",
             "SourceArn": {
                 "Fn::Sub": [
-                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/$default/${method}/products",
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/default/${method}/products",
                     {
                         "api": {
                             "Ref": "Testapi"
@@ -250,7 +250,7 @@
         },
         "Type": "AWS::Lambda::Permission"
     },
-    "TestapiProductsAbcdANYLambdaPermission": {
+    "TestapiProductsAbcdANYDefaultLambdaPermission": {
         "Properties": {
             "Action": "lambda:InvokeFunction",
             "FunctionName": {
@@ -259,7 +259,7 @@
             "Principal": "apigateway.amazonaws.com",
             "SourceArn": {
                 "Fn::Sub": [
-                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/$default/${method}/products/abcd",
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/default/${method}/products/abcd",
                     {
                         "api": {
                             "Ref": "Testapi"
