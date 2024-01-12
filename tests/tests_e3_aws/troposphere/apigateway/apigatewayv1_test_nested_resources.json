@@ -84,7 +84,7 @@
         "DependsOn": [
             "TestapiAccountsANYMethod",
             "TestapiProductsANYMethod",
-            "TestapiProductsAbcdANYMethod"
+            "TestapiProductsAbcdGETMethod"
         ]
     },
     "TestapiDefaultStage": {
@@ -178,13 +178,13 @@
         },
         "Type": "AWS::ApiGateway::Method"
     },
-    "TestapiProductsAbcdANYMethod": {
+    "TestapiProductsAbcdGETMethod": {
         "Properties": {
             "RestApiId": {
                 "Ref": "Testapi"
             },
             "AuthorizationType": "NONE",
-            "HttpMethod": "ANY",
+            "HttpMethod": "GET",
             "Integration": {
                 "CacheKeyParameters": [],
                 "CacheNamespace": "none",
@@ -222,7 +222,7 @@
                         "api": {
                             "Ref": "Testapi"
                         },
-                        "method": "ANY"
+                        "method": "*"
                     }
                 ]
             }
@@ -243,14 +243,14 @@
                         "api": {
                             "Ref": "Testapi"
                         },
-                        "method": "ANY"
+                        "method": "*"
                     }
                 ]
             }
         },
         "Type": "AWS::Lambda::Permission"
     },
-    "TestapiProductsAbcdANYDefaultLambdaPermission": {
+    "TestapiProductsAbcdGETDefaultLambdaPermission": {
         "Properties": {
             "Action": "lambda:InvokeFunction",
             "FunctionName": {
@@ -264,7 +264,7 @@
                         "api": {
                             "Ref": "Testapi"
                         },
-                        "method": "ANY"
+                        "method": "GET"
                     }
                 ]
             }
