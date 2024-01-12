@@ -71,7 +71,7 @@
     },
     "TestapiDefaultDeployment": {
         "Properties": {
-            "Description": "Deployment resource of $default stage",
+            "Description": "Deployment resource of default stage",
             "RestApiId": {
                 "Ref": "Testapi"
             }
@@ -98,7 +98,7 @@
             "DeploymentId": {
                 "Ref": "TestapiDefaultDeployment"
             },
-            "Description": "stage $default",
+            "Description": "stage default",
             "MethodSettings": [
                 {
                     "ResourcePath": "/*",
@@ -212,7 +212,7 @@
         },
         "Type": "AWS::Lambda::Permission"
     },
-    "TestapiANYLambdaPermission": {
+    "TestapiANYDefaultLambdaPermission": {
         "Properties": {
             "Action": "lambda:InvokeFunction",
             "FunctionName": {
@@ -221,7 +221,7 @@
             "Principal": "apigateway.amazonaws.com",
             "SourceArn": {
                 "Fn::Sub": [
-                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/$default/${method}/*",
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/default/${method}/*",
                     {
                         "api": {
                             "Ref": "Testapi"
@@ -255,7 +255,7 @@
         },
         "Type": "AWS::ApiGateway::DomainName"
     },
-    "TestapiapiexamplecomBasePathMapping": {
+    "TestapiapiexamplecomDefaultBasePathMapping": {
         "Properties": {
             "DomainName": {
                 "Ref": "TestapiapiexamplecomDomain"
