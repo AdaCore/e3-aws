@@ -963,7 +963,7 @@ class RestApi(Api):
                         f"${{api}}/{config.name}/${{method}}/{resource_path}",
                         dict_values={
                             "api": self.ref,
-                            "method": method.method,
+                            "method": "*" if method.method == "ANY" else method.method,
                         },
                     ),
                 )

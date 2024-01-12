@@ -736,7 +736,7 @@ def test_rest_api_nested_resources(stack: Stack, lambda_fun: PyFunction) -> None
                 # Specific lambda for this resource
                 lambda_arn=products_lambda.ref,
                 method_list=[Method("ANY")],
-                resource_list=[Resource(path="abcd", method_list=[Method("ANY")])],
+                resource_list=[Resource(path="abcd", method_list=[Method("GET")])],
             ),
         ],
     )

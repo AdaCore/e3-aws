@@ -170,7 +170,7 @@
                         "api": {
                             "Ref": "Testapi"
                         },
-                        "method": "ANY"
+                        "method": "*"
                     }
                 ]
             }
@@ -191,7 +191,7 @@
                         "api": {
                             "Ref": "Testapi"
                         },
-                        "method": "ANY"
+                        "method": "*"
                     }
                 ]
             }

@@ -159,7 +159,7 @@
                         "api": {
                             "Ref": "Testapi"
                         },
-                        "method": "ANY"
+                        "method": "*"
                     }
                 ]
             }
