@@ -170,19 +170,32 @@ class Resource(object):
         path: str,
         method_list: list[Method],
         resource_list: list[Resource] | None = None,
+        integration_uri: str | Ref | Sub | None = None,
         lambda_arn: str | GetAtt | Ref | None = None,
+        lambda_arn_permission: str
+        | GetAtt
+        | Ref
+        | dict[str, str | GetAtt | Ref]
+        | None = None,
     ) -> None:
         """Initialize a REST API resource.
 
         :param path: the last path segment for this resource
         :param method_list: a list of methods accepted on this resource
         :param resource_list: a list of child resources
+        :param integration_uri: URI of a lambda function for this resource
         :param lambda_arn: arn of the lambda executed for this resource
+        :param lambda_arn_permission: lambda arn for which to add InvokeFunction
+            permission (can be different from the lambda arn executed
+            by the REST API). A mapping from stage names to lambda arns can
+            also be passed
         """
         self.path = path
         self.method_list = method_list
         self.resource_list = resource_list
+        self.integration_uri = integration_uri
         self.lambda_arn = lambda_arn
+        self.lambda_arn_permission = lambda_arn_permission
 
 
 class Api(Construct):
@@ -224,7 +237,6 @@ class Api(Construct):
         :param hosted_zone_id: id of the hosted zone that contains domain_name.
             This parameter is required if domain_name is not None
         :param stages_config: configurations of the different stages
-        :param integration_uri: URI of a Lambda function
         """
         self.name = name
         self.description = description
@@ -895,35 +907,39 @@ class RestApi(Api):
     def _declare_method(
         self,
         method: Method,
-        resource: Resource,
         resource_id_prefix: str,
         resource_path: str,
+        resource_integration_uri: str | Ref | Sub | None = None,
+        resource_lambda_arn: str | GetAtt | Ref | None = None,
+        resource_lambda_arn_permission: str
+        | GetAtt
+        | Ref
+        | dict[str, str | GetAtt | Ref]
+        | None = None,
     ) -> list[AWSObject]:
         """Declare a method.
 
         :param method: the method definition
-        :param resource: resource associated with the method
         :param resource_id_prefix: resource_id without trailing Resource
         :param resource_path: absolute path to the resource
+        :param resource_integration_uri: integration URI for the resource
+        :param resource_lambda_arn: arn of lambda for the resource
+        :param resource_lambda_arn_permission: lambda arn permission for the resource
         :return: a list of AWSObjects to be added to the stack
         """
         result = []
         id_prefix = name_to_id(f"{resource_id_prefix}-{method.method}")
 
-        # Take the global lambda_arn or the one configured for the resource
-        lambda_arn = (
-            self.lambda_arn if resource.lambda_arn is None else resource.lambda_arn
-        )
-
-        # Integration URI for the resource
+        # Take the global integration uri or the one configured for the resource
         integration_uri = (
             self.integration_uri
-            if self.integration_uri is not None
-            else Sub(
-                "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31"
-                "/functions/${lambdaArn}/invocations",
-                dict_values={"lambdaArn": lambda_arn},
-            )
+            if resource_integration_uri is None
+            else resource_integration_uri
+        )
+
+        # Take the global lambda arn or the one configured for the resource
+        lambda_arn = (
+            self.lambda_arn if resource_lambda_arn is None else resource_lambda_arn
         )
 
         integration = apigateway.Integration(
@@ -934,7 +950,13 @@ class RestApi(Api):
             IntegrationHttpMethod="POST",
             PassthroughBehavior="NEVER",
             Type="AWS_PROXY",
-            Uri=integration_uri,
+            Uri=integration_uri
+            if integration_uri is not None
+            else Sub(
+                "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31"
+                "/functions/${lambdaArn}/invocations",
+                dict_values={"lambdaArn": lambda_arn},
+            ),
         )
 
         method_params = {
@@ -952,6 +974,16 @@ class RestApi(Api):
         result.append(apigateway.Method(f"{id_prefix}Method", **method_params))
 
         for config in self.stages_config:
+            if resource_lambda_arn_permission is not None:
+                # Use the lambda_arn_permission configured for resource
+                if isinstance(resource_lambda_arn_permission, dict):
+                    assert (
+                        config.name in resource_lambda_arn_permission
+                    ), f"missing lambda arn permission for stage {config.name}"
+                    lambda_arn = resource_lambda_arn_permission[config.name]
+                else:
+                    lambda_arn = resource_lambda_arn_permission
+
             result.append(
                 awslambda.Permission(
                     name_to_id(f"{id_prefix}-{config.name}LambdaPermission"),
@@ -1019,6 +1051,13 @@ class RestApi(Api):
         resource_list: list[Resource],
         parent_id_prefix: str | None = None,
         parent_path: str | None = None,
+        parent_integration_uri: str | Ref | Sub | None = None,
+        parent_lambda_arn: str | GetAtt | Ref | None = None,
+        parent_lambda_arn_permission: str
+        | GetAtt
+        | Ref
+        | dict[str, str | GetAtt | Ref]
+        | None = None,
     ) -> list[AWSObject]:
         """Create API resources and methods recursively.
 
@@ -1026,6 +1065,11 @@ class RestApi(Api):
 
         :param resource_list: list of resources
         :param parent_id_prefix: id of the parent resource without trailing Resource
+        :param parent_path: absolute path to the parent resource
+        :param parent_integration_uri: integration URI of the parent resource
+        :param parent_lambda_arn: lambda arn of the parent resource
+        :param parent_lambda_arn_permission: lambda arn permission of the
+            parent resource
         :return: a list of AWSObjects to be added to the stack
         """
         result: list[AWSObject] = []
@@ -1059,13 +1103,36 @@ class RestApi(Api):
 
             result.append(resource)
 
+            # Get the integration URI of this resource.
+            # It must be forwarded to children so that they recursively use the
+            # same URI
+            resource_integration_uri = (
+                r.integration_uri
+                if r.integration_uri is not None
+                else parent_integration_uri
+            )
+
+            # Same for the lambda arn
+            resource_lambda_arn = (
+                r.lambda_arn if r.lambda_arn is not None else parent_lambda_arn
+            )
+
+            # Same fo the lambda arn permission
+            resource_lambda_arn_permission = (
+                r.lambda_arn_permission
+                if r.lambda_arn_permission is not None
+                else parent_lambda_arn_permission
+            )
+
             # Declare the methods of this resource
             for method in r.method_list:
                 result += self._declare_method(
                     method=method,
-                    resource=r,
                     resource_id_prefix=resource_id_prefix,
                     resource_path=resource_path,
+                    resource_integration_uri=resource_integration_uri,
+                    resource_lambda_arn=resource_lambda_arn,
+                    resource_lambda_arn_permission=resource_lambda_arn_permission,
                 )
 
             # Declare the children of this resource
@@ -1074,6 +1141,9 @@ class RestApi(Api):
                     resource_list=r.resource_list,
                     parent_id_prefix=resource_id_prefix,
                     parent_path=resource_path,
+                    parent_integration_uri=resource_integration_uri,
+                    parent_lambda_arn=resource_lambda_arn,
+                    parent_lambda_arn_permission=resource_lambda_arn_permission,
                 )
 
         return result

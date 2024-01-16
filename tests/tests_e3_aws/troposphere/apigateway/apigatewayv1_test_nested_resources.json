@@ -28,7 +28,7 @@
         },
         "Type": "AWS::ApiGateway::RestApi"
     },
-    "TestapiAccountsResource": {
+    "TestapiFooResource": {
         "Properties": {
             "ParentId": {
                 "Fn::GetAtt": [
@@ -39,37 +39,22 @@
             "RestApiId": {
                 "Ref": "Testapi"
             },
-            "PathPart": "accounts"
+            "PathPart": "foo"
         },
         "Type": "AWS::ApiGateway::Resource"
     },
-    "TestapiProductsResource": {
+    "TestapiFooBarResource": {
         "Properties": {
             "ParentId": {
                 "Fn::GetAtt": [
-                    "Testapi",
-                    "RootResourceId"
-                ]
-            },
-            "RestApiId": {
-                "Ref": "Testapi"
-            },
-            "PathPart": "products"
-        },
-        "Type": "AWS::ApiGateway::Resource"
-    },
-    "TestapiProductsAbcdResource": {
-        "Properties": {
-            "ParentId": {
-                "Fn::GetAtt": [
-                    "TestapiProductsResource",
+                    "TestapiFooResource",
                     "ResourceId"
                 ]
             },
             "RestApiId": {
                 "Ref": "Testapi"
             },
-            "PathPart": "abcd"
+            "PathPart": "bar"
         },
         "Type": "AWS::ApiGateway::Resource"
     },
@@ -82,9 +67,8 @@
         },
         "Type": "AWS::ApiGateway::Deployment",
         "DependsOn": [
-            "TestapiAccountsANYMethod",
-            "TestapiProductsANYMethod",
-            "TestapiProductsAbcdGETMethod"
+            "TestapiFooANYMethod",
+            "TestapiFooBarGETMethod"
         ]
     },
     "TestapiDefaultStage": {
@@ -118,7 +102,7 @@
         },
         "Type": "AWS::ApiGateway::Stage"
     },
-    "TestapiAccountsANYMethod": {
+    "TestapiFooANYMethod": {
         "Properties": {
             "RestApiId": {
                 "Ref": "Testapi"
@@ -143,42 +127,12 @@
                 }
             },
             "ResourceId": {
-                "Ref": "TestapiAccountsResource"
+                "Ref": "TestapiFooResource"
             }
         },
         "Type": "AWS::ApiGateway::Method"
     },
-    "TestapiProductsANYMethod": {
-        "Properties": {
-            "RestApiId": {
-                "Ref": "Testapi"
-            },
-            "AuthorizationType": "NONE",
-            "HttpMethod": "ANY",
-            "Integration": {
-                "CacheKeyParameters": [],
-                "CacheNamespace": "none",
-                "IntegrationHttpMethod": "POST",
-                "PassthroughBehavior": "NEVER",
-                "Type": "AWS_PROXY",
-                "Uri": {
-                    "Fn::Sub": [
-                        "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations",
-                        {
-                            "lambdaArn": {
-                                "Ref": "Productslambda"
-                            }
-                        }
-                    ]
-                }
-            },
-            "ResourceId": {
-                "Ref": "TestapiProductsResource"
-            }
-        },
-        "Type": "AWS::ApiGateway::Method"
-    },
-    "TestapiProductsAbcdGETMethod": {
+    "TestapiFooBarGETMethod": {
         "Properties": {
             "RestApiId": {
                 "Ref": "Testapi"
@@ -203,12 +157,12 @@
                 }
             },
             "ResourceId": {
-                "Ref": "TestapiProductsAbcdResource"
+                "Ref": "TestapiFooBarResource"
             }
         },
         "Type": "AWS::ApiGateway::Method"
     },
-    "TestapiAccountsANYDefaultLambdaPermission": {
+    "TestapiFooANYDefaultLambdaPermission": {
         "Properties": {
             "Action": "lambda:InvokeFunction",
             "FunctionName": {
@@ -217,7 +171,7 @@
             "Principal": "apigateway.amazonaws.com",
             "SourceArn": {
                 "Fn::Sub": [
-                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/default/${method}/accounts",
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/default/${method}/foo",
                     {
                         "api": {
                             "Ref": "Testapi"
@@ -229,28 +183,7 @@
         },
         "Type": "AWS::Lambda::Permission"
     },
-    "TestapiProductsANYDefaultLambdaPermission": {
-        "Properties": {
-            "Action": "lambda:InvokeFunction",
-            "FunctionName": {
-                "Ref": "Productslambda"
-            },
-            "Principal": "apigateway.amazonaws.com",
-            "SourceArn": {
-                "Fn::Sub": [
-                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/default/${method}/products",
-                    {
-                        "api": {
-                            "Ref": "Testapi"
-                        },
-                        "method": "*"
-                    }
-                ]
-            }
-        },
-        "Type": "AWS::Lambda::Permission"
-    },
-    "TestapiProductsAbcdGETDefaultLambdaPermission": {
+    "TestapiFooBarGETDefaultLambdaPermission": {
         "Properties": {
             "Action": "lambda:InvokeFunction",
             "FunctionName": {
@@ -259,7 +192,7 @@
             "Principal": "apigateway.amazonaws.com",
             "SourceArn": {
                 "Fn::Sub": [
-                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/default/${method}/products/abcd",
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/default/${method}/foo/bar",
                     {
                         "api": {
                             "Ref": "Testapi"

@@ -284,7 +284,7 @@ EXPECTED_BLUEGREENALIASES_DEFAULT_TEMPLATE = {
 EXPECTED_BLUEGREENALIASES_TEMPLATE = {
     "MypylambdaProdAlias": {
         "Properties": {
-            "Name": "MypylambdaProdAlias",
+            "Name": "prod",
             "Description": "prod alias for mypylambda lambda",
             "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
             "FunctionVersion": {"Ref": "MypylambdaVersion1"},
@@ -304,7 +304,7 @@ EXPECTED_BLUEGREENALIASES_TEMPLATE = {
     },
     "MypylambdaBetaAlias": {
         "Properties": {
-            "Name": "MypylambdaBetaAlias",
+            "Name": "beta",
             "Description": "beta alias for mypylambda lambda",
             "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
             "FunctionVersion": {"Ref": "MypylambdaVersion2"},

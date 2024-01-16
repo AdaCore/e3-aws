@@ -509,22 +509,29 @@ class Alias(Construct):
         description: str,
         lambda_arn: str | GetAtt | Ref,
         lambda_version: str,
+        alias_name: str | None = None,
         provisioned_concurrency_config: awslambda.ProvisionedConcurrencyConfiguration
         | None = None,
         routing_config: awslambda.AliasRoutingConfiguration | None = None,
     ):
         """Initialize an AWS lambda alias.
 
-        :param name: function name
-        :param description: a description of the function
+        :param name: name of the resource
+        :param description: a description of the alias
         :param lambda_arn: the name of the Lambda function
         :param lambda_version: the function version that the alias invokes
+        :param alias_name: name of the alias. By default the parameter
+            name will be used as both the name of the resource and the name
+            of the alias, so this allows for a different alias name. For
+            example if you have multiple Lambda functions using the same
+            alias names
         :param provisioned_concurrency_config: specifies a provisioned
             concurrency configuration for a function's alias
         :param routing_config: the routing configuration of the alias
         """
         self.name = name
         self.description = description
+        self.alias_name = alias_name
         self.lambda_arn = lambda_arn
         self.lambda_version = lambda_version
         self.provisioned_concurrency_config = provisioned_concurrency_config
@@ -537,7 +544,7 @@ class Alias(Construct):
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
         params = {
-            "Name": self.name,
+            "Name": self.alias_name if self.alias_name is not None else self.name,
             "Description": self.description,
             "FunctionName": self.lambda_arn,
             "FunctionVersion": self.lambda_version,
@@ -769,9 +776,11 @@ class BlueGreenAliases(Construct):
             :param default_name: default alias name if none is specified
             """
             name = config.name if config.name is not None else default_name
+            id = name_to_id(f"{self.lambda_name}-{name}-alias")
             return Alias(
-                name=name_to_id(f"{self.lambda_name}-{name}-alias"),
+                name=id,
                 description=f"{name} alias for {self.lambda_name} lambda",
+                alias_name=config.name if config.name is not None else id,
                 lambda_arn=self.lambda_arn,
                 lambda_version=config.version,
                 provisioned_concurrency_config=config.provisioned_concurrency_config,

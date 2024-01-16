@@ -1,0 +1,420 @@
+{
+    "Accountslambda": {
+        "Properties": {
+            "Code": {
+                "S3Bucket": "cfn_bucket",
+                "S3Key": "templates/accountslambda_lambda.zip"
+            },
+            "Timeout": 3,
+            "Description": "this is a test",
+            "Role": "somearn",
+            "FunctionName": "accountslambda",
+            "Runtime": "python3.8",
+            "Handler": "app.main"
+        },
+        "Type": "AWS::Lambda::Function"
+    },
+    "Productslambda": {
+        "Properties": {
+            "Code": {
+                "S3Bucket": "cfn_bucket",
+                "S3Key": "templates/productslambda_lambda.zip"
+            },
+            "Timeout": 3,
+            "Description": "this is a test",
+            "Role": "somearn",
+            "FunctionName": "productslambda",
+            "Runtime": "python3.8",
+            "Handler": "app.main"
+        },
+        "Type": "AWS::Lambda::Function"
+    },
+    "AccountslambdaVersion1": {
+        "Properties": {
+            "Description": "version 1 of accountslambda lambda",
+            "FunctionName": {
+                "Fn::GetAtt": [
+                    "Accountslambda",
+                    "Arn"
+                ]
+            }
+        },
+        "Type": "AWS::Lambda::Version"
+    },
+    "AccountslambdaVersion2": {
+        "Properties": {
+            "Description": "version 2 of accountslambda lambda",
+            "FunctionName": {
+                "Fn::GetAtt": [
+                    "Accountslambda",
+                    "Arn"
+                ]
+            }
+        },
+        "Type": "AWS::Lambda::Version"
+    },
+    "ProductslambdaVersion1": {
+        "Properties": {
+            "Description": "version 1 of productslambda lambda",
+            "FunctionName": {
+                "Fn::GetAtt": [
+                    "Productslambda",
+                    "Arn"
+                ]
+            }
+        },
+        "Type": "AWS::Lambda::Version"
+    },
+    "ProductslambdaVersion2": {
+        "Properties": {
+            "Description": "version 2 of productslambda lambda",
+            "FunctionName": {
+                "Fn::GetAtt": [
+                    "Productslambda",
+                    "Arn"
+                ]
+            }
+        },
+        "Type": "AWS::Lambda::Version"
+    },
+    "AccountslambdaBlueAlias": {
+        "Properties": {
+            "Description": "Blue alias for accountslambda lambda",
+            "FunctionName": {
+                "Fn::GetAtt": [
+                    "Accountslambda",
+                    "Arn"
+                ]
+            },
+            "FunctionVersion": {
+                "Fn::GetAtt": [
+                    "AccountslambdaVersion1",
+                    "Version"
+                ]
+            },
+            "Name": "Blue"
+        },
+        "Type": "AWS::Lambda::Alias"
+    },
+    "AccountslambdaGreenAlias": {
+        "Properties": {
+            "Description": "Green alias for accountslambda lambda",
+            "FunctionName": {
+                "Fn::GetAtt": [
+                    "Accountslambda",
+                    "Arn"
+                ]
+            },
+            "FunctionVersion": {
+                "Fn::GetAtt": [
+                    "AccountslambdaVersion2",
+                    "Version"
+                ]
+            },
+            "Name": "Green"
+        },
+        "Type": "AWS::Lambda::Alias"
+    },
+    "ProductslambdaBlueAlias": {
+        "Properties": {
+            "Description": "Blue alias for productslambda lambda",
+            "FunctionName": {
+                "Fn::GetAtt": [
+                    "Productslambda",
+                    "Arn"
+                ]
+            },
+            "FunctionVersion": {
+                "Fn::GetAtt": [
+                    "ProductslambdaVersion1",
+                    "Version"
+                ]
+            },
+            "Name": "Blue"
+        },
+        "Type": "AWS::Lambda::Alias"
+    },
+    "ProductslambdaGreenAlias": {
+        "Properties": {
+            "Description": "Green alias for productslambda lambda",
+            "FunctionName": {
+                "Fn::GetAtt": [
+                    "Productslambda",
+                    "Arn"
+                ]
+            },
+            "FunctionVersion": {
+                "Fn::GetAtt": [
+                    "ProductslambdaVersion2",
+                    "Version"
+                ]
+            },
+            "Name": "Green"
+        },
+        "Type": "AWS::Lambda::Alias"
+    },
+    "TestapiLogGroup": {
+        "Properties": {
+            "LogGroupName": "testapi"
+        },
+        "Type": "AWS::Logs::LogGroup"
+    },
+    "Testapi": {
+        "Properties": {
+            "Description": "this is a test",
+            "Name": "testapi",
+            "DisableExecuteApiEndpoint": false
+        },
+        "Type": "AWS::ApiGateway::RestApi"
+    },
+    "TestapiAccountsResource": {
+        "Properties": {
+            "ParentId": {
+                "Fn::GetAtt": [
+                    "Testapi",
+                    "RootResourceId"
+                ]
+            },
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "PathPart": "accounts"
+        },
+        "Type": "AWS::ApiGateway::Resource"
+    },
+    "TestapiProductsResource": {
+        "Properties": {
+            "ParentId": {
+                "Fn::GetAtt": [
+                    "Testapi",
+                    "RootResourceId"
+                ]
+            },
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "PathPart": "products"
+        },
+        "Type": "AWS::ApiGateway::Resource"
+    },
+    "TestapiDefaultDeployment": {
+        "Properties": {
+            "Description": "Deployment resource of default stage",
+            "RestApiId": {
+                "Ref": "Testapi"
+            }
+        },
+        "Type": "AWS::ApiGateway::Deployment",
+        "DependsOn": [
+            "TestapiAccountsANYMethod",
+            "TestapiProductsANYMethod"
+        ]
+    },
+    "TestapiBetaDeployment": {
+        "Properties": {
+            "Description": "Deployment resource of beta stage",
+            "RestApiId": {
+                "Ref": "Testapi"
+            }
+        },
+        "Type": "AWS::ApiGateway::Deployment",
+        "DependsOn": [
+            "TestapiAccountsANYMethod",
+            "TestapiProductsANYMethod"
+        ]
+    },
+    "TestapiDefaultStage": {
+        "Properties": {
+            "AccessLogSetting": {
+                "DestinationArn": {
+                    "Fn::GetAtt": [
+                        "TestapiLogGroup",
+                        "Arn"
+                    ]
+                },
+                "Format": "{\"source_ip\": \"$context.identity.sourceIp\", \"request_time\": \"$context.requestTime\", \"method\": \"$context.httpMethod\", \"route\": \"$context.routeKey\", \"protocol\": \"$context.protocol\", \"status\": \"$context.status\", \"response_length\": \"$context.responseLength\", \"request_id\": \"$context.requestId\", \"integration_error_msg\": \"$context.integrationErrorMessage\"}"
+            },
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "DeploymentId": {
+                "Ref": "TestapiDefaultDeployment"
+            },
+            "Description": "stage default",
+            "MethodSettings": [
+                {
+                    "ResourcePath": "/*",
+                    "HttpMethod": "*",
+                    "MetricsEnabled": true,
+                    "ThrottlingBurstLimit": 10,
+                    "ThrottlingRateLimit": 10
+                }
+            ],
+            "StageName": "default",
+            "Variables": {
+                "lambdaAlias": "Blue"
+            }
+        },
+        "Type": "AWS::ApiGateway::Stage"
+    },
+    "TestapiBetaStage": {
+        "Properties": {
+            "AccessLogSetting": {
+                "DestinationArn": {
+                    "Fn::GetAtt": [
+                        "TestapiLogGroup",
+                        "Arn"
+                    ]
+                },
+                "Format": "{\"source_ip\": \"$context.identity.sourceIp\", \"request_time\": \"$context.requestTime\", \"method\": \"$context.httpMethod\", \"route\": \"$context.routeKey\", \"protocol\": \"$context.protocol\", \"status\": \"$context.status\", \"response_length\": \"$context.responseLength\", \"request_id\": \"$context.requestId\", \"integration_error_msg\": \"$context.integrationErrorMessage\"}"
+            },
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "DeploymentId": {
+                "Ref": "TestapiBetaDeployment"
+            },
+            "Description": "stage beta",
+            "MethodSettings": [
+                {
+                    "ResourcePath": "/*",
+                    "HttpMethod": "*",
+                    "MetricsEnabled": true,
+                    "ThrottlingBurstLimit": 10,
+                    "ThrottlingRateLimit": 10
+                }
+            ],
+            "StageName": "beta",
+            "Variables": {
+                "lambdaAlias": "Green"
+            }
+        },
+        "Type": "AWS::ApiGateway::Stage"
+    },
+    "TestapiAccountsANYMethod": {
+        "Properties": {
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "AuthorizationType": "NONE",
+            "HttpMethod": "ANY",
+            "Integration": {
+                "CacheKeyParameters": [],
+                "CacheNamespace": "none",
+                "IntegrationHttpMethod": "POST",
+                "PassthroughBehavior": "NEVER",
+                "Type": "AWS_PROXY",
+                "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:eu-west-1:123456789012:function:accountslambda:${stageVariables.lambdaAlias}/invocations"
+            },
+            "ResourceId": {
+                "Ref": "TestapiAccountsResource"
+            }
+        },
+        "Type": "AWS::ApiGateway::Method"
+    },
+    "TestapiProductsANYMethod": {
+        "Properties": {
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "AuthorizationType": "NONE",
+            "HttpMethod": "ANY",
+            "Integration": {
+                "CacheKeyParameters": [],
+                "CacheNamespace": "none",
+                "IntegrationHttpMethod": "POST",
+                "PassthroughBehavior": "NEVER",
+                "Type": "AWS_PROXY",
+                "Uri": "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:eu-west-1:123456789012:function:productslambda:${stageVariables.lambdaAlias}/invocations"
+            },
+            "ResourceId": {
+                "Ref": "TestapiProductsResource"
+            }
+        },
+        "Type": "AWS::ApiGateway::Method"
+    },
+    "TestapiAccountsANYDefaultLambdaPermission": {
+        "Properties": {
+            "Action": "lambda:InvokeFunction",
+            "FunctionName": {
+                "Ref": "AccountslambdaBlueAlias"
+            },
+            "Principal": "apigateway.amazonaws.com",
+            "SourceArn": {
+                "Fn::Sub": [
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/default/${method}/accounts",
+                    {
+                        "api": {
+                            "Ref": "Testapi"
+                        },
+                        "method": "*"
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::Lambda::Permission"
+    },
+    "TestapiAccountsANYBetaLambdaPermission": {
+        "Properties": {
+            "Action": "lambda:InvokeFunction",
+            "FunctionName": {
+                "Ref": "AccountslambdaGreenAlias"
+            },
+            "Principal": "apigateway.amazonaws.com",
+            "SourceArn": {
+                "Fn::Sub": [
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/beta/${method}/accounts",
+                    {
+                        "api": {
+                            "Ref": "Testapi"
+                        },
+                        "method": "*"
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::Lambda::Permission"
+    },
+    "TestapiProductsANYDefaultLambdaPermission": {
+        "Properties": {
+            "Action": "lambda:InvokeFunction",
+            "FunctionName": {
+                "Ref": "ProductslambdaBlueAlias"
+            },
+            "Principal": "apigateway.amazonaws.com",
+            "SourceArn": {
+                "Fn::Sub": [
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/default/${method}/products",
+                    {
+                        "api": {
+                            "Ref": "Testapi"
+                        },
+                        "method": "*"
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::Lambda::Permission"
+    },
+    "TestapiProductsANYBetaLambdaPermission": {
+        "Properties": {
+            "Action": "lambda:InvokeFunction",
+            "FunctionName": {
+                "Ref": "ProductslambdaGreenAlias"
+            },
+            "Principal": "apigateway.amazonaws.com",
+            "SourceArn": {
+                "Fn::Sub": [
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/beta/${method}/products",
+                    {
+                        "api": {
+                            "Ref": "Testapi"
+                        },
+                        "method": "*"
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::Lambda::Permission"
+    }
+}
