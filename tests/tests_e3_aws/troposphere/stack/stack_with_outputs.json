@@ -1,5 +1,6 @@
 {
     "MyBucket": {
+        "DeletionPolicy": "Retain",
         "Properties": {
             "BucketName": "my-bucket",
             "BucketEncryption": {

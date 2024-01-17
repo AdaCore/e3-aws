@@ -277,7 +277,7 @@ class Bucket(Construct):
         notification_config, notification_resources = self.notification_setup
         optional_resources.extend(notification_resources)
 
-        attr = {}
+        attr = {"DeletionPolicy": "Retain"}
         for key, val in {
             "BucketName": self.name,
             "BucketEncryption": bucket_encryption,

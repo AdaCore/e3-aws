@@ -131,6 +131,7 @@ EXPECTED_RECORDER = {
         "DependsOn": "AWSServiceRoleForConfig",
     },
     "ConfigTestBucket": {
+        "DeletionPolicy": "Retain",
         "Properties": {
             "BucketName": "config-test-bucket",
             "BucketEncryption": {

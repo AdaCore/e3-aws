@@ -1,5 +1,6 @@
 {
     "TestBucketWithRoles": {
+        "DeletionPolicy": "Retain",
         "Properties": {
             "BucketName": "test-bucket-with-roles",
             "BucketEncryption": {
