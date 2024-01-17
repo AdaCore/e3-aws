@@ -714,29 +714,15 @@ def test_rest_api_nested_resources(stack: Stack, lambda_fun: PyFunction) -> None
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
 
-    # Lambda for the products resource
-    products_lambda = PyFunction(
-        name="productslambda",
-        description="this is a test",
-        role="somearn",
-        code_dir="my_code_dir",
-        handler="app.main",
-        runtime="python3.8",
-        logs_retention_in_days=None,
-    )
-
     rest_api = RestApi(
         name="testapi",
         description="this is a test",
         lambda_arn=lambda_fun.ref,
         resource_list=[
-            Resource(path="accounts", method_list=[Method("ANY")]),
             Resource(
-                path="products",
-                # Specific lambda for this resource
-                lambda_arn=products_lambda.ref,
+                path="foo",
                 method_list=[Method("ANY")],
-                resource_list=[Resource(path="abcd", method_list=[Method("GET")])],
+                resource_list=[Resource(path="bar", method_list=[Method("GET")])],
             ),
         ],
     )
@@ -746,6 +732,100 @@ def test_rest_api_nested_resources(stack: Stack, lambda_fun: PyFunction) -> None
 
     with open(
         os.path.join(TEST_DIR, "apigatewayv1_test_nested_resources.json"),
+    ) as fd:
+        expected = json.load(fd)
+
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == expected
+
+
+def test_rest_api_multi_lambdas_stages(stack: Stack) -> None:
+    """Test REST API with multiple lambdas and stages."""
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+
+    # Create two lambdas for two different methods
+    accounts_lambda, products_lambda = [
+        PyFunction(
+            name=f"{name}lambda",
+            description="this is a test",
+            role="somearn",
+            code_dir="my_code_dir",
+            handler="app.main",
+            runtime="python3.8",
+            logs_retention_in_days=None,
+        )
+        for name in ("accounts", "products")
+    ]
+
+    # Create lambda versions
+    accounts_lambda_versions, products_lambda_versions = [
+        AutoVersion(2, lambda_function=lambda_fun)
+        for lambda_fun in (accounts_lambda, products_lambda)
+    ]
+
+    # Create lambda aliases.
+    # Share the same alias names as it will make it easier to setup the stage
+    # variable for using the right alias depending on the stage
+    accounts_lambda_aliases, products_lambda_aliases = [
+        BlueGreenAliases(
+            blue_config=BlueGreenAliasConfiguration(
+                name="Blue", version=lambda_versions.previous.version
+            ),
+            green_config=BlueGreenAliasConfiguration(
+                name="Green", version=lambda_versions.latest.version
+            ),
+            lambda_function=lambda_fun,
+        )
+        for lambda_versions, lambda_fun in (
+            (accounts_lambda_versions, accounts_lambda),
+            (products_lambda_versions, products_lambda),
+        )
+    ]
+
+    # Create the REST API
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        # Not important as it's overriden in resources
+        lambda_arn=accounts_lambda.ref,
+        # Declare prod and beta stages redirecting to correct aliases
+        stages_config=[
+            StageConfiguration("default", variables={"lambdaAlias": "Blue"}),
+            StageConfiguration("beta", variables={"lambdaAlias": "Green"}),
+        ],
+        # Declare two resources pointing to two different lambdas
+        resource_list=[
+            Resource(
+                path=path,
+                # Action to invoke the lambda with correct alias
+                integration_uri="arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/"
+                "functions/arn:aws:lambda:eu-west-1:123456789012:function:"
+                f"{lambda_fun.name}:${{stageVariables.lambdaAlias}}/invocations",
+                # Lambda ARNs for InvokeFunction permissions depending on the stage
+                lambda_arn_permission={
+                    "default": lambda_aliases.blue.ref,
+                    "beta": lambda_aliases.green.ref,
+                },
+                method_list=[Method("ANY")],
+            )
+            for path, lambda_fun, lambda_aliases in (
+                ("accounts", accounts_lambda, accounts_lambda_aliases),
+                ("products", products_lambda, products_lambda_aliases),
+            )
+        ],
+    )
+
+    stack.add(accounts_lambda)
+    stack.add(products_lambda)
+    stack.add(accounts_lambda_versions)
+    stack.add(products_lambda_versions)
+    stack.add(accounts_lambda_aliases)
+    stack.add(products_lambda_aliases)
+    stack.add(rest_api)
+
+    with open(
+        os.path.join(TEST_DIR, "apigatewayv1_test_multi_lambdas_stages.json"),
     ) as fd:
         expected = json.load(fd)
 
