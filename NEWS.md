@@ -1,6 +1,18 @@
-# Version 22.3.0 (2022-??-??) *NOT RELEASED YET*
+# Version 22.4.0 (2024-??-??) *NOT RELEASED YET*
 
 * Nothing
+
+# Version 22.3.0 (2024-24-01)
+
+* Add support for stages and lambda aliases to RestApi
+* Python packages are now downloaded according to the targeted runtime instead
+  of host platform
+* BucketWithRoles now supports different trusted accounts for read and write
+  roles
+* Retain is now the default DeletionPolicy for Buckets
+* Add a method to add outputs to a Stack
+* Add an option to prefix VPC endpoint IDs to allow multiple VPCs with the same
+  endpoints in the same stack
 
 # Version 22.2.0 (2023-04-03)
 
