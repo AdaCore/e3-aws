@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 import pytest
-from moto import mock_sts, mock_s3
+from moto import mock_aws
 import boto3
 from e3.aws.s3 import S3, KeyExistsError, KeyNotFoundError
 
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 @pytest.fixture
 def client() -> Iterable[S3]:
     """Return a client for S3."""
-    with mock_sts(), mock_s3():
+    with mock_aws():
         client = boto3.client("s3", region_name="us-east-1")
         client.create_bucket(Bucket="test")
 

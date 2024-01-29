@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING
 import pytest
-from moto import mock_sts, mock_dynamodb
+from moto import mock_aws
 from botocore.exceptions import ClientError
 import boto3
 from e3.aws.dynamodb import DynamoDB
@@ -30,7 +30,7 @@ def assert_customers(client: DynamoDB, customers: list[dict[str, Any]]) -> None:
 @pytest.fixture
 def client() -> Iterable[DynamoDB]:
     """Return a client for the DynamoDB."""
-    with mock_sts(), mock_dynamodb():
+    with mock_aws():
         client = boto3.resource("dynamodb", region_name="us-east-1")
         client.create_table(
             TableName=TABLE_NAME,
