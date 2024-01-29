@@ -67,7 +67,7 @@ class Allow(PolicyStatement):
         :param principal: principal affected by the policy
         :param condition: conditions for when the policy is in effect
         """
-        return super().__init__(
+        super().__init__(
             action=action,
             effect="Allow",
             resource=resource,
