@@ -1,4 +1,5 @@
 """Provide ecr construct tests."""
+
 from troposphere import ecs
 
 from e3.aws.troposphere import Stack

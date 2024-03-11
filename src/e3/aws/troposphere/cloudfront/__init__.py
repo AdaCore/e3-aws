@@ -175,9 +175,11 @@ class S3WebsiteDistribution(Construct):
             params["Logging"] = cloudfront.Logging(
                 Bucket=self.logging_bucket,
                 Prefix=self.logging_prefix if self.logging_prefix is not None else "",
-                IncludeCookies=self.logging_include_cookies
-                if self.logging_include_cookies is not None
-                else False,
+                IncludeCookies=(
+                    self.logging_include_cookies
+                    if self.logging_include_cookies is not None
+                    else False
+                ),
             )
 
         return cloudfront.Distribution(
