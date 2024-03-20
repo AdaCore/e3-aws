@@ -1,0 +1,65 @@
+[build-system]
+requires = ["setuptools >= 61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "e3-aws"
+authors = [{name="AdaCore's IT Team"}]
+dynamic = ["version"]
+description = "E3 Cloud Formation Extensions"
+dependencies = [
+  "boto3",
+  "botocore",
+  # Only require docker for linux as there is a known dependency issue
+  # with pywin32 on windows
+  "docker; platform_system=='Linux'",
+  "e3-core",
+  "pyyaml",
+  "troposphere"
+]
+
+[project.scripts]
+e3-aws-assume-profile = "e3.aws:assume_profile_main"
+e3-aws-assume-role = "e3.aws:assume_role_main"
+
+[project.entry-points."e3.event.handler"]
+s3-boto3 = "e3.aws.handler.s3:S3Handler"
+
+[project.optional-dependencies]
+test = [
+  "awscli",
+  "pytest",
+  "mock",
+  "requests_mock",
+  "httpretty",
+  "flask",
+  "moto[sts, dynamodb]"
+]
+
+[tool.setuptools.dynamic]
+version = {file = "VERSION"}
+
+[tool.mypy]
+# Ensure mypy works with namespace in which there is no toplevel
+# __init__.py. Explicit_package_bases means that that mypy_path
+# will define which directory is the toplevel directory of the
+# namespace.
+mypy_path = "src"
+namespace_packages = true
+explicit_package_bases = true
+
+disallow_untyped_calls = true
+disallow_incomplete_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = [
+    "coverage.*",
+    "botocore.*",
+    "boto3.*",
+    "requests.*",
+]
+ignore_missing_imports = true
