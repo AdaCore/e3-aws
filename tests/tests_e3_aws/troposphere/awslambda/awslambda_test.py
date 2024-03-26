@@ -30,11 +30,17 @@ from e3.aws.troposphere.awslambda import (
 )
 from e3.aws.troposphere.awslambda.flask_apigateway_wrapper import FlaskLambdaHandler
 
+from e3.pytest import require_tool
+
 if TYPE_CHECKING:
     from typing import Iterable
     from flask import Application, Response
 
+
 SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "source_dir")
+
+
+has_docker = require_tool("docker")
 
 
 EXPECTED_PY38FUNCTION_TEMPLATE = {
@@ -452,7 +458,7 @@ def test_pyfunction_policy_document(stack: Stack) -> None:
     assert stack.cfn_policy_document().as_dict == EXPECTED_PYFUNCTION_POLICY_DOCUMENT
 
 
-def test_docker_function(stack: Stack) -> None:
+def test_docker_function(stack: Stack, has_docker: pytest.Fixture) -> None:
     """Test adding docker function to stack."""
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
     stubber_ecr = aws_env.stub("ecr")
