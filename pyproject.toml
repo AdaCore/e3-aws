@@ -36,6 +36,18 @@ test = [
   "moto[sts, dynamodb]"
 ]
 
+check = [
+  "mypy==1.8.0",
+  "bandit",
+  "pip-audit",
+  "types-colorama",
+  "types-psutil",
+  "types-python-dateutil",
+  "types-PyYAML",
+  "types-requests",
+  "types-setuptools",
+]
+
 [tool.setuptools.dynamic]
 version = {file = "VERSION"}
 
@@ -61,5 +73,7 @@ module = [
     "botocore.*",
     "boto3.*",
     "requests.*",
+    "docker.*",
+    "troposphere.*",
 ]
 ignore_missing_imports = true

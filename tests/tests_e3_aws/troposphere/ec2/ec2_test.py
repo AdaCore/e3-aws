@@ -1,4 +1,5 @@
 """Provide ecr construct tests."""
+
 import json
 import os
 

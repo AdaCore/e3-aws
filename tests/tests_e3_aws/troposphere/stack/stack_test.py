@@ -1,4 +1,5 @@
 """Provide Stack tests."""
+
 import json
 from pathlib import Path
 

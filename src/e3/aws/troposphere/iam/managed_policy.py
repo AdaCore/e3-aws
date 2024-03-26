@@ -1,4 +1,5 @@
 """Provide IAM Managed policies."""
+
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from troposphere import iam, AWSObject, Ref

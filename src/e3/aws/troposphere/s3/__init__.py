@@ -1,4 +1,5 @@
 """Provide s3 high level constructs."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -31,26 +32,32 @@ class BucketWithRoles(Construct):
         iam_names_prefix: str,
         iam_path: str,
         trusted_accounts: list[str] | None = None,
-        trust_policy: PrincipalType
-        | list[PolicyStatement]
-        | PolicyStatement
-        | PolicyDocument
-        | None = None,
+        trust_policy: (
+            PrincipalType
+            | list[PolicyStatement]
+            | PolicyStatement
+            | PolicyDocument
+            | None
+        ) = None,
         iam_read_root_name: str = "Read",
         iam_write_root_name: str = "Write",
         bucket_exists: bool | None = None,
         read_trusted_accounts: list[str] | None = None,
         write_trusted_accounts: list[str] | None = None,
-        read_trust_policy: PrincipalType
-        | list[PolicyStatement]
-        | PolicyStatement
-        | PolicyDocument
-        | None = None,
-        write_trust_policy: PrincipalType
-        | list[PolicyStatement]
-        | PolicyStatement
-        | PolicyDocument
-        | None = None,
+        read_trust_policy: (
+            PrincipalType
+            | list[PolicyStatement]
+            | PolicyStatement
+            | PolicyDocument
+            | None
+        ) = None,
+        write_trust_policy: (
+            PrincipalType
+            | list[PolicyStatement]
+            | PolicyStatement
+            | PolicyDocument
+            | None
+        ) = None,
         **bucket_kwargs: Any,
     ) -> None:
         """Initialize BucketWithRoles instance.

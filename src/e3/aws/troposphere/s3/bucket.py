@@ -36,8 +36,9 @@ class Bucket(Construct):
         name: str,
         enable_versioning: bool = True,
         lifecycle_rules: list[s3.LifecycleRule] | None = None,
-        default_bucket_encryption: EncryptionAlgorithm
-        | None = EncryptionAlgorithm.AES256,
+        default_bucket_encryption: (
+            EncryptionAlgorithm | None
+        ) = EncryptionAlgorithm.AES256,
         authorized_encryptions: list[EncryptionAlgorithm] | None = None,
     ):
         """Initialize a bucket.

@@ -28,6 +28,7 @@ The resulting lambda can then be added into an HttpAPI::
                       route_list=[Get("/")]))
 
 """
+
 from __future__ import annotations
 import os
 

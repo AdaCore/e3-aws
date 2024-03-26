@@ -184,12 +184,16 @@ class Table(Construct):
                         ],
                         Projection=dynamodb.Projection(**projection_param),
                         ProvisionedThroughput=dynamodb.ProvisionedThroughput(
-                            ReadCapacityUnits=gsi.read_capacity_units
-                            if gsi.read_capacity_units is not None
-                            else 10,
-                            WriteCapacityUnits=gsi.write_capacity_units
-                            if self.write_capacity_units is not None
-                            else 10,
+                            ReadCapacityUnits=(
+                                gsi.read_capacity_units
+                                if gsi.read_capacity_units is not None
+                                else 10
+                            ),
+                            WriteCapacityUnits=(
+                                gsi.write_capacity_units
+                                if self.write_capacity_units is not None
+                                else 10
+                            ),
                         ),
                     )
                 )
@@ -198,20 +202,22 @@ class Table(Construct):
             params["Tags"] = Tags(**self.tags)
 
         if self.point_in_time_recovery_enabled:
-            params[
-                "PointInTimeRecoverySpecification"
-            ] = PointInTimeRecoverySpecification(PointInTimeRecoveryEnabled=True)
+            params["PointInTimeRecoverySpecification"] = (
+                PointInTimeRecoverySpecification(PointInTimeRecoveryEnabled=True)
+            )
 
         if self.billing_mode is not None:
             params["BillingMode"] = self.billing_mode
 
         params["ProvisionedThroughput"] = dynamodb.ProvisionedThroughput(
-            ReadCapacityUnits=self.read_capacity_units
-            if self.read_capacity_units is not None
-            else 10,
-            WriteCapacityUnits=self.write_capacity_units
-            if self.write_capacity_units is not None
-            else 10,
+            ReadCapacityUnits=(
+                self.read_capacity_units if self.read_capacity_units is not None else 10
+            ),
+            WriteCapacityUnits=(
+                self.write_capacity_units
+                if self.write_capacity_units is not None
+                else 10
+            ),
         )
 
         if self.time_to_live_enabled is not None:
@@ -225,9 +231,11 @@ class Table(Construct):
 
         if self.stream_enabled:
             params["StreamSpecification"] = dynamodb.StreamSpecification(
-                StreamViewType=self.stream_view_type
-                if self.stream_view_type is not None
-                else "NEW_IMAGE"
+                StreamViewType=(
+                    self.stream_view_type
+                    if self.stream_view_type is not None
+                    else "NEW_IMAGE"
+                )
             )
 
         return [dynamodb.Table(name_to_id(self.name), **params)]

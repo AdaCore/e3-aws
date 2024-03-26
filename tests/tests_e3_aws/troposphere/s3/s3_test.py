@@ -1,4 +1,5 @@
 """Provide S3 construct tests."""
+
 import json
 import os
 import pytest

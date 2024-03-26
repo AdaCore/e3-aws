@@ -172,11 +172,9 @@ class Resource(object):
         resource_list: list[Resource] | None = None,
         integration_uri: str | Ref | Sub | None = None,
         lambda_arn: str | GetAtt | Ref | None = None,
-        lambda_arn_permission: str
-        | GetAtt
-        | Ref
-        | dict[str, str | GetAtt | Ref]
-        | None = None,
+        lambda_arn_permission: (
+            str | GetAtt | Ref | dict[str, str | GetAtt | Ref] | None
+        ) = None,
     ) -> None:
         """Initialize a REST API resource.
 
@@ -580,9 +578,11 @@ class HttpApi(Api):
                         )
                     ),
                     Action="lambda:InvokeFunction",
-                    FunctionName=config.lambda_arn_permission
-                    if config.lambda_arn_permission is not None
-                    else self.lambda_arn,
+                    FunctionName=(
+                        config.lambda_arn_permission
+                        if config.lambda_arn_permission is not None
+                        else self.lambda_arn
+                    ),
                     Principal="apigateway.amazonaws.com",
                     SourceArn=Sub(
                         "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:"
@@ -911,11 +911,9 @@ class RestApi(Api):
         resource_path: str,
         resource_integration_uri: str | Ref | Sub | None = None,
         resource_lambda_arn: str | GetAtt | Ref | None = None,
-        resource_lambda_arn_permission: str
-        | GetAtt
-        | Ref
-        | dict[str, str | GetAtt | Ref]
-        | None = None,
+        resource_lambda_arn_permission: (
+            str | GetAtt | Ref | dict[str, str | GetAtt | Ref] | None
+        ) = None,
     ) -> list[AWSObject]:
         """Declare a method.
 
@@ -950,20 +948,22 @@ class RestApi(Api):
             IntegrationHttpMethod="POST",
             PassthroughBehavior="NEVER",
             Type="AWS_PROXY",
-            Uri=integration_uri
-            if integration_uri is not None
-            else Sub(
-                "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31"
-                "/functions/${lambdaArn}/invocations",
-                dict_values={"lambdaArn": lambda_arn},
+            Uri=(
+                integration_uri
+                if integration_uri is not None
+                else Sub(
+                    "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31"
+                    "/functions/${lambdaArn}/invocations",
+                    dict_values={"lambdaArn": lambda_arn},
+                )
             ),
         )
 
         method_params = {
             "RestApiId": self.ref,
-            "AuthorizationType": "COGNITO_USER_POOLS"
-            if method.authorizer_name
-            else "NONE",
+            "AuthorizationType": (
+                "COGNITO_USER_POOLS" if method.authorizer_name else "NONE"
+            ),
             "HttpMethod": f"{method.method}",
             "Integration": integration,
             "ResourceId": Ref(name_to_id(f"{resource_id_prefix}Resource")),
@@ -1053,11 +1053,9 @@ class RestApi(Api):
         parent_path: str | None = None,
         parent_integration_uri: str | Ref | Sub | None = None,
         parent_lambda_arn: str | GetAtt | Ref | None = None,
-        parent_lambda_arn_permission: str
-        | GetAtt
-        | Ref
-        | dict[str, str | GetAtt | Ref]
-        | None = None,
+        parent_lambda_arn_permission: (
+            str | GetAtt | Ref | dict[str, str | GetAtt | Ref] | None
+        ) = None,
     ) -> list[AWSObject]:
         """Create API resources and methods recursively.
 
@@ -1094,9 +1092,11 @@ class RestApi(Api):
             # Declare the resource
             resource = apigateway.Resource(
                 f"{resource_id_prefix}Resource",
-                ParentId=GetAtt(self.logical_id, "RootResourceId")
-                if parent_id_prefix is None
-                else GetAtt(f"{parent_id_prefix}Resource", "ResourceId"),
+                ParentId=(
+                    GetAtt(self.logical_id, "RootResourceId")
+                    if parent_id_prefix is None
+                    else GetAtt(f"{parent_id_prefix}Resource", "ResourceId")
+                ),
                 RestApiId=self.ref,
                 PathPart=r.path,
             )

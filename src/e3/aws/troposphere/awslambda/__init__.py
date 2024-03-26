@@ -510,8 +510,9 @@ class Alias(Construct):
         lambda_arn: str | GetAtt | Ref,
         lambda_version: str,
         alias_name: str | None = None,
-        provisioned_concurrency_config: awslambda.ProvisionedConcurrencyConfiguration
-        | None = None,
+        provisioned_concurrency_config: (
+            awslambda.ProvisionedConcurrencyConfiguration | None
+        ) = None,
         routing_config: awslambda.AliasRoutingConfiguration | None = None,
     ):
         """Initialize an AWS lambda alias.
@@ -567,8 +568,9 @@ class Version(Construct):
         name: str,
         description: str,
         lambda_arn: str | GetAtt | Ref,
-        provisioned_concurrency_config: awslambda.ProvisionedConcurrencyConfiguration
-        | None = None,
+        provisioned_concurrency_config: (
+            awslambda.ProvisionedConcurrencyConfiguration | None
+        ) = None,
         code_sha256: str | None = None,
     ):
         """Initialize an AWS lambda version.
@@ -626,8 +628,9 @@ class AutoVersion(Construct):
         lambda_name: str | None = None,
         lambda_arn: str | GetAtt | Ref | None = None,
         lambda_function: Function | None = None,
-        provisioned_concurrency_config: awslambda.ProvisionedConcurrencyConfiguration
-        | None = None,
+        provisioned_concurrency_config: (
+            awslambda.ProvisionedConcurrencyConfiguration | None
+        ) = None,
         code_sha256: str | None = None,
     ) -> None:
         """Create lambda versions from 1 to version included.
@@ -718,8 +721,9 @@ class BlueGreenAliasConfiguration(object):
         self,
         version: str,
         name: str | None = None,
-        provisioned_concurrency_config: awslambda.ProvisionedConcurrencyConfiguration
-        | None = None,
+        provisioned_concurrency_config: (
+            awslambda.ProvisionedConcurrencyConfiguration | None
+        ) = None,
         routing_config: awslambda.AliasRoutingConfiguration | None = None,
     ) -> None:
         """Configure a blue/green alias.
