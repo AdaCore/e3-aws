@@ -144,7 +144,9 @@ class DynamoDB:
                 res.extend(response.get("Responses", {table_name: []})[table_name])
                 logger.debug(f"Get_item response: {response}")
                 unprocessed = response["UnprocessedKeys"]
-                if len(unprocessed) > 0:
+                if len(unprocessed) > 0:  # all: no cover"
+                    # Testing this case is difficult as it requires a table
+                    # with more than 16MB of data
                     batch_keys = unprocessed
                     unprocessed_count = sum(
                         [len(batch_key["Keys"]) for batch_key in batch_keys.values()]  # type: ignore

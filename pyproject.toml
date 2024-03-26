@@ -51,6 +51,17 @@ check = [
 [tool.setuptools.dynamic]
 version = {file = "VERSION"}
 
+[tool.coverage.report]
+exclude_also = [
+  "if tries < max_tries:"
+]
+
+[tool.coverage.run]
+branch = false
+
+[tool.coverage.html]
+title = "e3 aws coverage report"
+
 [tool.mypy]
 # Ensure mypy works with namespace in which there is no toplevel
 # __init__.py. Explicit_package_bases means that that mypy_path
