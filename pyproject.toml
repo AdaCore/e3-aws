@@ -73,5 +73,7 @@ module = [
     "botocore.*",
     "boto3.*",
     "requests.*",
+    "docker.*",
+    "troposphere.*",
 ]
 ignore_missing_imports = true
