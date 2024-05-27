@@ -124,6 +124,20 @@ def test_bucket_multi_encryption(stack: Stack) -> None:
     assert stack.export()["Resources"] == expected_template
 
 
+def test_bucket_with_kwargs(stack: Stack) -> None:
+    """Test passing ObjectLockEnabled as kwargs."""
+    bucket = Bucket(
+        name="test-bucket",
+        ObjectLockEnabled=True,
+    )
+    stack.add(bucket)
+
+    with open(os.path.join(TEST_DIR, "bucket_with_object_lock_kwargs.json")) as fd:
+        expected_template = json.load(fd)
+
+    assert stack.export()["Resources"] == expected_template
+
+
 def test_bucket_notification_string_arns(stack: Stack) -> None:
     """Test bucket notification with string arns instead of objects."""
     bucket = Bucket(name="test-bucket")
