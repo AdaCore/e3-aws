@@ -20,6 +20,8 @@ if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
     from e3.aws.troposphere.iam.policy_statement import ConditionType
 
+    from typing import Any
+
 
 class EncryptionAlgorithm(Enum):
     """Provide an Enum to describe encryption algorithms."""
@@ -40,6 +42,7 @@ class Bucket(Construct):
             EncryptionAlgorithm | None
         ) = EncryptionAlgorithm.AES256,
         authorized_encryptions: list[EncryptionAlgorithm] | None = None,
+        **bucket_kwargs: Any,
     ):
         """Initialize a bucket.
 
@@ -50,6 +53,7 @@ class Bucket(Construct):
         :param default_bucket_encryption: type of the default bucket encryption.
         :param authorized_encryptions: types of the server side encryptions
             to authorize.
+        :param bucket_kwargs: keyword arguments to pass to the bucket constructor
         """
         self.name = name
         self.enable_versioning = enable_versioning
@@ -65,6 +69,7 @@ class Bucket(Construct):
         self.topic_configurations: list[tuple[dict[str, str], Topic | None, str]] = []
         self.queue_configurations: list[tuple[dict[str, str], Queue | None, str]] = []
         self.depends_on: list[str] = []
+        self.bucket_kwargs = bucket_kwargs
 
         # Add minimal policy statements
         self.policy_statements = [
@@ -293,6 +298,7 @@ class Bucket(Construct):
             if val:
                 attr[key] = val
 
+        attr |= self.bucket_kwargs
         return [
             s3.Bucket(name_to_id(self.name), **attr),
             s3.BucketPolicy(
