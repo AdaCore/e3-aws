@@ -46,32 +46,6 @@
                         }
                     },
                     {
-                        "Effect": "Deny",
-                        "Principal": {
-                            "AWS": "*"
-                        },
-                        "Action": "s3:PutObject",
-                        "Resource": "arn:aws:s3:::host-bucket/*",
-                        "Condition": {
-                            "StringNotEquals": {
-                                "s3:x-amz-server-side-encryption": "AES256"
-                            }
-                        }
-                    },
-                    {
-                        "Effect": "Deny",
-                        "Principal": {
-                            "AWS": "*"
-                        },
-                        "Action": "s3:PutObject",
-                        "Resource": "arn:aws:s3:::host-bucket/*",
-                        "Condition": {
-                            "Null": {
-                                "s3:x-amz-server-side-encryption": "true"
-                            }
-                        }
-                    },
-                    {
                         "Effect": "Allow",
                         "Principal": {
                             "CanonicalUser": {

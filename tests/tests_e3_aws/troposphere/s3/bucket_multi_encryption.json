@@ -35,35 +35,6 @@
                                 "aws:SecureTransport": "false"
                             }
                         }
-                    },
-                    {
-                        "Effect": "Deny",
-                        "Principal": {
-                            "AWS": "*"
-                        },
-                        "Action": "s3:PutObject",
-                        "Resource": "arn:aws:s3:::test-bucket/*",
-                        "Condition": {
-                            "ForAllValues:StringNotEquals": {
-                                "s3:x-amz-server-side-encryption": [
-                                    "AES256",
-                                    "aws:kms"
-                                ]
-                            }
-                        }
-                    },
-                    {
-                        "Effect": "Deny",
-                        "Principal": {
-                            "AWS": "*"
-                        },
-                        "Action": "s3:PutObject",
-                        "Resource": "arn:aws:s3:::test-bucket/*",
-                        "Condition": {
-                            "Null": {
-                                "s3:x-amz-server-side-encryption": "true"
-                            }
-                        }
                     }
                 ]
             }
