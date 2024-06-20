@@ -18,8 +18,6 @@ from e3.aws.troposphere.sqs import Queue
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
-    from e3.aws.troposphere.iam.policy_statement import ConditionType
-
     from typing import Any
 
 
@@ -86,48 +84,6 @@ class Bucket(Construct):
         assert (
             self.authorized_encryptions
         ), "At least one authorized s3 encryption should be provided"
-
-        # The one element case is needed for retrocompatibility
-        # with stacks deployed with older versions of e3-aws
-        condition: ConditionType
-        if len(self.authorized_encryptions) == 1:
-            condition = {
-                "StringNotEquals": {
-                    "s3:x-amz-server-side-encryption": self.authorized_encryptions[
-                        0
-                    ].value
-                }
-            }
-        else:
-            condition = {
-                "ForAllValues:StringNotEquals": {
-                    "s3:x-amz-server-side-encryption": [
-                        enc.value for enc in self.authorized_encryptions
-                    ]
-                }
-            }
-
-        self.policy_statements.extend(
-            [
-                # Deny to store object not encrypted with AES256 encryption
-                PolicyStatement(
-                    action="s3:PutObject",
-                    effect="Deny",
-                    resource=self.all_objects_arn,
-                    principal={"AWS": "*"},
-                    condition=condition,
-                ),
-                # Deny to store non encrypted objects
-                # (??? do we really need that statement)
-                PolicyStatement(
-                    action="s3:PutObject",
-                    effect="Deny",
-                    resource=self.all_objects_arn,
-                    principal={"AWS": "*"},
-                    condition={"Null": {"s3:x-amz-server-side-encryption": "true"}},
-                ),
-            ]
-        )
 
     @property
     def policy_document(self) -> PolicyDocument:

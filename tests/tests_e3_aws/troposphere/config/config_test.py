@@ -163,26 +163,6 @@ EXPECTED_RECORDER = {
                         "Condition": {"Bool": {"aws:SecureTransport": "false"}},
                     },
                     {
-                        "Effect": "Deny",
-                        "Principal": {"AWS": "*"},
-                        "Action": "s3:PutObject",
-                        "Resource": "arn:aws:s3:::config-test-bucket/*",
-                        "Condition": {
-                            "StringNotEquals": {
-                                "s3:x-amz-server-side-encryption": "AES256"
-                            }
-                        },
-                    },
-                    {
-                        "Effect": "Deny",
-                        "Principal": {"AWS": "*"},
-                        "Action": "s3:PutObject",
-                        "Resource": "arn:aws:s3:::config-test-bucket/*",
-                        "Condition": {
-                            "Null": {"s3:x-amz-server-side-encryption": "true"}
-                        },
-                    },
-                    {
                         "Effect": "Allow",
                         "Principal": {"Service": "config.amazonaws.com"},
                         "Action": "s3:GetBucketAcl",
