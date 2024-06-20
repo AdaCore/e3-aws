@@ -42,8 +42,10 @@ class Topic(Construct):
             "Endpoint": function.arn,
             "Protocol": "lambda",
             "TopicArn": self.arn,
-            "DeliveryPolicy": delivery_policy,
         }
+
+        if delivery_policy:
+            sub_params.update({"DeliveryPolicy": delivery_policy})
 
         self.optional_resources.extend(
             [
