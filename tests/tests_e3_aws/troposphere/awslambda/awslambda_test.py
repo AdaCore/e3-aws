@@ -458,6 +458,9 @@ def test_pyfunction_policy_document(stack: Stack) -> None:
     assert stack.cfn_policy_document().as_dict == EXPECTED_PYFUNCTION_POLICY_DOCUMENT
 
 
+@pytest.mark.skip(
+    reason="This test does not work in GitLab CI jobs. Disable it for now.",
+)
 def test_docker_function(stack: Stack, has_docker: pytest.Fixture) -> None:
     """Test adding docker function to stack."""
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
