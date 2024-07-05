@@ -44,6 +44,9 @@ AWS_IP_RANGES = {
 GITHUB_API_RANGE = {"git": ["127.0.0.0/24", "2a0a:a440::/29"]}
 
 
+@pytest.mark.skip(
+    reason="This test does not work offline and the associated feature is deprecated"
+)
 @pytest.mark.parametrize("enable_github", [True, False])
 def test_create_fortress(enable_github, requests_mock):
     if enable_github:
@@ -108,6 +111,9 @@ def test_create_fortress(enable_github, requests_mock):
         assert f.body
 
 
+@pytest.mark.skip(
+    reason="This test does not work offline and the associated feature is deprecated"
+)
 def test_create_fortress_no_bastion():
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
     with default_region("us-east-1"):
