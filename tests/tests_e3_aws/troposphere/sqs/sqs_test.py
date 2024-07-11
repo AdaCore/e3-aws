@@ -52,6 +52,9 @@ EXPECTED_SQS_SUBSCRIPTION_TEMPLATE = {
         "Type": "AWS::SQS::QueuePolicy",
     },
     "MyqueueSub": {
+        "DependsOn": [
+            "MyqueuePolicySub",
+        ],
         "Properties": {
             "Endpoint": {"Fn::GetAtt": ["Myqueue", "Arn"]},
             "Protocol": "sqs",

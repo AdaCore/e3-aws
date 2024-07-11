@@ -86,14 +86,18 @@ class Queue(Construct):
         if delivery_policy:
             sub_params.update({"DeliveryPolicy": delivery_policy})
 
+        queue_sub_policy = self.allow_service_to_write(
+            service="sns",
+            name_suffix="Sub",
+            condition={"ArnLike": {"aws:SourceArn": topic_arn}},
+        )
+
+        sub_params.update({"DependsOn": [queue_sub_policy]})
+
         self.optional_resources.extend(
             [
                 sns.SubscriptionResource(name_to_id(f"{self.name}Sub"), **sub_params),
-                self.allow_service_to_write(
-                    service="sns",
-                    name_suffix="Sub",
-                    condition={"ArnLike": {"aws:SourceArn": topic_arn}},
-                ),
+                queue_sub_policy,
             ]
         )
 
