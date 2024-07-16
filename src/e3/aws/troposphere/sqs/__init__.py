@@ -81,6 +81,7 @@ class Queue(Construct):
             "Endpoint": self.arn,
             "Protocol": "sqs",
             "TopicArn": topic_arn,
+            "RawMessageDelivery": True,
         }
 
         if delivery_policy:

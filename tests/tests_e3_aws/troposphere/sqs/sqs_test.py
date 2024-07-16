@@ -56,6 +56,7 @@ EXPECTED_SQS_SUBSCRIPTION_TEMPLATE = {
             "Endpoint": {"Fn::GetAtt": ["Myqueue", "Arn"]},
             "Protocol": "sqs",
             "TopicArn": "some_topic_arn",
+            "RawMessageDelivery": True,
         },
         "Type": "AWS::SNS::Subscription",
     },
