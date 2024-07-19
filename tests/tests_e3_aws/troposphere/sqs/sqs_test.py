@@ -33,7 +33,7 @@ EXPECTED_SQS_SUBSCRIPTION_TEMPLATE = {
         "Properties": {"QueueName": "myqueue", "VisibilityTimeout": 30},
         "Type": "AWS::SQS::Queue",
     },
-    "MyqueuePolicySub": {
+    "MyqueuePolicy": {
         "Properties": {
             "PolicyDocument": {
                 "Statement": [
