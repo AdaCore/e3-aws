@@ -99,11 +99,11 @@ class Bucket(Construct):
     ) -> None:
         """Add a configuration to bucket notification rules.
 
-        :param event: the S3 bucket event for which to invoke the Lambda function
-        :param function: function to invoke when the specified event type occurs
+        :param event: the S3 bucket event for which to invoke or notify the target
+        :param target: target to invoke or notify when the specified event type occurs
         :param permission_suffix: a name suffix for permissions or policy objects
         :param s3_filter: the filtering rules that determine which objects invoke
-            the AWS Lambda function
+            or notify the target
         """
         params = {"Event": event}
         if s3_filter:
@@ -132,7 +132,7 @@ class Bucket(Construct):
     def notification_setup(
         self,
     ) -> tuple[s3.NotificationConfiguration, list[AWSObject]]:
-        """Return notifcation configuration and associated resources."""
+        """Return notification configuration and associated resources."""
         notification_resources = []
         notification_config = None
         params = {}
@@ -166,15 +166,13 @@ class Bucket(Construct):
                 }
             )
             # Add policy allowing to publish to topics
-            for _, topic, suffix in self.topic_configurations:
+            for _, topic, _ in self.topic_configurations:
                 if topic:
-                    topic_policy = topic.allow_publish_policy(
+                    topic_policy_name = topic.add_allow_service_to_publish_statement(
                         service="s3",
-                        name_suffix=suffix,
                         condition={"ArnLike": {"aws:SourceArn": self.arn}},
                     )
-                    notification_resources.append(topic_policy)
-                    self.depends_on.append(topic_policy)
+                    self.depends_on.append(topic_policy_name)
         if self.queue_configurations:
             params.update(
                 {
@@ -184,15 +182,13 @@ class Bucket(Construct):
                     ]
                 }
             )
-            for _, queue, suffix in self.queue_configurations:
+            for _, queue, _ in self.queue_configurations:
                 if queue:
-                    queue_policy = queue.allow_service_to_write(
+                    queue_policy_name = queue.add_allow_service_to_write_statement(
                         service="s3",
-                        name_suffix=suffix,
                         condition={"ArnLike": {"aws:SourceArn": self.arn}},
                     )
-                    notification_resources.append(queue_policy)
-                    self.depends_on.append(queue_policy)
+                    self.depends_on.append(queue_policy_name)
 
         if params:
             notification_config = s3.NotificationConfiguration(

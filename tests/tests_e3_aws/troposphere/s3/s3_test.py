@@ -31,9 +31,7 @@ def test_bucket(stack: Stack) -> None:
         handler="app.main",
     )
 
-    stack.add(topic_test)
     stack.add(lambda_test)
-    stack.add(queue_test)
 
     bucket = Bucket(name="test-bucket")
     bucket.add_notification_configuration(
@@ -46,6 +44,8 @@ def test_bucket(stack: Stack) -> None:
         event="s3:ObjectCreated:*", target=queue_test, permission_suffix="FileEvent"
     )
     stack.add(bucket)
+    stack.add(topic_test)
+    stack.add(queue_test)
 
     with open(os.path.join(TEST_DIR, "bucket.json")) as fd:
         expected_template = json.load(fd)

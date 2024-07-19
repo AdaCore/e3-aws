@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
-from e3.aws.troposphere.iam.policy_statement import Allow
+from e3.aws.troposphere.iam.policy_statement import Allow, PolicyStatement
 
 from troposphere import sns, sqs, GetAtt, Ref
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class Queue(Construct):
-    """A SQS Topic."""
+    """A SQS Queue."""
 
     def __init__(
         self,
@@ -26,7 +26,7 @@ class Queue(Construct):
     ) -> None:
         """Initialize a SQS.
 
-        :param name: topic name
+        :param name: queue name
         :param fifo: Set the queue type to fifo
         :param visibility_timeout: set the length of time during which a message will be
             unavailable after a message is delivered from the queue
@@ -49,25 +49,30 @@ class Queue(Construct):
                 "maxReceiveCount": "3",
             }
         self.optional_resources: list[AWSObject] = []
+        self.queue_policy_statements: list[PolicyStatement] = []
 
-    def allow_service_to_write(
-        self, service: str, name_suffix: str, condition: Optional[ConditionType] = None
-    ) -> sqs.QueuePolicy:
-        """Enable a given service to send a message."""
-        return sqs.QueuePolicy(
-            name_to_id(f"{self.name}Policy{name_suffix}"),
-            Queues=[self.ref],
-            PolicyDocument=PolicyDocument(
-                statements=[
-                    Allow(
-                        action="sqs:SendMessage",
-                        resource=self.arn,
-                        principal={"Service": f"{service}.amazonaws.com"},
-                        condition=condition,
-                    )
-                ]
-            ).as_dict,
+    def _get_queue_policy_name(self) -> str:
+        """Return the QueuePolicy name."""
+        return name_to_id(f"{self.name}Policy")
+
+    def add_allow_service_to_write_statement(
+        self, service: str, condition: Optional[ConditionType] = None
+    ) -> str:
+        """Add a statement in QueuePolicy allowing a service to send msg to the queue.
+
+        :param service: service allowed to send message
+        :param condition: condition to be able to send message
+        :return: the QueuePolicy name for depends_on settings
+        """
+        self.queue_policy_statements.append(
+            Allow(
+                action="sqs:SendMessage",
+                resource=self.arn,
+                principal={"Service": f"{service}.amazonaws.com"},
+                condition=condition,
+            )
         )
+        return self._get_queue_policy_name()
 
     def subscribe_to_sns_topic(
         self, topic_arn: str, delivery_policy: dict | None = None
@@ -87,15 +92,13 @@ class Queue(Construct):
         if delivery_policy:
             sub_params.update({"DeliveryPolicy": delivery_policy})
 
+        self.add_allow_service_to_write_statement(
+            service="sns",
+            condition={"ArnLike": {"aws:SourceArn": topic_arn}},
+        )
+
         self.optional_resources.extend(
-            [
-                sns.SubscriptionResource(name_to_id(f"{self.name}Sub"), **sub_params),
-                self.allow_service_to_write(
-                    service="sns",
-                    name_suffix="Sub",
-                    condition={"ArnLike": {"aws:SourceArn": topic_arn}},
-                ),
-            ]
+            [sns.SubscriptionResource(name_to_id(f"{self.name}Sub"), **sub_params)]
         )
 
     @property
@@ -110,6 +113,19 @@ class Queue(Construct):
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Compute AWS resources for the construct."""
+        # Add Queue policy to optional resources if any statement
+        if self.queue_policy_statements:
+            self.optional_resources.extend(
+                [
+                    sqs.QueuePolicy(
+                        self._get_queue_policy_name(),
+                        Queues=[self.ref],
+                        PolicyDocument=PolicyDocument(
+                            statements=self.queue_policy_statements
+                        ).as_dict,
+                    )
+                ]
+            )
         return [
             sqs.Queue.from_dict(name_to_id(self.name), self.attr),
             *self.optional_resources,

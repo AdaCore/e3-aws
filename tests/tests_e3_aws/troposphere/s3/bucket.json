@@ -85,8 +85,8 @@
         },
         "Type": "AWS::S3::Bucket",
         "DependsOn": [
-            "TestTopicPolicyTpUpload",
-            "TestQueuePolicyFileEvent"
+            "TestTopicPolicy",
+            "TestQueuePolicy"
         ]
     },
     "TestBucketPolicy": {
@@ -129,7 +129,7 @@
         },
         "Type": "AWS::Lambda::Permission"
     },
-    "TestTopicPolicyTpUpload": {
+    "TestTopicPolicy": {
         "Properties": {
             "Topics": [
                 {
@@ -159,7 +159,7 @@
         },
         "Type": "AWS::SNS::TopicPolicy"
     },
-    "TestQueuePolicyFileEvent": {
+    "TestQueuePolicy": {
         "Properties": {
             "PolicyDocument": {
                 "Statement": [
