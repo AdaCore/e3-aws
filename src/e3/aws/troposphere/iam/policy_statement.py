@@ -17,6 +17,7 @@ class PolicyStatement:
     def __init__(
         self,
         action: str | list[str],
+        sid: str | None = None,
         effect: str = "Deny",
         resource: ResourceType | None = None,
         principal: PrincipalType | None = None,
@@ -25,11 +26,13 @@ class PolicyStatement:
         """Initialize a policy statement.
 
         :param action: actions on which the policy has effect
-        :param effect: effect of the policy (Allow, Deny ..)
+        :param sid: unique statement identifier
+        :param effect: effect of the policy (Allow, Deny ...)
         :param resource: resource on which the policy has effect
         :param principal: principal affected by the policy
         :param condition: conditions for when the policy is in effect
         """
+        self.sid = sid
         self.action = action
         self.effect = effect
         self.resource = resource
@@ -38,10 +41,11 @@ class PolicyStatement:
 
     @property
     def as_dict(self) -> dict[str, Any]:
-        """Return a dictionnary defining a troposphere policy statement."""
+        """Return a dictionary defining a troposphere policy statement."""
         return {
             key: val
             for key, val in {
+                "Sid": self.sid,
                 "Effect": self.effect,
                 "Principal": self.principal,
                 "Action": self.action,
@@ -56,6 +60,7 @@ class Allow(PolicyStatement):
     def __init__(
         self,
         action: str | list[str],
+        sid: str | None = None,
         resource: ResourceType | None = None,
         principal: PrincipalType | None = None,
         condition: ConditionType | None = None,
@@ -63,11 +68,13 @@ class Allow(PolicyStatement):
         """Initialize an Allow policy statement.
 
         :param action: actions on which the policy has effect
+        :param sid: unique statement identifier
         :param resource: resource on which the policy has effect
         :param principal: principal affected by the policy
         :param condition: conditions for when the policy is in effect
         """
         super().__init__(
+            sid=sid,
             action=action,
             effect="Allow",
             resource=resource,
@@ -80,14 +87,19 @@ class AssumeRole(PolicyStatement):
     """Define a sts:AssumeRole role policy statement."""
 
     def __init__(
-        self, principal: PrincipalType, condition: ConditionType | None = None
+        self,
+        principal: PrincipalType,
+        sid: str | None = None,
+        condition: ConditionType | None = None,
     ):
         """Initialize an AssumeRole statement.
 
         :param principal: principal which are allowed to assume the role
+        :param sid: unique statement identifier
         :param condition: condition to apply
         """
         super().__init__(
+            sid=sid,
             action="sts:AssumeRole",
             effect="Allow",
             resource=None,
@@ -101,6 +113,7 @@ class Trust(PolicyStatement):
 
     def __init__(
         self,
+        sid: str | None = None,
         services: list[str] | None = None,
         accounts: list[str] | None = None,
         users: list[tuple[str, str]] | None = None,
@@ -110,6 +123,7 @@ class Trust(PolicyStatement):
     ) -> None:
         """Initialize a trust policy statement.
 
+        :param sid: unique statement identifier
         :param services: list of services to trust (without amazonaws.com suffix)
         :param accounts: list of accounts to trust (accounts alias not allowed)
         :param users: list of users as tuple (account number, user name)
@@ -146,6 +160,7 @@ class Trust(PolicyStatement):
 
         self.condition = condition
         self.actions = actions
+        self.sid = sid
 
     @property
     def as_dict(self) -> dict[str, Any]:
@@ -158,5 +173,8 @@ class Trust(PolicyStatement):
 
         if self.condition is not None:
             result["Condition"] = self.condition
+
+        if self.sid is not None:
+            result["Sid"] = self.sid
 
         return result

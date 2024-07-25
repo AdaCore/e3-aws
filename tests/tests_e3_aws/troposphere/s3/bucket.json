@@ -140,6 +140,7 @@
                 "Version": "2012-10-17",
                 "Statement": [
                     {
+                        "Sid": "TestBucketPubAccess",
                         "Effect": "Allow",
                         "Principal": {
                             "Service": "s3.amazonaws.com"
@@ -164,6 +165,7 @@
             "PolicyDocument": {
                 "Statement": [
                     {
+                        "Sid": "TestBucketWriteAccess",
                         "Action": "sqs:SendMessage",
                         "Condition": {
                             "ArnLike": {
