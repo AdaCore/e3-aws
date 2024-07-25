@@ -169,6 +169,7 @@ class Bucket(Construct):
             for _, topic, _ in self.topic_configurations:
                 if topic:
                     topic_policy_name = topic.add_allow_service_to_publish_statement(
+                        applicant=f"{name_to_id(self.name)}",
                         service="s3",
                         condition={"ArnLike": {"aws:SourceArn": self.arn}},
                     )
@@ -185,6 +186,7 @@ class Bucket(Construct):
             for _, queue, _ in self.queue_configurations:
                 if queue:
                     queue_policy_name = queue.add_allow_service_to_write_statement(
+                        applicant=f"{name_to_id(self.name)}",
                         service="s3",
                         condition={"ArnLike": {"aws:SourceArn": self.arn}},
                     )

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.sns import Topic
 
@@ -41,3 +43,21 @@ def test_topic(stack: Stack) -> None:
         )
     )
     assert stack.export()["Resources"] == EXPECTED_TOPIC_TEMPLATE
+
+
+def test_allow_service_to_publish_not_unique_sid(stack: Stack) -> None:
+    """Test topic creation with same Sid statements in Access Policy."""
+    topic = Topic("mytopic")
+    topic.add_allow_service_to_publish_statement(
+        applicant="SomeApplicant",
+        service="s3",
+    )
+    topic.add_allow_service_to_publish_statement(
+        applicant="SomeApplicant",
+        service="lambda",
+    )
+
+    with pytest.raises(Exception) as ex:
+        stack.add(topic)
+
+    assert str(ex.value) == "Unique Sid is required for TopicPolicy statements"

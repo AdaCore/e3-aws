@@ -56,16 +56,18 @@ class Queue(Construct):
         return name_to_id(f"{self.name}Policy")
 
     def add_allow_service_to_write_statement(
-        self, service: str, condition: Optional[ConditionType] = None
+        self, service: str, applicant: str, condition: Optional[ConditionType] = None
     ) -> str:
         """Add a statement in QueuePolicy allowing a service to send msg to the queue.
 
         :param service: service allowed to send message
+        :param applicant: applicant name used for the Sid statement
         :param condition: condition to be able to send message
         :return: the QueuePolicy name for depends_on settings
         """
         self.queue_policy_statements.append(
             Allow(
+                sid=f"{applicant}WriteAccess",
                 action="sqs:SendMessage",
                 resource=self.arn,
                 principal={"Service": f"{service}.amazonaws.com"},
@@ -75,11 +77,12 @@ class Queue(Construct):
         return self._get_queue_policy_name()
 
     def subscribe_to_sns_topic(
-        self, topic_arn: str, delivery_policy: dict | None = None
+        self, topic_arn: str, applicant: str, delivery_policy: dict | None = None
     ) -> None:
         """Subscribe to SNS topic.
 
         :param topic_arn: ARN of the topic to subscribe
+        :param applicant: applicant name used for the Sid statement
         :param delivery_policy: The delivery policy to assign to the subscription
         """
         sub_params = {
@@ -93,6 +96,7 @@ class Queue(Construct):
             sub_params.update({"DeliveryPolicy": delivery_policy})
 
         self.add_allow_service_to_write_statement(
+            applicant=applicant,
             service="sns",
             condition={"ArnLike": {"aws:SourceArn": topic_arn}},
         )
@@ -115,6 +119,11 @@ class Queue(Construct):
         """Compute AWS resources for the construct."""
         # Add Queue policy to optional resources if any statement
         if self.queue_policy_statements:
+            # Check for unique Sid
+            check_sid = [statement.sid for statement in self.queue_policy_statements]
+            if len(check_sid) != len(set(check_sid)):
+                raise Exception("Unique Sid is required for QueuePolicy statements")
+
             self.optional_resources.extend(
                 [
                     sqs.QueuePolicy(

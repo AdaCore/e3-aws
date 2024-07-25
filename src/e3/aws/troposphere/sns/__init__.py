@@ -64,16 +64,18 @@ class Topic(Construct):
         )
 
     def add_allow_service_to_publish_statement(
-        self, service: str, condition: ConditionType | None = None
+        self, service: str, applicant: str, condition: ConditionType | None = None
     ) -> str:
         """Add a statement in TopicPolicy allowing a service to publish to the topic.
 
         :param service: service allowed to publish
+        :param applicant: applicant name used for the Sid statement
         :param condition: condition to be able to publish
         :return: the TopicPolicy name for depends_on settings
         """
         self.topic_policy_statements.append(
             Allow(
+                sid=f"{applicant}PubAccess",
                 action="sns:Publish",
                 resource=self.ref,
                 principal={"Service": f"{service}.amazonaws.com"},
@@ -101,6 +103,11 @@ class Topic(Construct):
 
         # Add Topic policy to optional resources if any statement
         if self.topic_policy_statements:
+            # Check for unique Sid
+            check_sid = [statement.sid for statement in self.topic_policy_statements]
+            if len(check_sid) != len(set(check_sid)):
+                raise Exception("Unique Sid is required for TopicPolicy statements")
+
             self.optional_resources.extend(
                 [
                     sns.TopicPolicy(

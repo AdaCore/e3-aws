@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.sqs import Queue
 
@@ -38,6 +40,7 @@ EXPECTED_SQS_SUBSCRIPTION_TEMPLATE = {
             "PolicyDocument": {
                 "Statement": [
                     {
+                        "Sid": "SomeApplicantWriteAccess",
                         "Action": "sqs:SendMessage",
                         "Condition": {"ArnLike": {"aws:SourceArn": "some_topic_arn"}},
                         "Effect": "Allow",
@@ -82,8 +85,20 @@ def test_queue(stack: Stack) -> None:
 def test_subscribe_to_sns_topic(stack: Stack) -> None:
     """Test sqs subscription to sns topic."""
     queue = Queue(name="myqueue")
-    queue.subscribe_to_sns_topic("some_topic_arn")
+    queue.subscribe_to_sns_topic(topic_arn="some_topic_arn", applicant="SomeApplicant")
 
     stack.add(queue)
 
     assert stack.export()["Resources"] == EXPECTED_SQS_SUBSCRIPTION_TEMPLATE
+
+
+def test_allow_service_to_write_not_unique_sid(stack: Stack) -> None:
+    """Test Queue creation with same sid statements in Access Policy."""
+    queue = Queue(name="myqueue")
+    queue.add_allow_service_to_write_statement(service="sns", applicant="SomeApplicant")
+    queue.add_allow_service_to_write_statement(service="s3", applicant="SomeApplicant")
+
+    with pytest.raises(Exception) as ex:
+        stack.add(queue)
+
+    assert str(ex.value) == "Unique Sid is required for QueuePolicy statements"
