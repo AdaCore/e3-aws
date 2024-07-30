@@ -11,7 +11,8 @@ from e3.aws.troposphere.iam.role import Role
 
 
 if TYPE_CHECKING:
-    from e3.aws.troposphere import Stack
+    import pytest
+    from e3.aws.cfn import Stack
 
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -20,7 +21,7 @@ TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 class MyCFNProject(CFNProjectMain):
     """Provide CLI to manage MyCFNProject."""
 
-    def create_stack(self) -> list[Stack]:
+    def create_stack(self) -> Stack | list[Stack]:
         """Return MyCFNProject stack."""
         self.add(
             (
@@ -34,7 +35,7 @@ class MyCFNProject(CFNProjectMain):
         return self.stack
 
 
-def test_cfn_project_main(capfd) -> None:
+def test_cfn_project_main(capfd: pytest.CaptureFixture[str]) -> None:
     """Test CFNProjectMain."""
     aws_env = AWSEnv(regions=["eu-west-1"], stub=True)
     test = MyCFNProject(

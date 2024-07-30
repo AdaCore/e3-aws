@@ -45,7 +45,11 @@ class MockSession:
     "json,expected_output",
     [(False, EXPECTED_DEFAULT_OUTPUT), (True, EXPECTED_JSON_OUTPUT)],
 )
-def test_assume_profile_main_json(json: bool, expected_output: str, capfd):
+def test_assume_profile_main_json(
+    json: bool,
+    expected_output: str,
+    capfd: pytest.CaptureFixture[str],
+) -> None:
     """Test the credentials returned by assume_profile_main."""
     with (
         mock.patch(
