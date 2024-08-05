@@ -46,6 +46,7 @@ class Function(Construct):
         logs_retention_in_days: int | None = 731,
         reserved_concurrent_executions: int | None = None,
         environment: dict[str, str] | None = None,
+        logging_config: awslambda.LoggingConfig | None = None,
     ):
         """Initialize an AWS lambda function.
 
@@ -71,6 +72,7 @@ class Function(Construct):
             that are reserved for this function
         :param environment: Environment variables that are accessible from function
             code during execution
+        :param logging_config: The function's Amazon CloudWatch Logs settings
         """
         self.name = name
         self.description = description
@@ -87,6 +89,7 @@ class Function(Construct):
         self.logs_retention_in_days = logs_retention_in_days
         self.reserved_concurrent_executions = reserved_concurrent_executions
         self.environment = environment
+        self.logging_config = logging_config
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         statements = [
@@ -196,6 +199,9 @@ class Function(Construct):
         if self.reserved_concurrent_executions is not None:
             params["ReservedConcurrentExecutions"] = self.reserved_concurrent_executions
 
+        if self.logging_config is not None:
+            params["LoggingConfig"] = self.logging_config
+
         result = [awslambda.Function(name_to_id(self.name), **params)]
         # If retention duration is given provide a log group.
         # If not provided the lambda creates a log group with
@@ -278,6 +284,7 @@ class DockerFunction(Function):
         image_tag: str,
         timeout: int = 3,
         memory_size: int | None = None,
+        logging_config: awslambda.LoggingConfig | None = None,
     ):
         """Initialize an AWS lambda function using a Docker image.
 
@@ -290,6 +297,7 @@ class DockerFunction(Function):
         :param timeout: maximum execution time (default: 3s)
         :param memory_size: the amount of memory available to the function at
             runtime. The value can be any multiple of 1 MB.
+        :param logging_config: The function's Amazon CloudWatch Logs settings
         """
         super().__init__(
             name=name,
@@ -297,6 +305,7 @@ class DockerFunction(Function):
             role=role,
             timeout=timeout,
             memory_size=memory_size,
+            logging_config=logging_config,
         )
         self.source_dir: str = source_dir
         self.repository_name: str = repository_name
@@ -354,6 +363,7 @@ class PyFunction(Function):
         logs_retention_in_days: int | None = 731,
         reserved_concurrent_executions: int | None = None,
         environment: dict[str, str] | None = None,
+        logging_config: awslambda.LoggingConfig | None = None,
     ):
         """Initialize an AWS lambda function with a Python runtime.
 
@@ -379,6 +389,7 @@ class PyFunction(Function):
             that are reserved for this function
         :param environment: Environment variables that are accessible from function
             code during execution
+        :param logging_config: The function's Amazon CloudWatch Logs settings
         """
         assert runtime.startswith("python"), "PyFunction only accept Python runtimes"
         super().__init__(
@@ -396,6 +407,7 @@ class PyFunction(Function):
             logs_retention_in_days=logs_retention_in_days,
             reserved_concurrent_executions=reserved_concurrent_executions,
             environment=environment,
+            logging_config=logging_config,
         )
         self.code_dir = code_dir
         self.requirement_file = requirement_file
@@ -478,6 +490,7 @@ class Py38Function(PyFunction):
         ephemeral_storage_size: int | None = None,
         logs_retention_in_days: int | None = None,
         reserved_concurrent_executions: int | None = None,
+        logging_config: awslambda.LoggingConfig | None = None,
     ):
         """Initialize an AWS lambda function using Python 3.8 runtime.
 
@@ -497,6 +510,7 @@ class Py38Function(PyFunction):
             ephemeral_storage_size=ephemeral_storage_size,
             logs_retention_in_days=logs_retention_in_days,
             reserved_concurrent_executions=reserved_concurrent_executions,
+            logging_config=logging_config,
         )
 
 
