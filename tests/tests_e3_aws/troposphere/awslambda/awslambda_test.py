@@ -14,6 +14,7 @@ from troposphere.awslambda import (
     ProvisionedConcurrencyConfiguration,
     AliasRoutingConfiguration,
     VersionWeight,
+    LoggingConfig,
 )
 
 from e3.aws import AWSEnv
@@ -109,6 +110,11 @@ EXPECTED_PYFUNCTION_TEMPLATE = {
             "ReservedConcurrentExecutions": 1,
             "Environment": {
                 "Variables": {"env_key_1": "env_value_1", "env_key_2": "env_value2"}
+            },
+            "LoggingConfig": {
+                "ApplicationLogLevel": "INFO",
+                "LogFormat": "JSON",
+                "SystemLogLevel": "WARN",
             },
         },
         "Type": "AWS::Lambda::Function",
@@ -397,6 +403,11 @@ def test_pyfunction(stack: Stack) -> None:
             logs_retention_in_days=7,
             reserved_concurrent_executions=1,
             environment={"env_key_1": "env_value_1", "env_key_2": "env_value2"},
+            logging_config=LoggingConfig(
+                ApplicationLogLevel="INFO",
+                LogFormat="JSON",
+                SystemLogLevel="WARN",
+            ),
         )
     )
     print(stack.export()["Resources"])
