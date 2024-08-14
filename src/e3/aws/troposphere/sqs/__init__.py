@@ -77,13 +77,20 @@ class Queue(Construct):
         return self._get_queue_policy_name()
 
     def subscribe_to_sns_topic(
-        self, topic_arn: str, applicant: str, delivery_policy: dict | None = None
+        self,
+        topic_arn: str,
+        applicant: str,
+        delivery_policy: dict | None = None,
+        filter_policy: dict | None = None,
+        filter_policy_scope: str | None = None,
     ) -> None:
         """Subscribe to SNS topic.
 
         :param topic_arn: ARN of the topic to subscribe
         :param applicant: applicant name used for the Sid statement
         :param delivery_policy: The delivery policy to assign to the subscription
+        :param filter_policy: The filter policy JSON assigned to the subscription.
+        :param filter_policy_scope: The filtering scope.
         """
         sub_params = {
             "Endpoint": self.arn,
@@ -93,7 +100,13 @@ class Queue(Construct):
         }
 
         if delivery_policy:
-            sub_params.update({"DeliveryPolicy": delivery_policy})
+            sub_params["DeliveryPolicy"] = delivery_policy
+
+        if filter_policy:
+            sub_params["FilterPolicy"] = filter_policy
+
+        if filter_policy_scope:
+            sub_params["FilterPolicyScope"] = filter_policy_scope
 
         self.add_allow_service_to_write_statement(
             applicant=applicant,
