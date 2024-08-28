@@ -9,7 +9,12 @@ from troposphere import AWSObject, iam, Tags, GetAtt
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
-from e3.aws.troposphere.iam.policy_statement import AssumeRole, Trust, Allow
+from e3.aws.troposphere.iam.policy_statement import (
+    AssumeRole,
+    Trust,
+    Allow,
+    PolicyStatement,
+)
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
@@ -34,6 +39,9 @@ class Role(Construct):
         for the role.
     :param condition: condition contains statements that define the circumstances
         under which role the is created.
+    :param inline_policies: a dict of inline policy documents that are embedded in
+        the role, the keys are the names of the policies and the values are the
+        policy documents. They can be added or updated
     """
 
     name: str
@@ -45,6 +53,7 @@ class Role(Construct):
     path: str = "/"
     boundary: str | None = None
     condition: dict[str, dict] | None = None
+    inline_policies: dict[str, PolicyDocument | PolicyStatement | dict] | None = None
 
     @property
     def trust_policy(self) -> PolicyDocument:
@@ -55,6 +64,30 @@ class Role(Construct):
             return self.trust
         else:
             return PolicyDocument(statements=[AssumeRole(principal=self.trust)])
+
+    @property
+    def policies(self) -> list[iam.Policy] | None:
+        """Return inline policies."""
+        if not self.inline_policies:
+            return None
+
+        policies = []
+        for policy_name, policy_document in self.inline_policies.items():
+            args: dict[str, str | dict | PolicyStatement | PolicyDocument] = {}
+            args["PolicyName"] = policy_name
+            if isinstance(policy_document, dict):
+                args["PolicyDocument"] = policy_document
+
+            elif isinstance(policy_document, PolicyDocument):
+                args["PolicyDocument"] = policy_document.as_dict
+
+            elif isinstance(policy_document, PolicyStatement):
+                args["PolicyDocument"] = PolicyDocument(
+                    statements=[policy_document]
+                ).as_dict
+
+            policies.append(iam.Policy(**args))
+        return policies
 
     @property
     def arn(self):
@@ -74,6 +107,7 @@ class Role(Construct):
             "Path": self.path,
             "PermissionsBoundary": self.boundary,
             "Condition": self.condition,
+            "Policies": self.policies,
         }.items():
             if val is not None:
                 attr[key] = val

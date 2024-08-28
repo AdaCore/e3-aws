@@ -1,0 +1,75 @@
+{
+    "TestRoleWithPolicies": {
+        "Properties": {
+            "RoleName": "TestRoleWithPolicies",
+            "Description": "TestRoleWithPolicies description",
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": "sts:AssumeRole",
+                        "Principal": {
+                            "Service": [
+                                "ec2.amazonaws.com"
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestRoleWithPolicies"
+                }
+            ],
+            "Path": "/",
+            "Policies": [
+                {
+                    "PolicyName": "PolicyDocument",
+                    "PolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Action": "iam:*",
+                                "Resource": "*"
+                            },
+                            {
+                                "Effect": "Allow",
+                                "Action": "logs:*",
+                                "Resource": "*"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "PolicyName": "PolicyStatement",
+                    "PolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Action": "s3:Get*"
+                            }
+                        ]
+                    }
+                },
+                {
+                    "PolicyName": "Dict",
+                    "PolicyDocument": {
+                        "Version": "2012-10-17",
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Action": "ec2:Describe*",
+                                "Resource": "*"
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        "Type": "AWS::IAM::Role"
+    }
+}
