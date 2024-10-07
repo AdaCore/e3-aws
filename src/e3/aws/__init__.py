@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from typing import Any, TypedDict, Callable
     import botocore.client
     import botocore.stub
+    from datetime import datetime
 
     class AWSCredentials(TypedDict, total=False):
         """Annotate a dict containing AWS credentials.
@@ -44,7 +45,7 @@ if TYPE_CHECKING:
         AccessKeyId: str
         SecretAccessKey: str
         SessionToken: str
-        Expiration: str
+        Expiration: datetime
 
 
 class AWSSessionRunError(E3Error):
@@ -372,7 +373,7 @@ def session() -> Callable:
     return decorator
 
 
-def assume_profile_main():
+def assume_profile_main() -> None:
     """Generate shell commands to set credentials for a profile."""
     argument_parser = argparse.ArgumentParser()
     argument_parser.add_argument(
@@ -416,7 +417,7 @@ def assume_profile_main():
             print(f"export {k}={v}")
 
 
-def assume_role_main():
+def assume_role_main() -> None:
     """Generate shell commands to set credentials for a role."""
     argument_parser = argparse.ArgumentParser()
     argument_parser.add_argument(
@@ -449,14 +450,18 @@ def assume_role_main():
     credentials = s.assume_role_get_credentials(
         args.role_arn, role_session_name, session_duration=session_duration
     )
-    credentials["Expiration"] = credentials["Expiration"].timestamp()
+    credentials_float = credentials | {
+        "Expiration": credentials["Expiration"].timestamp()
+    }
     if args.json:
-        print(json.dumps(credentials))
+        print(json.dumps(credentials_float))
     else:
-        credentials = {
-            key_to_envvar[k]: v for k, v in credentials.items() if k in key_to_envvar
+        credentials_float = {
+            key_to_envvar[k]: v
+            for k, v in credentials_float.items()
+            if k in key_to_envvar
         }
-        for k, v in credentials.items():
+        for k, v in credentials_float.items():
             print(f"export {k}={v}")
 
 

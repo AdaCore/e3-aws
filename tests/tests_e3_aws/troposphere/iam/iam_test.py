@@ -95,7 +95,7 @@ def test_trust_roles(stack: Stack) -> None:
             name="TestRole",
             description="TestRole description",
             trust=Trust(
-                roles=[(123456789012, "OtherRole")], actions=["sts:SetSourceIdentity"]
+                roles=[("123456789012", "OtherRole")], actions=["sts:SetSourceIdentity"]
             ),
         )
     )

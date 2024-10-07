@@ -5,10 +5,10 @@ import json
 from e3.aws.util import get_region_name
 
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, Union
     import botocore
 
-    _CacheKey = tuple[str | None, str | None, str | None]
+    _CacheKey = tuple[Union[str, None], Union[str, None], Union[str, None]]
 
     # This is only to avoid repeating the type everywhere
     PriceInformation = dict[str, Any]

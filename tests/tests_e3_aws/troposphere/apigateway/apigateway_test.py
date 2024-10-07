@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Any, cast
 import json
 import os
 import pytest
@@ -283,7 +284,9 @@ EXPECTED_TEMPLATE_LAMBDA_ALIAS = {
     },
     "TestapiIntegration": {
         "Properties": {
-            **EXPECTED_TEMPLATE["TestapiIntegration"]["Properties"],
+            **cast(
+                dict[str, Any], EXPECTED_TEMPLATE["TestapiIntegration"]["Properties"]
+            ),
             "IntegrationUri": "arn:aws:lambda:eu-west-1:123456789012:function:"
             "mypylambda:${stageVariables.lambdaAlias}",
         },

@@ -34,8 +34,9 @@ from e3.aws.troposphere.awslambda.flask_apigateway_wrapper import FlaskLambdaHan
 from e3.pytest import require_tool
 
 if TYPE_CHECKING:
-    from typing import Iterable
+    from typing import Iterable, Callable
     from flask import Application, Response
+    from pathlib import Path
 
 
 SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "source_dir")
@@ -414,7 +415,7 @@ def test_pyfunction(stack: Stack) -> None:
     assert stack.export()["Resources"] == EXPECTED_PYFUNCTION_TEMPLATE
 
 
-def test_pyfunction_with_requirements(tmp_path, stack: Stack) -> None:
+def test_pyfunction_with_requirements(tmp_path: Path, stack: Stack) -> None:
     """Test PyFunction creation."""
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
@@ -472,7 +473,7 @@ def test_pyfunction_policy_document(stack: Stack) -> None:
 @pytest.mark.skip(
     reason="This test does not work in GitLab CI jobs. Disable it for now.",
 )
-def test_docker_function(stack: Stack, has_docker: pytest.Fixture) -> None:
+def test_docker_function(stack: Stack, has_docker: Callable) -> None:
     """Test adding docker function to stack."""
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
     stubber_ecr = aws_env.stub("ecr")
@@ -607,10 +608,14 @@ def test_autoversion_default(stack: Stack, simple_lambda_function: PyFunction) -
     stack.add(auto_version)
     print(stack.export()["Resources"])
     assert stack.export()["Resources"] == EXPECTED_AUTOVERSION_DEFAULT_TEMPLATE
-    assert auto_version.get_version(1).name == "mypylambdaVersion1"
-    assert auto_version.get_version(2).name == "mypylambdaVersion2"
-    assert auto_version.previous.name == "mypylambdaVersion1"
-    assert auto_version.latest.name == "mypylambdaVersion2"
+    assert (
+        version := auto_version.get_version(1)
+    ) and version.name == "mypylambdaVersion1"
+    assert (
+        version := auto_version.get_version(2)
+    ) and version.name == "mypylambdaVersion2"
+    assert (version := auto_version.previous) and version.name == "mypylambdaVersion1"
+    assert (version := auto_version.latest) and version.name == "mypylambdaVersion2"
 
 
 def test_autoversion_single(stack: Stack, simple_lambda_function: PyFunction) -> None:
@@ -641,10 +646,14 @@ def test_autoversion(stack: Stack, simple_lambda_function: PyFunction) -> None:
     stack.add(auto_version)
     print(stack.export()["Resources"])
     assert stack.export()["Resources"] == EXPECTED_AUTOVERSION_TEMPLATE
-    assert auto_version.get_version(2).name == "mypylambdaVersion2"
-    assert auto_version.get_version(3).name == "mypylambdaVersion3"
-    assert auto_version.previous.name == "mypylambdaVersion2"
-    assert auto_version.latest.name == "mypylambdaVersion3"
+    assert (
+        version := auto_version.get_version(2)
+    ) and version.name == "mypylambdaVersion2"
+    assert (
+        version := auto_version.get_version(3)
+    ) and version.name == "mypylambdaVersion3"
+    assert (version := auto_version.previous) and version.name == "mypylambdaVersion2"
+    assert (version := auto_version.latest) and version.name == "mypylambdaVersion3"
 
 
 def test_bluegreenaliases_default(
@@ -798,7 +807,7 @@ def base64_response_server() -> Iterable[Application]:
     yield app
 
 
-def test_text_response(base64_response_server: Application):
+def test_text_response(base64_response_server: Application) -> None:
     """Query a route sending back a plain text response."""
     with open(
         os.path.join(
@@ -815,7 +824,7 @@ def test_text_response(base64_response_server: Application):
     assert response["body"] == b"world"
 
 
-def test_base64_response(base64_response_server: Application):
+def test_base64_response(base64_response_server: Application) -> None:
     """Query a route sending back a base64 encoded response."""
     with open(
         os.path.join(

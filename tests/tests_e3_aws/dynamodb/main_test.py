@@ -122,7 +122,7 @@ def test_update_item(client: DynamoDB) -> None:
     client.update_item(
         item=customers[0],
         table_name=TABLE_NAME,
-        keys=PRIMARY_KEYS,
+        keys=("name", "S"),
         data={"age": 33},
     )
 
@@ -138,7 +138,7 @@ def test_update_item_condition(client: DynamoDB) -> None:
     client.update_item(
         item=customers[0],
         table_name=TABLE_NAME,
-        keys=PRIMARY_KEYS,
+        keys=("name", "S"),
         data={"age": 33},
         condition_expression="attribute_exists(#n) AND #a = :a",
         expression_attribute_names={"#n": "name", "#a": "age"},

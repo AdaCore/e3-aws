@@ -1,39 +1,88 @@
 variables:
-  GITLAB_REMOTE: "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/"
+  GITLAB_REMOTE:
+    description: "The remote gitlab URL used."
+    value: "https://gitlab-ci-token:${CI_JOB_TOKEN}@${CI_SERVER_HOST}:${CI_SERVER_PORT}/"
+  LATEST_PYTHON:
+    description: "The latest python version used to test this project."
+    options:
+      - "3.9"
+      - "3.10"
+      - "3.11"
+      - "3.12"
+    value: "3.12"
 
 stages:
-  - check
-  - test
+  - checks
+  - tests linux
+  - tests windows
 
 default:
+  services:
+    - run_as_root:false
   interruptible: true
+
+# Common
+
+.tox-common:
+  before_script:
+    - python -m pip install --force tox
+  script:
+    # Should be quoted using \' to deal with ':' in the command
+    - 'echo "Tox run environment: ${CI_TOX_ENV:=py${PYTHON_VERSION:0:1}${PYTHON_VERSION:2:2}-cov-xdist}"'
+    - python -m tox --colored yes -e ${CI_TOX_ENV}
+
+### Linux jobs ###
+
+.linux-image:
   services:
     - image:all-pythons
   before_script:
-    - git config --global --add
-        url."${GITLAB_REMOTE}/it/black.git".insteadOf
-        https://github.com/ambv/black
-    - git config --global --add
-        url."${GITLAB_REMOTE}/it/flake8.git".insteadOf
-        https://github.com/pycqa/flake8
-    - source /it/activate-${PYTHON_VERSION}
-    - python -m pip install --force tox
+    - source /it/activate-py${PYTHON_VERSION:0:1}${PYTHON_VERSION:2:2}
+    - python -m pip install -U pip
+
+.linux-common:
+  extends:
+    - .linux-image
+    - .tox-common
+  before_script:
+    - !reference [.linux-image, before_script]
+    - !reference [.tox-common, before_script]
+
+# Stage: Checks
 
 check:
-  stage: check
-  script:
+  stage: checks
+  extends: .linux-common
+  needs: []
+  before_script:
+    - !reference [.linux-common, before_script]
+    - git config --global --add
+      url."${GITLAB_REMOTE}/it/black.git".insteadOf
+      https://github.com/ambv/black
+    - git config --global --add
+      url."${GITLAB_REMOTE}/it/flake8.git".insteadOf
+      https://github.com/pycqa/flake8
     - python -m pip install pre-commit
     - pre-commit install
-    - pre-commit run -a --show-diff-on-failure
-    - python -m tox --colored yes -e check
-  variables:
-    PYTHON_VERSION: py311
-
-.test-py-common:
-  stage: test
   script:
-    - python -m tox --colored yes -e ${PYTHON_VERSION}-cov
+    - pre-commit run -a --show-diff-on-failure
+    - !reference [.linux-common, script]
+  variables:
+    PYTHON_VERSION: ${LATEST_PYTHON}
+    CI_TOX_ENV: check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+
+.test-linux:
+  stage: tests linux
+  extends: .linux-common
+  services:
+    - !reference [.linux-common, services]
+    - cpu:4
   coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.9", "3.10", "3.11", "3.12"]
   artifacts:
     when: always
     paths:
@@ -44,23 +93,102 @@ check:
         path: coverage.xml
       junit: pytest-report.xml
 
-test-py39:
-  extends: .test-py-common
-  variables:
-    PYTHON_VERSION: py39
+linux python:
+  extends: .test-linux
+  needs: ["check"]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
-test-py310:
-  extends: .test-py-common
-  variables:
-    PYTHON_VERSION: py310
+# A job triggered by 'run linux tests'. This jobs will run without waiting any others
+# jobs.
+linux python (always):
+  extends: .test-linux
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_MERGE_REQUEST_ID && $CI_PROJECT_NAME == "e3-core" && $ALWAYS_LINUX_TESTS == "y"
 
-test-py311:
-  extends: .test-py-common
+# A manual job to run Linux tests even if "check" job has failed
+run linux tests:
+  stage: tests linux
+  needs: []
+  trigger:
+    include: .gitlab-ci.yml
+    strategy: depend
   variables:
-    PYTHON_VERSION: py311
+    ALWAYS_LINUX_TESTS: "y"
+    ALWAYS_WINDOWS_TESTS: "n"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+      allow_failure: true
+  # Contrary to what the documentation might suggest, manual_confirmation
+  # is not currently usable with our gitlab.
+  # However, when it is, adding a manual confirmation to warn the user that
+  # this job should only be used when previous steps have failed seems
+  # useful. Something like:
+  #
+  # manual_confirmation: |-
+  #     Are you sure you want to run Linux tests?
+  #
+  #     This is only useful if the previous stages have failed and you still want to run the tests.
 
-test-py312:
-  extends: .test-py-common
+### Windows jobs ###
+
+.windows-image:
+  services:
+    - image:e3-windows-core-2022
+    - platform:x86_64-windows-2022
+    - cpu:2
+    - mem:4
+  before_script:
+    - source /it/activate-python ${PYTHON_VERSION}
+    - mkdir -p "C:/tmp/Trash"
+    - python -m pip install -U pip
+
+.windows-common:
+  extends:
+    - .windows-image
+    - .tox-common
+  before_script:
+    - !reference [.windows-image, before_script]
+    - !reference [.tox-common, before_script]
+
+.test-windows:
+  stage: tests windows
+  extends: .windows-common
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.9", "3.10", "3.11", "3.12"]
+
+# A job tiggered by 'Run Windows tests'. This jobs will run without waiting any others
+# jobs.
+windows python (always):
+  extends: .test-windows
+  needs: []
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_MERGE_REQUEST_ID && $CI_PROJECT_NAME == "e3-aws" && $ALWAYS_WINDOWS_TESTS == "y"
+
+# A manual job to run Windows tests even if previous jobs have failed
+run windows tests:
+  stage: tests windows
+  needs: []
+  trigger:
+    include: .gitlab-ci.yml
+    strategy: depend
   variables:
-    PYTHON_VERSION: py312
-
+    ALWAYS_LINUX_TESTS: "n"
+    ALWAYS_WINDOWS_TESTS: "y"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+      allow_failure: true
+  # Contrary to what the documentation might suggest, manual_confirmation
+  # is not currently usable with our gitlab.
+  # However, when it is, adding a manual confirmation to warn the user that
+  # this job should only be used when previous steps have failed seems
+  # useful. Something like:
+  #
+  # manual_confirmation: |-
+  #     Are you sure you want to run Windows tests?
+  #
+  #     This is only useful if the previous stages have failed and you still want to run the tests.

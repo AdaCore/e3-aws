@@ -29,6 +29,7 @@ s3-boto3 = "e3.aws.handler.s3:S3Handler"
 test = [
   "awscli",
   "pytest",
+  "pytest-html",
   "mock",
   "requests_mock",
   "httpretty",
@@ -38,6 +39,9 @@ test = [
 
 check = [
   "mypy==1.8.0",
+  "pytest",
+  "flask",
+  "moto[sts, dynamodb]",
   "bandit",
   "pip-audit",
   "types-colorama",

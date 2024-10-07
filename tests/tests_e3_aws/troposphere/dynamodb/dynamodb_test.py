@@ -1,4 +1,5 @@
 from __future__ import annotations
+from typing import Any, cast
 import os
 import json
 from troposphere import Ref
@@ -35,7 +36,9 @@ EXPECTED_TABLE_DEFAULT_TEMPLATE = {
 EXPECTED_TABLE_TEMPLATE = {
     "Mytable": {
         "Properties": {
-            **EXPECTED_TABLE_DEFAULT_TEMPLATE["Mytable"]["Properties"],
+            **cast(
+                dict[str, Any], EXPECTED_TABLE_DEFAULT_TEMPLATE["Mytable"]["Properties"]
+            ),
             **{
                 "Tags": [{"Key": "tagkey", "Value": "tagvalue"}],
                 "TimeToLiveSpecification": {

@@ -66,8 +66,8 @@ ON_DEMAND_GET_PRODUCTS_PARAMS = {
         {"Field": "capacitystatus", "Type": "TERM_MATCH", "Value": "Used"},
         {"Field": "preInstalledSw", "Type": "TERM_MATCH", "Value": "NA"},
         {"Field": "tenancy", "Type": "TERM_MATCH", "Value": "shared"},
-    ]
-    + GET_PRODUCTS_PARAMS["Filters"],
+        *GET_PRODUCTS_PARAMS["Filters"],
+    ],
 }
 
 

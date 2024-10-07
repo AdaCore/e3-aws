@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+from typing import Any, cast
 from troposphere import Ref
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.cloudwatch import Alarm
@@ -22,7 +22,9 @@ EXPECTED_ALARM_DEFAULT_TEMPLATE = {
 EXPECTED_ALARM_TEMPLATE = {
     "Myalarm": {
         "Properties": {
-            **EXPECTED_ALARM_DEFAULT_TEMPLATE["Myalarm"]["Properties"],
+            **cast(
+                dict[str, Any], EXPECTED_ALARM_DEFAULT_TEMPLATE["Myalarm"]["Properties"]
+            ),
             **{
                 "AlarmActions": ["StrAction", {"Ref": "RefAction"}],
                 "Dimensions": [
