@@ -6,7 +6,7 @@ import os
 from troposphere import ec2, Ref
 
 from e3.aws.troposphere import Stack
-from e3.aws.troposphere.ec2 import VPC
+from e3.aws.troposphere.ec2 import VPC, VPCv2
 from e3.aws.troposphere.iam.policy_statement import Allow
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 
@@ -151,6 +151,56 @@ def test_vpc_with_vpc_prefixed_endpoints(stack: Stack) -> None:
     with open(
         os.path.join(TEST_DIR, "vpc_ses_and_other_endpoints_prefixed.json")
     ) as fd:
+        expected_template = json.load(fd)
+
+    assert stack.export()["Resources"] == expected_template
+
+
+def test_vpc_v2(stack: Stack) -> None:
+    """Test VPCv2 without endpoints."""
+    vpc = VPCv2(
+        name_prefix="TestVPC",
+        availability_zones=["eu-west-1a", "eu-west-1b"],
+    )
+    stack.add(vpc)
+    with open(os.path.join(TEST_DIR, "vpc_v2.json")) as fd:
+        expected_template = json.load(fd)
+
+    assert stack.export()["Resources"] == expected_template
+
+
+def test_vpc_v2_with_endpoints(stack: Stack) -> None:
+    """Test VPCv2 with endpoints."""
+    s3_endpoint_pd = PolicyDocument(
+        statements=[
+            Allow(action=["s3:PutObject", "s3:GetObject"], resource="*", principal="*"),
+            Allow(action="s3:ListBucket", resource="*", principal="*"),
+        ]
+    )
+    cloudwatch_endpoint_pd = PolicyDocument(
+        statements=[
+            Allow(
+                action=[
+                    "logs:CreateLogStream",
+                    "logs:CreateLogGroup",
+                    "logs:PutLogEvents",
+                ],
+                resource="*",
+                principal="*",
+            )
+        ]
+    )
+    vpc = VPCv2(
+        name_prefix="TestVPC",
+        availability_zones=["eu-west-1a", "eu-west-1b"],
+        interface_endpoints=[
+            ("email-smtp", None),
+            ("logs", cloudwatch_endpoint_pd),
+        ],
+        s3_endpoint_policy_document=s3_endpoint_pd,
+    )
+    stack.add(vpc)
+    with open(os.path.join(TEST_DIR, "vpc_v2_with_endpoints.json")) as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template

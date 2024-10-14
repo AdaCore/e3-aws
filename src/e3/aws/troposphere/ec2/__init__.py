@@ -1,4 +1,5 @@
 from __future__ import annotations
+from ipaddress import IPv4Network
 from functools import cached_property
 from typing import TYPE_CHECKING
 
@@ -661,3 +662,331 @@ class VPC(Construct):
             )
             if el is not None
         ]
+
+
+class VPCv2(Construct):
+    """Return a VPC and associated network resources.
+
+    The VPC comes with a private and a public subnet per availability zone requested.
+    At least one IP range is kept available per availability zone and one range for
+    subnet hosting VPC endpoints.
+    """
+
+    def __init__(
+        self,
+        name_prefix: str,
+        availability_zones: list[str],
+        cidr_block: str | None = None,
+        interface_endpoints: list[tuple[str, PolicyDocument | None]] | None = None,
+        s3_endpoint_policy_document: PolicyDocument | None = None,
+    ) -> None:
+        """Initialize an VPCv2 instance.
+
+        :param name_prefix: name prefix for VPC resources
+        :param availability_zones: list of availability zones to support. One
+            private and one public subnet is deployed per availability zone (AZ).
+            All availability zones must be in the same region.
+        :param cidr_block: CIDR block of the VPC.
+        :param interface_endpoints: list of (<service_name>, <endpoint_policy_document>)
+            tuples for each interface endpoint to create in the VPC endpoints subnet.
+        :param s3_endpoint_policy_document: policy for the s3 endpoint. If none is
+            given no s3 endpoint is created.
+        """
+        self.name_prefix = name_prefix
+        self.availability_zones = availability_zones
+        self.region = self.availability_zones[0][:-1]
+        self.s3_endpoint_policy_document = s3_endpoint_policy_document
+
+        self.vpc_ip_network = (
+            IPv4Network("10.10.0.0/16")
+            if cidr_block is None
+            else IPv4Network(cidr_block)
+        )
+        # Split VPC networks with a public and a private subnet per AZ and keep
+        # at least one range available per AZ to let the possibility to add
+        # other subnets afterward if needed and one range for a subnet hosting
+        # VPC interface endpoints.
+        nb_az = len(availability_zones)
+        number_of_subnet_slots = nb_az * 3 + 1
+        self.subnet_ip_networks = self.vpc_ip_network.subnets(
+            prefixlen_diff=int.bit_length(number_of_subnet_slots)
+        )
+        # Assign networks to private and public subnets
+        self.private_subnet_ip_networks = {
+            az: next(self.subnet_ip_networks) for az in availability_zones
+        }
+        self.public_subnet_ip_networks = {
+            az: next(self.subnet_ip_networks) for az in availability_zones
+        }
+        # Add a subnet for VPC endpoints if requested
+        self.interface_endpoints_subnet = (
+            None
+            if interface_endpoints is None
+            else VPCEndpointsSubnet(
+                name=f"{self.name_prefix}Endpoints",
+                region=self.region,
+                cidr_block=str(next(self.subnet_ip_networks)),
+                vpc=self.vpc,
+                interface_endpoints=interface_endpoints,
+                vpc_prefixed_endpoints=True,
+            )
+        )
+        # Keep remaining IP networks for later needs
+        self.available_ip_networks = list(self.subnet_ip_networks)
+
+    def _create_subnet(
+        self,
+        subnet_name: str,
+        availability_zone: str,
+        cidr_block: str,
+    ) -> ec2.Subnet:
+        """Return a new Subnet.
+
+        :param subnet_name: name of the subnet
+        :param availability_zone: subnet availability zone
+        :param cidr_block: subnet CIDR block
+        """
+        return ec2.Subnet(
+            title=subnet_name,
+            VpcId=Ref(self.vpc),
+            CidrBlock=cidr_block,
+            Tags=Tags({"Name": subnet_name}),
+            AvailabilityZone=availability_zone,
+        )
+
+    @cached_property
+    def vpc(self) -> ec2.VPC:
+        """Return a VPC."""
+        vpc_name = f"{self.name_prefix}VPC"
+        return ec2.VPC(
+            name_to_id(vpc_name),
+            CidrBlock=str(self.vpc_ip_network),
+            EnableDnsHostnames="true",
+            EnableDnsSupport="true",
+            Tags=Tags({"Name": vpc_name}),
+        )
+
+    @cached_property
+    def id(self) -> Ref:
+        """Return VPC's ID."""
+        return Ref(self.vpc)
+
+    @cached_property
+    def internet_gateway(self) -> ec2.InternetGateway:
+        """Return VPC's Internet Gateway."""
+        return ec2.InternetGateway(name_to_id(f"{self.name_prefix}InternetGW"))
+
+    @cached_property
+    def internet_gateway_attachment(self) -> ec2.VPCGatewayAttachment:
+        """Return VPC's Internet Gateway attachment."""
+        return ec2.VPCGatewayAttachment(
+            name_to_id(f"{self.name_prefix}InternetGWAttachment"),
+            InternetGatewayId=Ref(self.internet_gateway),
+            VpcId=Ref(self.vpc),
+        )
+
+    @cached_property
+    def public_subnets(self) -> dict[str, Subnet]:
+        """Return public subnets indexed by availability zones."""
+        return {
+            az: self._create_subnet(
+                subnet_name=f"{self.name_prefix}PublicSubnet{az[-1].upper()}",
+                availability_zone=az,
+                cidr_block=str(subnet_network),
+            )
+            for az, subnet_network in self.public_subnet_ip_networks.items()
+        }
+
+    @cached_property
+    def public_subnets_route_table(self) -> ec2.RouteTable:
+        """Return a route table for public subnets."""
+        return ec2.RouteTable(
+            f"{self.name_prefix}PublicRouteTable", VpcId=Ref(self.vpc)
+        )
+
+    @cached_property
+    def nat_gateways(self) -> dict[str, ec2.NatGateway]:
+        """Return a NatGateway per AZ attached to the corresponding public subnet."""
+        return {
+            az: ec2.NatGateway(
+                title=f"{self.name_prefix}NatGateway{az[-1].upper()}",
+                AllocationId=GetAtt(self.nat_eips[az], "AllocationId"),
+                SubnetId=Ref(subnet),
+            )
+            for az, subnet in self.public_subnets.items()
+        }
+
+    @cached_property
+    def nat_eips(self) -> dict[str, ec2.EIP]:
+        """Return Elastic IPs for NAT Gateways."""
+        return {
+            az: ec2.EIP(name_to_id(f"{self.name_prefix}EIP{az[-1].upper()}"))
+            for az in self.availability_zones
+        }
+
+    @cached_property
+    def private_subnets(self) -> dict[str, Subnet]:
+        """Return private subnets indexed by availability zones."""
+        return {
+            az: self._create_subnet(
+                subnet_name=f"{self.name_prefix}PrivateSubnet{az[-1].upper()}",
+                availability_zone=az,
+                cidr_block=str(subnet_network),
+            )
+            for az, subnet_network in self.private_subnet_ip_networks.items()
+        }
+
+    @cached_property
+    def private_subnet_route_tables(self) -> dict[str, ec2.RouteTable]:
+        """Return route tables for each private subnet.
+
+        One route table per subnet is needed as each private subnet uses a
+        different NATGateway.
+        """
+        return {
+            az: ec2.RouteTable(
+                f"{self.name_prefix}PrivateRouteTable{az[-1].upper()}",
+                VpcId=Ref(self.vpc),
+            )
+            for az in self.availability_zones
+        }
+
+    @cached_property
+    def private_routes_to_internet(self) -> dict[str, ec2.Route]:
+        """Return routes from private subnets to NAT Gateways."""
+        return {
+            az: ec2.Route(
+                f"{self.name_prefix}PrivateRoute{az[-1].upper()}ToInternet",
+                RouteTableId=Ref(self.private_subnet_route_tables[az]),
+                DestinationCidrBlock="0.0.0.0/0",
+                NatGatewayId=Ref(self.nat_gateways[az]),
+            )
+            for az in self.availability_zones
+        }
+
+    @cached_property
+    def public_route_to_internet(self) -> ec2.Route:
+        """Return a route from public subnets to the internet gateway."""
+        return ec2.Route(
+            f"{self.name_prefix}PublicRouteToInternet",
+            RouteTableId=Ref(self.public_subnets_route_table),
+            DestinationCidrBlock="0.0.0.0/0",
+            GatewayId=Ref(self.internet_gateway),
+        )
+
+    @cached_property
+    def private_route_table_assocs(self) -> dict[str, ec2.SubnetRouteTableAssociation]:
+        """Return associations between private subnets and the private route table."""
+        return {
+            az: ec2.SubnetRouteTableAssociation(
+                title=f"{self.name_prefix}PrivateRouteTableAssoc{az[-1].upper()}",
+                RouteTableId=Ref(self.private_subnet_route_tables[az]),
+                SubnetId=Ref(self.private_subnets[az]),
+            )
+            for az in self.availability_zones
+        }
+
+    @cached_property
+    def public_route_table_assocs(self) -> dict[str, ec2.SubnetRouteTableAssociation]:
+        """Return associations between public subnets and the public route table."""
+        return {
+            az: ec2.SubnetRouteTableAssociation(
+                title=f"{self.name_prefix}PublicRouteTableAssoc{az[-1].upper()}",
+                RouteTableId=Ref(self.public_subnets_route_table),
+                SubnetId=Ref(self.public_subnets[az]),
+            )
+            for az in self.availability_zones
+        }
+
+    @cached_property
+    def s3_gateway_endpoint(self) -> ec2.VPCEndpoint | None:
+        """Return S3 gateway endpoint.
+
+        Note that this endpoint is also needed when using ECR as ECR stores
+        images on S3.
+        """
+        return (
+            ec2.VPCEndpoint(
+                name_to_id(f"{self.name_prefix}S3Endpoint"),
+                PolicyDocument=self.s3_endpoint_policy_document.as_dict,
+                # Attach the endpoints to all private subnets
+                RouteTableIds=[
+                    Ref(private_subnet)
+                    for private_subnet in self.private_subnets.values()
+                ],
+                ServiceName=f"com.amazonaws.{self.region}.s3",
+                VpcEndpointType="Gateway",
+                VpcId=Ref(self.vpc),
+            )
+            if self.s3_endpoint_policy_document
+            else None
+        )
+
+    @cached_property
+    def egress_to_vpc_endpoints(self) -> list[ec2.SecurityGroupRule]:
+        """Return egress rules allowing traffic to VPC endpoints.
+
+        This is an helper function to create security groups with permissions to
+        access VPC endpoints.
+        """
+        rules = []
+        if self.interface_endpoints_subnet:
+            rules.append(
+                ec2.SecurityGroupRule(
+                    DestinationSecurityGroupId=Ref(
+                        self.interface_endpoints_subnet.security_group
+                    ),
+                    Description="Allows traffic to VPC interface endpoints "
+                    "security group",
+                    FromPort="443",
+                    ToPort="443",
+                    IpProtocol="tcp",
+                ),
+            )
+            if self.interface_endpoints_subnet.has_ses_endpoint:
+                rules.append(
+                    ec2.SecurityGroupRule(
+                        DestinationSecurityGroupId=Ref(
+                            self.interface_endpoints_subnet.ses_security_group
+                        ),
+                        Description="Allows traffic to the SES VPC endpoint "
+                        "security group",
+                        FromPort="587",
+                        ToPort="587",
+                        IpProtocol="tcp",
+                    )
+                )
+        if self.s3_gateway_endpoint:
+            rules.append(
+                ec2.SecurityGroupRule(
+                    Description="Allows traffic to S3 VPC endpoint",
+                    DestinationPrefixListId="pl-6da54004",
+                    FromPort="443",
+                    ToPort="443",
+                    IpProtocol="tcp",
+                )
+            )
+        return rules
+
+    def resources(self, stack: Stack) -> list[AWSObject]:
+        """Return VPC Construct resources."""
+        res = [
+            self.internet_gateway,
+            self.internet_gateway_attachment,
+            self.public_subnets_route_table,
+            self.public_route_to_internet,
+            *self.private_subnets.values(),
+            *self.public_subnets.values(),
+            *self.nat_eips.values(),
+            *self.nat_gateways.values(),
+            *self.private_subnet_route_tables.values(),
+            *self.private_routes_to_internet.values(),
+            *self.private_route_table_assocs.values(),
+            *self.public_route_table_assocs.values(),
+            self.vpc,
+        ]
+        if self.interface_endpoints_subnet:
+            res.append(self.interface_endpoints_subnet)
+        if self.s3_gateway_endpoint:
+            res.append(self.s3_gateway_endpoint)
+        return res

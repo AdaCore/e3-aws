@@ -1,6 +1,6 @@
 # Version 22.4.0 (2024-??-??) *NOT RELEASED YET*
 
-* Nothing
+* Add VPCv2 construct supporting private subnets over multiple AZ.
 
 # Version 22.3.0 (2024-24-01)
 
