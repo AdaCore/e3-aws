@@ -718,10 +718,21 @@ class VPCv2(Construct):
         self.public_subnet_ip_networks = {
             az: next(self.subnet_ip_networks) for az in availability_zones
         }
+
+        # Handle S3 interface endpoint from this construct instead of from the
+        # VPCEndpointsSubnet construct as it requires a cross configuration with
+        # the S3 gateway endpoint
+        self.s3_interface_endpoint_config = None
+        if interface_endpoints is not None:
+            for idx, itf_endpoint in enumerate(interface_endpoints):
+                if itf_endpoint[0] == "s3":
+                    self.s3_interface_endpoint_config = interface_endpoints.pop(idx)
+                    break
+
         # Add a subnet for VPC endpoints if requested
         self.interface_endpoints_subnet = (
             None
-            if interface_endpoints is None
+            if interface_endpoints is None and self.s3_interface_endpoint_config is None
             else VPCEndpointsSubnet(
                 name=f"{self.name_prefix}Endpoints",
                 region=self.region,
@@ -923,6 +934,32 @@ class VPCv2(Construct):
         )
 
     @cached_property
+    def s3_interface_endpoint(self) -> ec2.VPCEndPoint | None:
+        """Return S3 VPC interface endpoint."""
+        if self.s3_interface_endpoint_config:
+            # If no specific policy is requested use the same policy
+            # as the S3 gateway endpoint policy.
+            if not (policy_document := self.s3_interface_endpoint_config[1]):
+                policy_document = self.s3_endpoint_policy_document
+            assert policy_document is not None
+            assert self.s3_gateway_endpoint is not None
+            assert self.interface_endpoints_subnet is not None
+            return ec2.VPCEndpoint(
+                name_to_id(f"{self.name_prefix}S3InterfaceEndpoint"),
+                PolicyDocument=policy_document.as_dict,
+                PrivateDnsEnabled="true",
+                SecurityGroupIds=[Ref(self.interface_endpoints_subnet.security_group)],
+                ServiceName=f"com.amazonaws.{self.region}.s3",
+                SubnetIds=[Ref(self.interface_endpoints_subnet.subnet)],
+                VpcEndpointType="Interface",
+                VpcId=Ref(self.vpc),
+                # S3 interface endpoint requires the Gateway endpoint
+                # to be created first
+                DependsOn=self.s3_gateway_endpoint.title,
+            )
+        return None
+
+    @cached_property
     def egress_to_vpc_endpoints(self) -> list[ec2.SecurityGroupRule]:
         """Return egress rules allowing traffic to VPC endpoints.
 
@@ -989,4 +1026,6 @@ class VPCv2(Construct):
             res.append(self.interface_endpoints_subnet)
         if self.s3_gateway_endpoint:
             res.append(self.s3_gateway_endpoint)
+        if self.s3_interface_endpoint:
+            res.append(self.s3_interface_endpoint)
         return res

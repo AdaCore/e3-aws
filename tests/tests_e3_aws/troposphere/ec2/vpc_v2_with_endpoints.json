@@ -406,5 +406,47 @@
             }
         },
         "Type": "AWS::EC2::VPCEndpoint"
+    },
+    "TestVPCS3InterfaceEndpoint": {
+        "Properties": {
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": "*",
+                        "Action": [
+                            "s3:PutObject",
+                            "s3:GetObject"
+                        ],
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Principal": "*",
+                        "Action": "s3:ListBucket",
+                        "Resource": "*"
+                    }
+                ]
+            },
+            "PrivateDnsEnabled": true,
+            "SecurityGroupIds": [
+                {
+                    "Ref": "TestVPCEndpointsSecurityGroup"
+                }
+            ],
+            "ServiceName": "com.amazonaws.eu-west-1.s3",
+            "SubnetIds": [
+                {
+                    "Ref": "TestVPCEndpointsSubnet"
+                }
+            ],
+            "VpcEndpointType": "Interface",
+            "VpcId": {
+                "Ref": "TestVPCVPC"
+            }
+        },
+        "Type": "AWS::EC2::VPCEndpoint",
+        "DependsOn": "TestVPCS3Endpoint"
     }
 }

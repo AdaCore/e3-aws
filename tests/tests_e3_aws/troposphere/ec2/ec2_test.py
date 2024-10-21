@@ -196,6 +196,7 @@ def test_vpc_v2_with_endpoints(stack: Stack) -> None:
         interface_endpoints=[
             ("email-smtp", None),
             ("logs", cloudwatch_endpoint_pd),
+            ("s3", None),
         ],
         s3_endpoint_policy_document=s3_endpoint_pd,
     )
