@@ -911,8 +911,8 @@ class VPCv2(Construct):
                 PolicyDocument=self.s3_endpoint_policy_document.as_dict,
                 # Attach the endpoints to all private subnets
                 RouteTableIds=[
-                    Ref(private_subnet)
-                    for private_subnet in self.private_subnets.values()
+                    Ref(private_subnet_rt)
+                    for private_subnet_rt in self.private_subnet_route_tables.values()
                 ],
                 ServiceName=f"com.amazonaws.{self.region}.s3",
                 VpcEndpointType="Gateway",

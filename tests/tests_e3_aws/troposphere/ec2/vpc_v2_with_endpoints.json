@@ -393,10 +393,10 @@
             },
             "RouteTableIds": [
                 {
-                    "Ref": "TestVPCPrivateSubnetA"
+                    "Ref": "TestVPCPrivateRouteTableA"
                 },
                 {
-                    "Ref": "TestVPCPrivateSubnetB"
+                    "Ref": "TestVPCPrivateRouteTableB"
                 }
             ],
             "ServiceName": "com.amazonaws.eu-west-1.s3",
