@@ -111,6 +111,58 @@ EXPECTED_SQS_SUBSCRIPTION_WITH_FILTER_TEMPLATE = {
     },
 }
 
+EXPECTED_MULTI_SQS_SUBSCRIPTION = {
+    "Myqueue": {
+        "Properties": {"QueueName": "myqueue", "VisibilityTimeout": 30},
+        "Type": "AWS::SQS::Queue",
+    },
+    "MyqueuePolicy": {
+        "Properties": {
+            "PolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sqs:SendMessage",
+                        "Condition": {"ArnLike": {"aws:SourceArn": "some_topic_arn1"}},
+                        "Effect": "Allow",
+                        "Principal": {"Service": "sns.amazonaws.com"},
+                        "Resource": {"Fn::GetAtt": ["Myqueue", "Arn"]},
+                        "Sid": "SNS1SomeApplicantWriteAccess",
+                    },
+                    {
+                        "Action": "sqs:SendMessage",
+                        "Condition": {"ArnLike": {"aws:SourceArn": "some_topic_arn2"}},
+                        "Effect": "Allow",
+                        "Principal": {"Service": "sns.amazonaws.com"},
+                        "Resource": {"Fn::GetAtt": ["Myqueue", "Arn"]},
+                        "Sid": "SNS2SomeApplicantWriteAccess",
+                    },
+                ],
+                "Version": "2012-10-17",
+            },
+            "Queues": [{"Ref": "Myqueue"}],
+        },
+        "Type": "AWS::SQS::QueuePolicy",
+    },
+    "SNS1myqueueSub": {
+        "Properties": {
+            "Endpoint": {"Fn::GetAtt": ["Myqueue", "Arn"]},
+            "Protocol": "sqs",
+            "RawMessageDelivery": True,
+            "TopicArn": "some_topic_arn1",
+        },
+        "Type": "AWS::SNS::Subscription",
+    },
+    "SNS2myqueueSub": {
+        "Properties": {
+            "Endpoint": {"Fn::GetAtt": ["Myqueue", "Arn"]},
+            "Protocol": "sqs",
+            "RawMessageDelivery": True,
+            "TopicArn": "some_topic_arn2",
+        },
+        "Type": "AWS::SNS::Subscription",
+    },
+}
+
 
 def test_queue_default(stack: Stack) -> None:
     """Test Queue default creation."""
@@ -163,3 +215,42 @@ def test_subscribe_to_sns_topic_with_policy_filter(stack: Stack) -> None:
     stack.add(queue)
 
     assert stack.export()["Resources"] == EXPECTED_SQS_SUBSCRIPTION_WITH_FILTER_TEMPLATE
+
+
+def test_multi_subscription_to_sns_topic(stack: Stack) -> None:
+    """The sqs subscription to multiple sns Topic."""
+    queue = Queue(name="myqueue")
+    queue.subscribe_to_sns_topic(
+        topic_arn="some_topic_arn1",
+        applicant="SomeApplicant",
+        prefix="SNS1",
+    )
+
+    queue.subscribe_to_sns_topic(
+        topic_arn="some_topic_arn2",
+        applicant="SomeApplicant",
+        prefix="SNS2",
+    )
+
+    stack.add(queue)
+
+    assert stack.export()["Resources"] == EXPECTED_MULTI_SQS_SUBSCRIPTION
+
+
+def test_multi_subscription_to_sns_topic_without_prefix(stack: Stack) -> None:
+    """The sqs subscription to multiple sns Topic without prefix should fail."""
+    queue = Queue(name="myqueue")
+    queue.subscribe_to_sns_topic(
+        topic_arn="some_topic_arn",
+        applicant="SomeApplicant",
+    )
+
+    queue.subscribe_to_sns_topic(
+        topic_arn="some_topic_arn",
+        applicant="SomeApplicant",
+    )
+
+    with pytest.raises(Exception) as ex:
+        stack.add(queue)
+
+    assert str(ex.value) == "Unique Sid is required for QueuePolicy statements"
