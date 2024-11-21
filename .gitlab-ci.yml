@@ -138,7 +138,7 @@ run linux tests:
 
 .windows-image:
   services:
-    - image:e3-windows-core-2022
+    - image:e3-windows-2022
     - platform:x86_64-windows-2022
     - cpu:2
     - mem:4
