@@ -219,6 +219,8 @@ run windows tests:
 upload-python-registry:
   extends: .linux-image
   stage: upload
+  services:
+    - image:e3
   before_script:
     - !reference [.linux-image, before_script]
     - python -m pip install twine
