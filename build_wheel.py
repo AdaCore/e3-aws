@@ -97,7 +97,7 @@ def main() -> None:
     )
     if not match:
         logger.error(
-            "Expected v<major>.<minor>.<path>(-<commits>)? "
+            "Expected v<major>.<minor>.<patch>(-<commits>)? "
             f"format for tag {tagged_version}"
         )
         sys.exit(1)
@@ -112,14 +112,17 @@ def main() -> None:
         )
     )
 
-    # Tag the commit with <major>.<minor>.0 in case of version change.
-    # Don't tag if there's already a tag (tagged_version_commits is None)
-    if (
-        main.args.update
-        and tagged_version_commits is not None
-        and version != tagged_version
-    ):
-        run(["git", "tag", f"v{version}.0"])
+    # Set patch version to 0 and tag the commit with <major>.<minor>.0 in case of
+    # version change. If tagged_version_commits is None then the current commit
+    # is already tagged and the patch version must be set to 0 too
+    if tagged_version_commits is None or version != tagged_version:
+        version_patch = 0
+
+        # Don't recreate the tag if tagged_version_commits is None
+        if tagged_version_commits is not None and main.args.update:
+            tag = f"v{version}.0"
+            run(["git", "tag", tag])
+            run(["git", "push", "origin", tag])
 
     # Replace dev1 in the version file.
     logger.info(f"Set version to {version}.{version_patch}")
