@@ -47,6 +47,7 @@ class Function(Construct):
         reserved_concurrent_executions: int | None = None,
         environment: dict[str, str] | None = None,
         logging_config: awslambda.LoggingConfig | None = None,
+        dl_config: awslambda.DeadLetterConfig | None = None,
     ):
         """Initialize an AWS lambda function.
 
@@ -73,6 +74,8 @@ class Function(Construct):
         :param environment: Environment variables that are accessible from function
             code during execution
         :param logging_config: The function's Amazon CloudWatch Logs settings
+        :param dl_config: The dead letter config that specifies the topic or queue where
+            lambda sends asynchronous events when they fail processing
         """
         self.name = name
         self.description = description
@@ -90,6 +93,7 @@ class Function(Construct):
         self.reserved_concurrent_executions = reserved_concurrent_executions
         self.environment = environment
         self.logging_config = logging_config
+        self.dl_config = dl_config
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         statements = [
@@ -202,6 +206,9 @@ class Function(Construct):
         if self.logging_config is not None:
             params["LoggingConfig"] = self.logging_config
 
+        if self.dl_config is not None:
+            params["DeadLetterConfig"] = self.dl_config
+
         result = [awslambda.Function(name_to_id(self.name), **params)]
         # If retention duration is given provide a log group.
         # If not provided the lambda creates a log group with
@@ -285,6 +292,7 @@ class DockerFunction(Function):
         timeout: int = 3,
         memory_size: int | None = None,
         logging_config: awslambda.LoggingConfig | None = None,
+        dl_config: awslambda.DeadLetterConfig | None = None,
     ):
         """Initialize an AWS lambda function using a Docker image.
 
@@ -298,6 +306,8 @@ class DockerFunction(Function):
         :param memory_size: the amount of memory available to the function at
             runtime. The value can be any multiple of 1 MB.
         :param logging_config: The function's Amazon CloudWatch Logs settings
+        :param dl_config: The dead letter config that specifies the topic or queue where
+            lambda sends asynchronous events when they fail processing
         """
         super().__init__(
             name=name,
@@ -306,6 +316,7 @@ class DockerFunction(Function):
             timeout=timeout,
             memory_size=memory_size,
             logging_config=logging_config,
+            dl_config=dl_config,
         )
         self.source_dir: str = source_dir
         self.repository_name: str = repository_name
@@ -364,6 +375,7 @@ class PyFunction(Function):
         reserved_concurrent_executions: int | None = None,
         environment: dict[str, str] | None = None,
         logging_config: awslambda.LoggingConfig | None = None,
+        dl_config: awslambda.DeadLetterConfig | None = None,
     ):
         """Initialize an AWS lambda function with a Python runtime.
 
@@ -390,6 +402,8 @@ class PyFunction(Function):
         :param environment: Environment variables that are accessible from function
             code during execution
         :param logging_config: The function's Amazon CloudWatch Logs settings
+        :param dl_config: The dead letter config that specifies the topic or queue where
+            lambda sends asynchronous events when they fail processing
         """
         assert runtime.startswith("python"), "PyFunction only accept Python runtimes"
         super().__init__(
@@ -408,6 +422,7 @@ class PyFunction(Function):
             reserved_concurrent_executions=reserved_concurrent_executions,
             environment=environment,
             logging_config=logging_config,
+            dl_config=dl_config,
         )
         self.code_dir = code_dir
         self.requirement_file = requirement_file
@@ -491,6 +506,7 @@ class Py38Function(PyFunction):
         logs_retention_in_days: int | None = None,
         reserved_concurrent_executions: int | None = None,
         logging_config: awslambda.LoggingConfig | None = None,
+        dl_config: awslambda.DeadLetterConfig | None = None,
     ):
         """Initialize an AWS lambda function using Python 3.8 runtime.
 
@@ -511,6 +527,7 @@ class Py38Function(PyFunction):
             logs_retention_in_days=logs_retention_in_days,
             reserved_concurrent_executions=reserved_concurrent_executions,
             logging_config=logging_config,
+            dl_config=dl_config,
         )
 
 
