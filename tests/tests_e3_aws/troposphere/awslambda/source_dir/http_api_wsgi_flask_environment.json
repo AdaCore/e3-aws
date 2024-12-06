@@ -4,8 +4,8 @@
     "REMOTE_ADDR": "1.2.3.4",
     "REQUEST_METHOD": "GET",
     "SCRIPT_NAME": "",
-    "HTTP_HOST": "abcd12345.execute-api.us-east-2.amazonaws.com",
-    "SERVER_NAME": "abcd12345.execute-api.us-east-2.amazonaws.com",
+    "HTTP_HOST": "abcdefg123456.example.com",
+    "SERVER_NAME": "abcdefg123456.example.com",
     "SERVER_PORT": "443",
     "SERVER_PROTOCOL": "HTTP/1.1",
     "wsgi.version": [
