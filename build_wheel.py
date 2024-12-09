@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """Build the wheel.
 
-Patch version in the version of the package is automatically replaced by
-the number of commits since the last tagged version.
+The number of commits since the last tagged version is automatically
+added to the version of the package as the patch version.
 
-For that, a tag v<major>.<minor>.0 must be manually added when a major or
-minor version change occurs.
+For that, a tag v<major>.<minor>.0 must be manually added after the
+merge when a major or minor version change occurs.
 """
 from __future__ import annotations
 import sys
@@ -65,11 +65,12 @@ def main() -> None:
     with open(version_path) as f:
         version_content = f.read()
 
-    # Extract the <major>.<minor>.<patch> part.
+    # Extract the <major>.<minor>(.<patch>)? part.
     # We will replace the patch version by the number of commits since the most
     # recent tagged version
     match = re.search(
-        r"(?P<major>\d+)\.(?P<minor>\d+)(\.(?P<patch>\w+))?", version_content
+        r"(?P<version>(?P<major>\d+)\.(?P<minor>\d+)(\.\w+)?)",
+        version_content,
     )
     if not match:
         logger.error(
@@ -79,8 +80,7 @@ def main() -> None:
 
     version_major = match.group("major")
     version_minor = match.group("minor")
-    version_patch = match.group("patch")
-    version = f"{version_major}.{version_minor}.{version_patch}"
+    version = match.group("version")
     logger.info(f"Version is {version}")
 
     # Find previous version from the most recent tag
