@@ -118,15 +118,11 @@ def main() -> None:
         tagged_version_patch,
     ):
         logger.error(
-            (
-                "Found tag v{major}.{minor}.{patch} but was expecting "
-                "v{major}.{minor}.0. Please manually create the tag if not done yet "
-                "or make sure this is the most recent tag"
-            ).format(
-                major=tagged_version_major,
-                minor=tagged_version_minor,
-                patch=tagged_version_patch,
-            )
+            "Found tag "
+            f"v{tagged_version_major}.{tagged_version_minor}.{tagged_version_patch} "
+            f"but was expecting v{version_major}.{version_minor}.0. "
+            "Please manually create the tag if not done yet or make sure this "
+            "is the most recent tag"
         )
         sys.exit(1)
 
