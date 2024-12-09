@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """Build the wheel.
 
-dev1 in the version of the package is automatically replaced by the number
-of commits since the last tagged version.
+Patch version in the version of the package is automatically replaced by
+the number of commits since the last tagged version.
 
-A tag v<major>.<minor>.0 is automatically added to the commit if the major
-or minor version changes.
+For that, a tag v<major>.<minor>.0 must be manually added when a major or
+minor version change occurs.
 """
 from __future__ import annotations
 import sys
@@ -46,11 +46,6 @@ def main() -> None:
     parser = main.argument_parser
     parser.description = "Build the wheel"
     parser.add_argument(
-        "--update",
-        action="store_true",
-        help="Tag the commit in case of version change",
-    )
-    parser.add_argument(
         "--last-tag",
         help="Provide the last tagged version",
     )
@@ -70,64 +65,83 @@ def main() -> None:
     with open(version_path) as f:
         version_content = f.read()
 
-    # Extract the <major>.<minor> part.
-    # We will replace the dev1 part by the number of commits since the most
+    # Extract the <major>.<minor>.<patch> part.
+    # We will replace the patch version by the number of commits since the most
     # recent tagged version
-    match = re.match(r"(?P<version>\d+\.\d+)\.dev1", version_content)
+    match = re.search(
+        r"(?P<major>\d+)\.(?P<minor>\d+)(\.(?P<patch>\w+))?", version_content
+    )
     if not match:
-        logger.error(f"No <major>.<minor>.dev1 version found in {version_path.name}")
+        logger.error(
+            f"No <major>.<minor>(.<patch>)? version found in {version_path.name}"
+        )
         sys.exit(1)
 
-    logger.info("Version is {}.dev1".format(version := match.group("version")))
+    version_major = match.group("major")
+    version_minor = match.group("minor")
+    version_patch = match.group("patch")
+    version = f"{version_major}.{version_minor}.{version_patch}"
+    logger.info(f"Version is {version}")
 
     # Find previous version from the most recent tag
-    tagged_version = main.args.last_tag
-    if not tagged_version:
+    last_tag = main.args.last_tag
+    if not last_tag:
         # Need to unshallow the clone so we get the list of tags.
         # That command can fail for an already complete clone
         run(["git", "fetch", "--unshallow", "--tags"], fail_ok=True)
         # Describe the most recent tag
         p = run(["git", "describe", "--tags"])
-        tagged_version = p.out
+        last_tag = p.out.strip()
 
     # Format is v<major>.<minor>.<patch>(-<commits>)? with commits omitted if
     # the current commit is also the one tagged
     match = re.match(
-        r"v(?P<version>\d+\.\d+)\.\d+(\-(?P<commits>\d+))?", tagged_version
+        r"v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\w+)(\-(?P<commits>\d+))?",
+        last_tag,
     )
     if not match:
         logger.error(
-            "Expected v<major>.<minor>.<patch>(-<commits>)? "
-            f"format for tag {tagged_version}"
+            f"Expected v<major>.<minor>.<patch>(-<commits>)? format for tag {last_tag}"
         )
         sys.exit(1)
 
-    # tagged_version_commits is None only if the current commit is also the one tagged
-    # so there is 0 commits since that tag
-    tagged_version_commits = match.group("commits")
-    version_patch = tagged_version_commits if tagged_version_commits is not None else 0
-    logger.info(
-        "Tagged version {} commit(s) ago is {}".format(
-            version_patch, tagged_version := match.group("version")
+    # Ensure the major and minor versions match.
+    # Also ensure the patch version is 0 because multiple tags for the same
+    # <major>.<minor> would mess up with the versioning system and then only
+    # <major>.<minor>.0 should exist
+    tagged_version_major = match.group("major")
+    tagged_version_minor = match.group("minor")
+    tagged_version_patch = match.group("patch")
+    if (version_major, version_minor, "0") != (
+        tagged_version_major,
+        tagged_version_minor,
+        tagged_version_patch,
+    ):
+        logger.error(
+            (
+                "Found tag v{major}.{minor}.{patch} but was expecting "
+                "v{major}.{minor}.0. Please manually create the tag if not done yet "
+                "or make sure this is the most recent tag"
+            ).format(
+                major=tagged_version_major,
+                minor=tagged_version_minor,
+                patch=tagged_version_patch,
+            )
         )
+        sys.exit(1)
+
+    # match.group("commits") is None only if the current commit is also
+    # the one tagged so there is 0 commits since that tag
+    new_version = "{}.{}.{}".format(
+        version_major,
+        version_minor,
+        match.group("commits") or "0",
     )
 
-    # Set patch version to 0 and tag the commit with <major>.<minor>.0 in case of
-    # version change. If tagged_version_commits is None then the current commit
-    # is already tagged and the patch version must be set to 0 too
-    if tagged_version_commits is None or version != tagged_version:
-        version_patch = 0
-
-        # Don't recreate the tag if tagged_version_commits is None
-        if tagged_version_commits is not None and main.args.update:
-            tag = f"v{version}.0"
-            run(["git", "tag", tag])
-            run(["git", "push", "origin", tag])
-
-    # Replace dev1 in the version file.
-    logger.info(f"Set version to {version}.{version_patch}")
+    # Replace the version in the file
+    logger.info(f"Set version to {new_version}")
     with open(version_path, "w") as f:
-        f.write(version_content.replace("dev1", str(version_patch)))
+        f.write(version_content.replace(version, new_version))
 
     try:
         # Build the wheel
