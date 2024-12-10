@@ -15,6 +15,7 @@ from troposphere.awslambda import (
     AliasRoutingConfiguration,
     VersionWeight,
     LoggingConfig,
+    DeadLetterConfig,
 )
 
 from e3.aws import AWSEnv
@@ -32,6 +33,8 @@ from e3.aws.troposphere.awslambda import (
 from e3.aws.troposphere.awslambda.flask_apigateway_wrapper import FlaskLambdaHandler
 
 from e3.pytest import require_tool
+
+from e3.aws.troposphere.sqs import Queue
 
 if TYPE_CHECKING:
     from typing import Iterable, Callable
@@ -130,6 +133,52 @@ EXPECTED_PYFUNCTION_TEMPLATE = {
     },
 }
 
+EXPECTED_PYFUNCTION_WITH_DLQ_TEMPLATE = {
+    "Mypylambda": {
+        "Properties": {
+            "Code": {
+                "S3Bucket": "cfn_bucket",
+                "S3Key": "templates/mypylambda_lambda.zip",
+            },
+            "DeadLetterConfig": {
+                "TargetArn": {"Fn::GetAtt": ["PyFunctionDLQ", "Arn"]},
+            },
+            "Description": "this is a test with dlconfig",
+            "FunctionName": "mypylambda",
+            "Handler": "app.main",
+            "Role": "somearn",
+            "Runtime": "python3.12",
+            "Timeout": 3,
+            "MemorySize": 128,
+            "EphemeralStorage": {"Size": 1024},
+            "ReservedConcurrentExecutions": 1,
+            "Environment": {
+                "Variables": {"env_key_1": "env_value_1", "env_key_2": "env_value2"}
+            },
+            "LoggingConfig": {
+                "ApplicationLogLevel": "INFO",
+                "LogFormat": "JSON",
+                "SystemLogLevel": "WARN",
+            },
+        },
+        "Type": "AWS::Lambda::Function",
+    },
+    "MypylambdaLogGroup": {
+        "DeletionPolicy": "Retain",
+        "Properties": {
+            "LogGroupName": "/aws/lambda/mypylambda",
+            "RetentionInDays": 7,
+        },
+        "Type": "AWS::Logs::LogGroup",
+    },
+    "PyFunctionDLQ": {
+        "Properties": {
+            "QueueName": "PyFunctionDLQ",
+            "VisibilityTimeout": 30,
+        },
+        "Type": "AWS::SQS::Queue",
+    },
+}
 
 EXPECTED_PYFUNCTION_POLICY_DOCUMENT = {
     "Statement": [
@@ -413,6 +462,36 @@ def test_pyfunction(stack: Stack) -> None:
     )
     print(stack.export()["Resources"])
     assert stack.export()["Resources"] == EXPECTED_PYFUNCTION_TEMPLATE
+
+
+def test_pyfunction_with_dlconfig(stack: Stack) -> None:
+    stack.s3_bucket = "cfn_bucket"
+    stack.s3_key = "templates/"
+    dlq = Queue(name="PyFunctionDLQ")
+    stack.add(dlq)
+    stack.add(
+        PyFunction(
+            name="mypylambda",
+            description="this is a test with dlconfig",
+            role="somearn",
+            runtime="python3.12",
+            code_dir="my_code_dir",
+            handler="app.main",
+            memory_size=128,
+            ephemeral_storage_size=1024,
+            logs_retention_in_days=7,
+            reserved_concurrent_executions=1,
+            environment={"env_key_1": "env_value_1", "env_key_2": "env_value2"},
+            logging_config=LoggingConfig(
+                ApplicationLogLevel="INFO",
+                LogFormat="JSON",
+                SystemLogLevel="WARN",
+            ),
+            dl_config=DeadLetterConfig(TargetArn=dlq.arn),
+        )
+    )
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == EXPECTED_PYFUNCTION_WITH_DLQ_TEMPLATE
 
 
 def test_pyfunction_with_requirements(tmp_path: Path, stack: Stack) -> None:
