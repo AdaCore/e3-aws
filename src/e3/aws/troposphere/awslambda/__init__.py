@@ -347,7 +347,8 @@ class DockerFunction(Function):
 class PyFunction(Function):
     """Lambda with a Python runtime."""
 
-    AMAZON_LINUX_2_RUNTIMES = ("3.8", "3.9", "3.10", "3.11")
+    AMAZON_LINUX_2_RUNTIMES = ("3.9", "3.10", "3.11")
+    AMAZON_LINUX_2023_RUNTIMES = ("3.12", "3.13")
     RUNTIME_CONFIGS = {
         f"python{version}": {
             "implementation": "cp",
@@ -357,6 +358,16 @@ class PyFunction(Function):
         }
         for version in AMAZON_LINUX_2_RUNTIMES
     }
+    RUNTIME_CONFIGS.update(
+        {
+            f"python{version}": {
+                "implementation": "cp",
+                # Amazon Linux 2023 glibc version is 2.34
+                "platforms": ("manylinux_2_34_x86_64",),
+            }
+            for version in AMAZON_LINUX_2023_RUNTIMES
+        }
+    )
 
     def __init__(
         self,
