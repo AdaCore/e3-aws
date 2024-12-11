@@ -494,7 +494,19 @@ def test_pyfunction_with_dlconfig(stack: Stack) -> None:
     assert stack.export()["Resources"] == EXPECTED_PYFUNCTION_WITH_DLQ_TEMPLATE
 
 
-def test_pyfunction_with_requirements(tmp_path: Path, stack: Stack) -> None:
+@pytest.mark.parametrize(
+    "python_version, platform_list",
+    [
+        ("3.9", ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
+        ("3.10", ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
+        ("3.11", ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
+        ("3.12", ["manylinux_2_34_x86_64"]),
+        ("3.13", ["manylinux_2_34_x86_64"]),
+    ],
+)
+def test_pyfunction_with_requirements(
+    python_version: str, platform_list: list[str], tmp_path: Path, stack: Stack
+) -> None:
     """Test PyFunction creation."""
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
@@ -506,7 +518,7 @@ def test_pyfunction_with_requirements(tmp_path: Path, stack: Stack) -> None:
             name="mypylambda",
             description="this is a test",
             role="somearn",
-            runtime="python3.11",
+            runtime=f"python{python_version}",
             code_dir=str(code_dir),
             handler="app.main",
             requirement_file="requirements.txt",
@@ -518,9 +530,8 @@ def test_pyfunction_with_requirements(tmp_path: Path, stack: Stack) -> None:
             "-m",
             "pip",
             "install",
-            "--python-version=3.11",
-            "--platform=manylinux_2_17_x86_64",
-            "--platform=manylinux_2_24_x86_64",
+            f"--python-version={python_version}",
+            *(f"--platform={platform}" for platform in platform_list),
             "--implementation=cp",
             "--only-binary=:all:",
             "--target=dummy/Mypylambda/package",
