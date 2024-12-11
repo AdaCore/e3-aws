@@ -30,7 +30,7 @@ def run(cmd: list[str], fail_ok: bool | None = None) -> Run:
     :return: the Run instance
     """
     logger.info(f"$ {' '.join(cmd)}")
-    p = Run(cmd, cwd=ROOT_DIR)
+    p = Run(cmd, cwd=str(ROOT_DIR))
     if p.status != 0 and not fail_ok:
         logger.error(p.out)
         sys.exit(1)
@@ -91,7 +91,9 @@ def main() -> None:
         run(["git", "fetch", "--unshallow", "--tags"], fail_ok=True)
         # Describe the most recent tag
         p = run(["git", "describe", "--tags"])
-        last_tag = p.out.strip()
+        output = p.out
+        assert output is not None
+        last_tag = output.strip()
 
     # Format is v<major>.<minor>.<patch>(-<commits>)? with commits omitted if
     # the current commit is also the one tagged
