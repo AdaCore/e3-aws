@@ -500,8 +500,24 @@ def test_pyfunction_with_dlconfig(stack: Stack) -> None:
         ("3.9", ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
         ("3.10", ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
         ("3.11", ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
-        ("3.12", ["manylinux_2_34_x86_64"]),
-        ("3.13", ["manylinux_2_34_x86_64"]),
+        (
+            "3.12",
+            [
+                "manylinux_2_17_x86_64",
+                "manylinux_2_24_x86_64",
+                "manylinux_2_28_x86_64",
+                "manylinux_2_34_x86_64",
+            ],
+        ),
+        (
+            "3.13",
+            [
+                "manylinux_2_17_x86_64",
+                "manylinux_2_24_x86_64",
+                "manylinux_2_28_x86_64",
+                "manylinux_2_34_x86_64",
+            ],
+        ),
     ],
 )
 def test_pyfunction_with_requirements(
