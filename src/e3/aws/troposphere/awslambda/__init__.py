@@ -363,7 +363,12 @@ class PyFunction(Function):
             f"python{version}": {
                 "implementation": "cp",
                 # Amazon Linux 2023 glibc version is 2.34
-                "platforms": ("manylinux_2_34_x86_64",),
+                "platforms": (
+                    "manylinux_2_17_x86_64",
+                    "manylinux_2_24_x86_64",
+                    "manylinux_2_28_x86_64",
+                    "manylinux_2_34_x86_64",
+                ),
             }
             for version in AMAZON_LINUX_2023_RUNTIMES
         }
