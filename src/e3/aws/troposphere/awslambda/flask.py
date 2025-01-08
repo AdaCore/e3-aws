@@ -35,7 +35,7 @@ import os
 from troposphere import GetAtt
 from troposphere.awslambda import LoggingConfig
 from e3.aws.troposphere.iam.role import Role
-from e3.fs import cp, sync_tree
+from e3.fs import cp
 from . import PyFunction
 
 
@@ -124,7 +124,6 @@ class PyFlaskFunction(PyFunction):
             "flask_apigateway_wrapper.py",
         )
         cp(wrapper_file, package_dir)
-        sync_tree(package_dir, "/tmp/nico/package")
 
 
 class Py38FlaskFunction(PyFlaskFunction):
