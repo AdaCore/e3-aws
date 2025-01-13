@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Stack deploying an instance
+Resources:
+  MySimpleInstance:
+    Properties:
+      BlockDeviceMappings:
+      - DeviceName: /dev/sda1
+        Ebs:
+          VolumeSize: '20'
+          VolumeType: gp3
+      IamInstanceProfile:
+        Ref: MySimpleInstanceInstanceProfile
+      ImageId: MYAMi-1234
+      InstanceType: t4g.small
+      PropagateTagsToVolumeOnCreation: true
+      SecurityGroupIds:
+      - Fn::GetAtt:
+        - MySimpleInstanceSG
+        - GroupId
+      SubnetId:
+        Ref: MySimpleStackPrivateSubnetA
+      Tags:
+      - Key: Name
+        Value: MySimpleInstance
+    Type: AWS::EC2::Instance
+  MySimpleInstanceInstanceProfile:
+    DependsOn: MySimpleInstanceInstanceRole
+    Properties:
+      InstanceProfileName: MySimpleInstanceInstanceProfile
+      Path: /my-simple-stack/
+      Roles:
+      - MySimpleInstanceInstanceRole
+    Type: AWS::IAM::InstanceProfile
+  MySimpleInstanceInstanceRole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action: sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - ec2.amazonaws.com
+        Version: '2012-10-17'
+      Description: Simple instance instance role
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      - arn:aws:iam::aws:policy/AmazonSSMPatchAssociation
+      Path: /my-simple-stack/
+      RoleName: MySimpleInstanceInstanceRole
+      Tags:
+      - Key: Name
+        Value: MySimpleInstanceInstanceRole
+    Type: AWS::IAM::Role
+  MySimpleInstanceSG:
+    Properties:
+      GroupDescription: Security group for MySimpleInstance instance
+      GroupName: MySimpleInstanceSG
+      SecurityGroupEgress:
+      - CidrIp: 0.0.0.0/0
+        IpProtocol: '-1'
+      - CidrIpv6: ::/0
+        IpProtocol: '-1'
+      SecurityGroupIngress: []
+      VpcId:
+        Ref: MySimpleStackVPC
+    Type: AWS::EC2::SecurityGroup
+  MySimpleStackEIPA:
+    Type: AWS::EC2::EIP
+  MySimpleStackInternetGW:
+    Type: AWS::EC2::InternetGateway
+  MySimpleStackInternetGWAttachment:
+    Properties:
+      InternetGatewayId:
+        Ref: MySimpleStackInternetGW
+      VpcId:
+        Ref: MySimpleStackVPC
+    Type: AWS::EC2::VPCGatewayAttachment
+  MySimpleStackNatGatewayA:
+    Properties:
+      AllocationId:
+        Fn::GetAtt:
+        - MySimpleStackEIPA
+        - AllocationId
+      SubnetId:
+        Ref: MySimpleStackPublicSubnetA
+    Type: AWS::EC2::NatGateway
+  MySimpleStackPrivateRouteAToInternet:
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId:
+        Ref: MySimpleStackNatGatewayA
+      RouteTableId:
+        Ref: MySimpleStackPrivateRouteTableA
+    Type: AWS::EC2::Route
+  MySimpleStackPrivateRouteTableA:
+    Properties:
+      VpcId:
+        Ref: MySimpleStackVPC
+    Type: AWS::EC2::RouteTable
+  MySimpleStackPrivateRouteTableAssocA:
+    Properties:
+      RouteTableId:
+        Ref: MySimpleStackPrivateRouteTableA
+      SubnetId:
+        Ref: MySimpleStackPrivateSubnetA
+    Type: AWS::EC2::SubnetRouteTableAssociation
+  MySimpleStackPrivateSubnetA:
+    Properties:
+      AvailabilityZone: eu-west-1a
+      CidrBlock: 10.50.0.0/19
+      Tags:
+      - Key: Name
+        Value: MySimpleStackPrivateSubnetA
+      VpcId:
+        Ref: MySimpleStackVPC
+    Type: AWS::EC2::Subnet
+  MySimpleStackPublicRouteTable:
+    Properties:
+      VpcId:
+        Ref: MySimpleStackVPC
+    Type: AWS::EC2::RouteTable
+  MySimpleStackPublicRouteTableAssocA:
+    Properties:
+      RouteTableId:
+        Ref: MySimpleStackPublicRouteTable
+      SubnetId:
+        Ref: MySimpleStackPublicSubnetA
+    Type: AWS::EC2::SubnetRouteTableAssociation
+  MySimpleStackPublicRouteToInternet:
+    Properties:
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:
+        Ref: MySimpleStackInternetGW
+      RouteTableId:
+        Ref: MySimpleStackPublicRouteTable
+    Type: AWS::EC2::Route
+  MySimpleStackPublicSubnetA:
+    Properties:
+      AvailabilityZone: eu-west-1a
+      CidrBlock: 10.50.32.0/19
+      Tags:
+      - Key: Name
+        Value: MySimpleStackPublicSubnetA
+      VpcId:
+        Ref: MySimpleStackVPC
+    Type: AWS::EC2::Subnet
+  MySimpleStackVPC:
+    Properties:
+      CidrBlock: 10.50.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+      - Key: Name
+        Value: MySimpleStackVPC
+    Type: AWS::EC2::VPC
