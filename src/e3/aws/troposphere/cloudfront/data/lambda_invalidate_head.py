@@ -1,5 +1,8 @@
 import boto3
-import time  # noqa: F401
+import os
+import time
+
+DISTRIBUTION_ID = os.environ["DISTRIBUTION_ID"]
 
 
 def handler(event, context):
@@ -10,3 +13,10 @@ def handler(event, context):
             path.append("/")
         else:
             path.append("/" + items["s3"]["object"]["key"])
+    client.create_invalidation(
+        DistributionId=DISTRIBUTION_ID,
+        InvalidationBatch={
+            "Paths": {"Quantity": 1, "Items": path},
+            "CallerReference": str(time.time()),
+        },
+    )

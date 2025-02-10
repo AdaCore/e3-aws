@@ -1,6 +1,7 @@
 # Version 22.4.0 (2024-??-??) *NOT RELEASED YET*
 
 * Add VPCv2 construct supporting private subnets over multiple AZ.
+* S3WebsiteDistribution can now define the python runtime for the lambda invalidating cloudfront cache.
 
 # Version 22.3.0 (2024-24-01)
 
