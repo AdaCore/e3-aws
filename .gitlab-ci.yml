@@ -118,7 +118,7 @@ linux python (always):
   extends: .test-linux
   needs: []
   rules:
-    - if: $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_MERGE_REQUEST_ID && $CI_PROJECT_NAME == "e3-core" && $ALWAYS_LINUX_TESTS == "y"
+    - if: $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_MERGE_REQUEST_ID && $CI_PROJECT_NAME == "e3-aws" && $ALWAYS_LINUX_TESTS == "y"
 
 # A manual job to run Linux tests even if "check" job has failed
 run linux tests:
