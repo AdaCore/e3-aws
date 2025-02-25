@@ -210,3 +210,16 @@ def test_bucket_with_roles_and_trust_policies_error(stack: Stack) -> None:
         str(exc.value) == "You cannot set 'trust_policy' and "
         "'trusted_accounts' at the same time , please use one or the other."
     )
+
+
+def test_bucket_with_default_lifecycle_rule(stack: Stack) -> None:
+    """Test bucket creation with default lifecycle rule."""
+    bucket = Bucket(name="test-bucket", add_multipart_lifecycle_rule=True)
+    stack.add(bucket)
+
+    with open(
+        os.path.join(TEST_DIR, "bucket-with-multipart-lifecycle-rule.json")
+    ) as fd:
+        expected_template = json.load(fd)
+
+    assert stack.export()["Resources"] == expected_template
