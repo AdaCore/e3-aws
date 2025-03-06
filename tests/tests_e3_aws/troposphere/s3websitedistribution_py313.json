@@ -287,7 +287,7 @@
                 }
             },
             "FunctionName": "TestS3wDistCacheInvalidationLambda",
-            "Runtime": "python3.9",
+            "Runtime": "python3.13",
             "Handler": "invalidate.handler"
         },
         "Type": "AWS::Lambda::Function"

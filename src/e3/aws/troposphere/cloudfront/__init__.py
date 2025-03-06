@@ -36,6 +36,7 @@ class S3WebsiteDistribution(Construct):
         bucket: Bucket | None = None,
         bucket_name: str | None = None,
         lambda_edge_function_arns: list[str] | None = None,
+        lambda_runtime: str = "python3.9",
         root_object: str = "index.html",
         r53_route_from: list[tuple[str, str]] | None = None,
         logging_bucket: str | None = None,
@@ -58,6 +59,8 @@ class S3WebsiteDistribution(Construct):
         :param bucket_name: name of the bucket to create to host the website
         :param lambda_edge_function_arns: ARNs of Lambda@Edge functions to
             associate with the cloudfront distribution default cache behaviour
+        :param lambda_runtime: the runtime of the lambda invalidation cache. It must be
+            a Python runtime
         :param root_object: The object that you want CloudFront to request from
             your origin
         :param r53_route_from: list of (hosted_zone_id, domain_id) for which to
@@ -83,6 +86,7 @@ class S3WebsiteDistribution(Construct):
         self.certificate_arn = certificate_arn
         self.default_ttl = default_ttl
         self.lambda_edge_function_arns = lambda_edge_function_arns
+        self.lambda_runtime = lambda_runtime
         self.root_object = root_object
         self.r53_route_from = r53_route_from
         self._origin_access_identity = None
@@ -257,21 +261,6 @@ class S3WebsiteDistribution(Construct):
         ) as lf:
             lambda_code = lf.read().splitlines()
 
-        # Complete it with the part depending on the distribution id
-        lambda_code.extend(
-            [
-                "    client.create_invalidation(",
-                Sub(
-                    "        DistributionId='${distribution_id}',",
-                    distribution_id=self.id,
-                ),
-                "        InvalidationBatch={",
-                "            'Paths': {'Quantity': 1, 'Items': path},",
-                "            'CallerReference': str(time.time()),",
-                "        },",
-                "    )",
-            ]
-        )
         lambda_function = Function(
             name_to_id(lambda_name),
             description=(
@@ -281,7 +270,8 @@ class S3WebsiteDistribution(Construct):
             handler="invalidate.handler",
             role=lambda_role,
             code_zipfile=Join("\n", lambda_code),
-            runtime="python3.9",
+            runtime=self.lambda_runtime,
+            environment={"DISTRIBUTION_ID": Sub("${id}", id=self.id)},
         )
 
         sns_topic = Topic(name=f"{self.name}-invalidation-topic")
