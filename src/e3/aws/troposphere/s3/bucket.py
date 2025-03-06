@@ -20,6 +20,17 @@ if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
     from typing import Any
 
+# A default lifecycle rule to abort and delete incomplete multipart upload
+# This rule is recommended by AWS Trusted advisor to avoid excess costs
+DEFAULT_LIFECYCLE_RULE = s3.LifecycleRule(
+    Id="AbortIncompleteMultipartUpload",
+    AbortIncompleteMultipartUpload=s3.AbortIncompleteMultipartUpload(
+        DaysAfterInitiation=7
+    ),
+    Prefix="",
+    Status="Enabled",
+)
+
 
 class EncryptionAlgorithm(Enum):
     """Provide an Enum to describe encryption algorithms."""
@@ -40,6 +51,7 @@ class Bucket(Construct):
             EncryptionAlgorithm | None
         ) = EncryptionAlgorithm.AES256,
         authorized_encryptions: list[EncryptionAlgorithm] | None = None,
+        add_multipart_lifecycle_rule: bool = False,
         **bucket_kwargs: Any,
     ):
         """Initialize a bucket.
@@ -51,11 +63,21 @@ class Bucket(Construct):
         :param default_bucket_encryption: type of the default bucket encryption.
         :param authorized_encryptions: types of the server side encryptions
             to authorize.
+        :param add_multipart_lifecycle_rule: add default rule is to abort multipart
+            uploads that remain incomplete after 7 days.
         :param bucket_kwargs: keyword arguments to pass to the bucket constructor
         """
         self.name = name
         self.enable_versioning = enable_versioning
         self.lifecycle_rules = lifecycle_rules
+
+        if add_multipart_lifecycle_rule:
+            self.lifecycle_rules = (
+                self.lifecycle_rules + [DEFAULT_LIFECYCLE_RULE]
+                if self.lifecycle_rules
+                else [DEFAULT_LIFECYCLE_RULE]
+            )
+
         self.default_bucket_encryption = default_bucket_encryption
         if authorized_encryptions is None:
             self.authorized_encryptions = [EncryptionAlgorithm.AES256]

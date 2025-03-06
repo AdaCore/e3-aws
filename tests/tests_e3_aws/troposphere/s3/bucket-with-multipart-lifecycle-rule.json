@@ -1,0 +1,65 @@
+{
+    "TestBucket": {
+        "DeletionPolicy": "Retain",
+        "Properties": {
+            "BucketName": "test-bucket",
+            "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                    {
+                        "ServerSideEncryptionByDefault": {
+                            "SSEAlgorithm": "AES256"
+                        }
+                    }
+                ]
+            },
+            "PublicAccessBlockConfiguration": {
+                "BlockPublicAcls": true,
+                "BlockPublicPolicy": true,
+                "IgnorePublicAcls": true,
+                "RestrictPublicBuckets": true
+            },
+            "LifecycleConfiguration": {
+                "Rules": [
+                    {
+                        "Id": "AbortIncompleteMultipartUpload",
+                        "AbortIncompleteMultipartUpload": {
+                            "DaysAfterInitiation": 7
+                        },
+                        "Status": "Enabled",
+                        "Prefix": ""
+                    }
+                ]
+            },
+            "VersioningConfiguration": {
+                "Status": "Enabled"
+            }
+        },
+        "Type": "AWS::S3::Bucket"
+    },
+    "TestBucketPolicy": {
+        "Properties": {
+            "Bucket": {
+                "Ref": "TestBucket"
+            },
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Deny",
+                        "Principal": {
+                            "AWS": "*"
+                        },
+                        "Action": "s3:*",
+                        "Resource": "arn:aws:s3:::test-bucket/*",
+                        "Condition": {
+                            "Bool": {
+                                "aws:SecureTransport": "false"
+                            }
+                        }
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::S3::BucketPolicy"
+    }
+}
