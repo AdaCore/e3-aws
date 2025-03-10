@@ -48,6 +48,7 @@ class Function(Construct):
         environment: dict[str, str] | None = None,
         logging_config: awslambda.LoggingConfig | None = None,
         dl_config: awslambda.DeadLetterConfig | None = None,
+        vpc_config: awslambda.VPCConfig | None = None,
     ):
         """Initialize an AWS lambda function.
 
@@ -76,6 +77,10 @@ class Function(Construct):
         :param logging_config: The function's Amazon CloudWatch Logs settings
         :param dl_config: The dead letter config that specifies the topic or queue where
             lambda sends asynchronous events when they fail processing
+        :param vpc_config: For network connectivity to AWS resources in a VPC, specify
+            a list of security groups and subnets in the VPC. When you connect a
+            function to a VPC, it can access resources and the internet only
+            through that VPC
         """
         self.name = name
         self.description = description
@@ -94,6 +99,7 @@ class Function(Construct):
         self.environment = environment
         self.logging_config = logging_config
         self.dl_config = dl_config
+        self.vpc_config = vpc_config
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         statements = [
@@ -208,6 +214,9 @@ class Function(Construct):
 
         if self.dl_config is not None:
             params["DeadLetterConfig"] = self.dl_config
+
+        if self.vpc_config is not None:
+            params["VpcConfig"] = self.vpc_config
 
         result = [awslambda.Function(name_to_id(self.name), **params)]
         # If retention duration is given provide a log group.
@@ -392,6 +401,7 @@ class PyFunction(Function):
         environment: dict[str, str] | None = None,
         logging_config: awslambda.LoggingConfig | None = None,
         dl_config: awslambda.DeadLetterConfig | None = None,
+        vpc_config: awslambda.VPCConfig | None = None,
     ):
         """Initialize an AWS lambda function with a Python runtime.
 
@@ -420,6 +430,10 @@ class PyFunction(Function):
         :param logging_config: The function's Amazon CloudWatch Logs settings
         :param dl_config: The dead letter config that specifies the topic or queue where
             lambda sends asynchronous events when they fail processing
+        :param vpc_config: For network connectivity to AWS resources in a VPC, specify
+            a list of security groups and subnets in the VPC. When you connect a
+            function to a VPC, it can access resources and the internet only
+            through that VPC
         """
         assert runtime.startswith("python"), "PyFunction only accept Python runtimes"
         super().__init__(
@@ -439,6 +453,7 @@ class PyFunction(Function):
             environment=environment,
             logging_config=logging_config,
             dl_config=dl_config,
+            vpc_config=vpc_config,
         )
         self.code_dir = code_dir
         self.requirement_file = requirement_file
