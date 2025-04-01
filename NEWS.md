@@ -1,7 +1,21 @@
-# Version 22.4.0 (2024-??-??) *NOT RELEASED YET*
+# Version 22.6.0 (2025-??-??) *NOT RELEASED YET*
+
+* nothing yet
+
+# Version 22.5.0 (2025-04-01)
 
 * Add VPCv2 construct supporting private subnets over multiple AZ.
 * S3WebsiteDistribution can now define the python runtime for the lambda invalidating cloudfront cache.
+* Fix tests using moto following moto v5 release
+* Add an helper for the Pricing API
+* Add support for keyword arguments to Bucket Construct
+* Add a method to subscribe SQS queue to SNS topic
+* Stop requiring --sse=AES256 when uploading to S3
+* Add LoggingConfiguration parameter for lambda function
+* Fix S3 VPC Gateway endpoint route table IDs
+* Make S3 interface endpoints depend on Gateway endpoint
+* Add platforms for AWS Lambda Runtime configurations
+* Add a default LifeCycle rule when creating a bucket
 
 # Version 22.3.0 (2024-24-01)
 
