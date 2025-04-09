@@ -49,3 +49,11 @@ def test_add_outputs() -> None:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
+
+
+def test_extend() -> None:
+    """Test adding multiple construct and retrieving an AWSObject from a stack."""
+    stack = Stack("test-stack", "this is a test stack")
+    stack.extend([Bucket("my-bucket-a"), Bucket("my-bucket-b")])
+    my_bucket = stack["my-bucket-b"]
+    assert my_bucket
