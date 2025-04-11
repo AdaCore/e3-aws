@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # all: no cover
     from typing import Union
+    from collections.abc import Iterable
     from troposphere import And, Condition, Equals, If, Not, Or
 
     ConditionFunction = Union[And, Condition, Equals, If, Not, Or]
@@ -130,6 +131,16 @@ class Stack(cfn.Stack):
 
         return self
 
+    def extend(self, elements: Iterable[AWSObject | Construct | Stack]) -> Stack:
+        """Add multiple Construct or AWSObject to the stack.
+
+        :param elements: see Stack.add
+        """
+        for el in elements:
+            self.add(el)
+
+        return self
+
     def add_output(self, output: Output | list[Output]) -> None:
         """Add outputs to stack template.
 
@@ -232,3 +243,10 @@ class CFNProjectMain(CFNMain):
         :param element: resource to add to the stack.
         """
         return self.stack.add(element)
+
+    def extend(self, elements: list[AWSObject | Construct | Stack]) -> Stack:
+        """Add resources to project's stack.
+
+        :param elements: resources to add to the stack.
+        """
+        return self.stack.extend(elements)

@@ -51,3 +51,30 @@ def test_cfn_project_main(capfd: pytest.CaptureFixture[str]) -> None:
     print(captured.out)
     with open(os.path.join(TEST_DIR, "cfn_project_test.out")) as f_out:
         assert captured.out == f_out.read()
+
+
+def test_cfn_project_main_extend(capfd: pytest.CaptureFixture[str]) -> None:
+    """Test adding resources with extend."""
+    aws_env = AWSEnv(regions=["eu-west-1"], stub=True)
+    test = MyCFNProject(
+        name="TestProject",
+        account_id="12345678",
+        stack_description="TestStack",
+        s3_bucket="cfn-test-deploy-bucket",
+        regions=["eu-west-1"],
+    )
+    test.extend(
+        [
+            Role(
+                name="TestRoleB",
+                description="TestRoleB description",
+                trust={"Service": "test"},
+            )
+        ]
+    )
+    test.execute(args=["show"], aws_env=aws_env)
+
+    captured = capfd.readouterr()
+    print(captured.out)
+    with open(os.path.join(TEST_DIR, "cfn_project_test_extend.out")) as f_out:
+        assert captured.out == f_out.read()
