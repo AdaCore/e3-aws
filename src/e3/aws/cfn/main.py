@@ -26,6 +26,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         data_dir: str | None = None,
         s3_bucket: str | None = None,
         s3_key: str = "",
+        assume_read_role: tuple[str, str] | None = None,
         assume_role: tuple[str, str] | None = None,
     ):
         """Initialize main.
@@ -41,8 +42,10 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         :param s3_key: if s3_bucket is defined, then all uploaded resources
             will be stored under a subkey of s3_key. If not defined the root
             of the bucket is used.
+        :param assume_read_role: tuple containing the two values that are passed
+            to Session.assume_role() for read-only
         :param assume_role: tuple containing the two values that are passed
-            to Session.assume_role()
+            to Session.assume_role() for deploy
         """
         super(CFNMain, self).__init__(platform_args=False)
         self.argument_parser.add_argument(
@@ -132,7 +135,9 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         self.s3_data_url = None
         self.s3_template_key = None
         self.s3_template_url = None
+        self.assume_read_role = assume_read_role
         self.assume_role = assume_role
+        self.aws_env: Session | AWSEnv | None = None
 
         self.timestamp = datetime.utcnow().strftime("%Y-%m-%d/%H:%M:%S.%f")
 
@@ -191,13 +196,13 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         """
         assert self.args is not None
         try:
-            if self.args.command != "show":
-                self.start_session(
-                    profile=self.args.profile, region=self.args.region, aws_env=aws_env
-                )
+            self.start_session(
+                profile=self.args.profile, region=self.args.region, aws_env=aws_env
+            )
 
             if self.args.command in ("push", "update"):
                 # Synchronize resources to the S3 bucket
+                assert self.aws_env
                 s3 = self.aws_env.client("s3")
                 with tempfile.TemporaryDirectory() as tempd:
                     # Push data associated with CFNMain and then all data
@@ -388,13 +393,27 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         if aws_env is not None:
             self.aws_env = aws_env
         else:
-            if self.assume_role:
-                main_session = Session(regions=self.regions, profile=profile)
-                self.aws_env = main_session.assume_role(
-                    self.assume_role[0], self.assume_role[1]
-                )
-                # ??? needed since we still use a global variable for AWSEnv
-                Env().aws_env = self.aws_env
+            assert self.args is not None
+            is_show = self.args.command == "show"
+            assume_role = self.assume_read_role if is_show else self.assume_role
+            if assume_role:
+                try:
+                    main_session = Session(regions=self.regions, profile=profile)
+                    self.aws_env = main_session.assume_role(
+                        assume_role[0], assume_role[1]
+                    )
+                    # ??? needed since we still use a global variable for AWSEnv
+                    Env().aws_env = self.aws_env
+                except botocore.exceptions.NoCredentialsError:
+                    # Don't force assume the role for the show command. The stacks
+                    # that require AWS API calls to generate the template can display
+                    # dummy values
+                    if not is_show:
+                        raise
             else:
                 self.aws_env = AWSEnv(regions=self.regions, profile=profile)
-            self.aws_env.default_region = self.regions[0] if region is None else region
+
+            if self.aws_env:
+                self.aws_env.default_region = (
+                    self.regions[0] if region is None else region
+                )
