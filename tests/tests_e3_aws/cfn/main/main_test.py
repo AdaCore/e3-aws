@@ -6,12 +6,15 @@ import pytest
 from typing import TYPE_CHECKING
 
 from botocore.stub import ANY
+from e3.mock.os.process import mock_run, CommandResult
 from e3.aws import AWSEnv, default_region
 from e3.aws.cfn import Stack
 from e3.aws.cfn.main import CFNMain
 
 if TYPE_CHECKING:
     from _pytest.monkeypatch import MonkeyPatch
+    from _pytest.capture import CaptureFixture
+
 
 DEFAULT_S3_ANSWER = {
     "ResponseMetadata": {"HTTPStatusCode": 200, "RetryAttempts": 1},
@@ -222,3 +225,36 @@ def test_cfn_main_s3() -> None:
                     s3_key="test_key",
                 )
                 m.execute(args=["push", "--no-wait"], aws_env=aws_env)
+
+
+def test_cfn_local_changes_check_ko(
+    capfd: CaptureFixture, monkeypatch: MonkeyPatch
+) -> None:
+    class MyCFNMain(CFNMain):
+        def create_stack(self) -> Stack:
+            return Stack(name="teststack")
+
+    with mock_run(
+        config={
+            "results": [
+                # Make CFNMain detect some local changes
+                CommandResult(
+                    cmd=[
+                        "/usr/bin/git",
+                        "-c",
+                        "fetch.prune=false",
+                        "status",
+                        "-s",
+                    ],
+                    raw_out=b"?? untracked_file.txt",
+                )
+            ]
+        }
+    ):
+        # Activate the local checks
+        monkeypatch.setenv("CI", "false")
+
+        m = MyCFNMain(regions=["us-east-1"])
+        assert m.execute(args=["push", "--no-wait"]) == 1
+
+    assert "Can only deploy from a clean repository" in capfd.readouterr().out

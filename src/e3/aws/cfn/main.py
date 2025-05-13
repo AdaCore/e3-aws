@@ -9,6 +9,8 @@ from datetime import datetime
 
 import botocore.exceptions
 
+from e3.os.process import PIPE
+from e3.vcs.git import GitRepository
 from e3.aws import AWSEnv, Session
 from e3.aws.cfn import Stack
 from e3.env import Env
@@ -342,6 +344,22 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         """
         super(CFNMain, self).parse_args(args, known_args_only)
         assert self.args is not None
+
+        # In case of local deployment, check there are no local changes.
+        # The CI variable is set by GitLab
+        if os.environ.get("CI") != "true" and self.args.command in ("push", "update"):
+            try:
+                repo = GitRepository(".")
+                p = repo.git_cmd(["status", "-s"], output=PIPE)
+                if p.out != "":
+                    print(
+                        "Can only deploy from a clean repository, ensure you have "
+                        "no modified files"
+                    )
+                    return 1
+            except Exception as e:
+                logging.error(f"Failed to check local changes: {e}")
+                return 1
 
         return_val = 0
         stacks = self.create_stack()
