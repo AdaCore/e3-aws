@@ -258,3 +258,36 @@ def test_cfn_local_changes_check_ko(
         assert m.execute(args=["push", "--no-wait"]) == 1
 
     assert "Can only deploy from a clean repository" in capfd.readouterr().out
+
+
+def test_cfn_correct_branch_check_ko(
+    capfd: CaptureFixture, monkeypatch: MonkeyPatch
+) -> None:
+    class MyCFNMain(CFNMain):
+        def create_stack(self) -> Stack:
+            return Stack(name="teststack")
+
+    with mock_run(
+        config={
+            "results": [
+                # Make CFNMain detect an incorrect branch
+                CommandResult(
+                    cmd=[
+                        "/usr/bin/git",
+                        "-c",
+                        "fetch.prune=false",
+                        "branch",
+                        "--show-current",
+                    ],
+                    raw_out=b"feat",
+                )
+            ]
+        }
+    ):
+        # Activate the local checks
+        monkeypatch.setenv("CI", "false")
+
+        m = MyCFNMain(regions=["us-east-1"], deploy_branch="main")
+        assert m.execute(args=["push", "--no-wait"]) == 1
+
+    assert "Can only deploy from branch main" in capfd.readouterr().out

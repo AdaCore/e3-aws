@@ -30,6 +30,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         s3_key: str = "",
         assume_read_role: tuple[str, str] | None = None,
         assume_role: tuple[str, str] | None = None,
+        deploy_branch: str | None = None,
     ):
         """Initialize main.
 
@@ -48,6 +49,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             to Session.assume_role() for read-only
         :param assume_role: tuple containing the two values that are passed
             to Session.assume_role() for deploy
+        :param deploy_branch: git branch the script is allowed to deploy from
         """
         super(CFNMain, self).__init__(platform_args=False)
         self.argument_parser.add_argument(
@@ -140,6 +142,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         self.assume_read_role = assume_read_role
         self.assume_role = assume_role
         self.aws_env: Session | AWSEnv | None = None
+        self.deploy_branch = deploy_branch
 
         self.timestamp = datetime.utcnow().strftime("%Y-%m-%d/%H:%M:%S.%f")
 
@@ -345,13 +348,27 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         super(CFNMain, self).parse_args(args, known_args_only)
         assert self.args is not None
 
-        # In case of local deployment, check there are no local changes.
+        # Some checks in case of deployment.
         # The CI variable is set by GitLab
         if os.environ.get("CI") != "true" and self.args.command in ("push", "update"):
+            repo = GitRepository(".")
+            # Check we are on the correct branch
+            if self.deploy_branch is not None:
+                try:
+                    branch = repo.git_cmd(
+                        ["branch", "--show-current"], output=PIPE
+                    ).out.strip()
+                    if self.deploy_branch != branch:
+                        print(f"Can only deploy from branch {self.deploy_branch}")
+                        return 1
+                except Exception as e:
+                    logging.error(f"Failed to get the current branch: {e}")
+                    return 1
+
+            # Check there are no local changes
             try:
-                repo = GitRepository(".")
-                p = repo.git_cmd(["status", "-s"], output=PIPE)
-                if p.out != "":
+                changes = repo.git_cmd(["status", "-s"], output=PIPE).out.strip()
+                if changes != "":
                     print(
                         "Can only deploy from a clean repository, ensure you have "
                         "no modified files"
