@@ -224,6 +224,10 @@ class CFNProjectMain(CFNMain):
             regions=regions,
             s3_bucket=s3_bucket,
             s3_key=name,
+            assume_read_role=(
+                f"arn:aws:iam::{account_id}:role/cfn-user/CFNAllowReadOf{name}",
+                f"Read{name}Session",
+            ),
             assume_role=(
                 f"arn:aws:iam::{account_id}:role/cfn-user/CFNAllowDeployOf{name}",
                 f"Deploy{name}Session",
