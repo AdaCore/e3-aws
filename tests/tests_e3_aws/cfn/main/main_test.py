@@ -3,6 +3,7 @@ from __future__ import annotations, absolute_import, division, print_function
 from datetime import datetime
 import os
 import pytest
+import textwrap
 from typing import TYPE_CHECKING
 
 from botocore.stub import ANY
@@ -237,6 +238,17 @@ def test_cfn_local_changes_check_ko(
     with mock_run(
         config={
             "results": [
+                # Make CFNMain think we are on main
+                CommandResult(
+                    cmd=[
+                        "/usr/bin/git",
+                        "-c",
+                        "fetch.prune=false",
+                        "branch",
+                        "--show-current",
+                    ],
+                    raw_out=b"main",
+                ),
                 # Make CFNMain detect some local changes
                 CommandResult(
                     cmd=[
@@ -247,7 +259,7 @@ def test_cfn_local_changes_check_ko(
                         "-s",
                     ],
                     raw_out=b"?? untracked_file.txt",
-                )
+                ),
             ]
         }
     ):
@@ -291,3 +303,112 @@ def test_cfn_correct_branch_check_ko(
         assert m.execute(args=["push", "--no-wait"]) == 1
 
     assert "Can only deploy from branch main" in capfd.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "fetch_out, expected_status",
+    [
+        # No commit present on the remote branch
+        (
+            textwrap.dedent(
+                """\
+                From ssh.gitlab.com:e3-aws
+                * branch      main -> FETCH_HEAD
+                """
+            ),
+            0,
+        ),
+        # One commit present on the remote branch
+        (
+            textwrap.dedent(
+                """\
+                From ssh.gitlab.com:e3-aws
+                * branch      main -> FETCH_HEAD
+                  abcd..efgh  main -> origin/main
+                """
+            ),
+            1,
+        ),
+    ],
+)
+def test_cfn_branch_up_to_date_check(
+    fetch_out: str,
+    expected_status: int,
+    capfd: CaptureFixture,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    """Test the branch up to date check.
+
+    :param fetch_out: output returned by git fetch
+    :param expected_status: expected CFNMain exit status
+    """
+
+    class MyCFNMain(CFNMain):
+        def create_stack(self) -> Stack:
+            return Stack(name="teststack")
+
+    aws_env = AWSEnv(regions=["us-east-1"], stub=True)
+    aws_env.client("cloudformation", region="us-east-1")
+
+    stubber = aws_env.stub("cloudformation")
+    stubber.add_response("validate_template", {}, {"TemplateBody": ANY})
+    stubber.add_response(
+        "create_stack",
+        {},
+        {
+            "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
+            "StackName": "teststack",
+            "ClientRequestToken": ANY,
+            "TemplateBody": ANY,
+        },
+    )
+    stubber.add_response("describe_stacks", {}, {"StackName": "teststack"})
+
+    with default_region("us-east-1"), stubber, mock_run(
+        config={
+            "results": [
+                # Make CFNMain think we are on main
+                CommandResult(
+                    cmd=[
+                        "/usr/bin/git",
+                        "-c",
+                        "fetch.prune=false",
+                        "branch",
+                        "--show-current",
+                    ],
+                    raw_out=b"main",
+                ),
+                # Make CFNMain detect no local changes
+                CommandResult(
+                    cmd=[
+                        "/usr/bin/git",
+                        "-c",
+                        "fetch.prune=false",
+                        "status",
+                        "-s",
+                    ]
+                ),
+                # Make CFNMain detect an outdated branch
+                CommandResult(
+                    cmd=[
+                        "/usr/bin/git",
+                        "-c",
+                        "fetch.prune=false",
+                        "fetch",
+                        "origin",
+                        "main",
+                        "--dry-run",
+                    ],
+                    raw_out=fetch_out.encode(),
+                ),
+            ]
+        }
+    ):
+        # Activate the local checks
+        monkeypatch.setenv("CI", "false")
+
+        m = MyCFNMain(regions=["us-east-1"], deploy_branch="main")
+        assert m.execute(args=["push", "--no-wait"], aws_env=aws_env) == expected_status
+
+    if expected_status != 0:
+        assert "Can only deploy from up to date branch" in capfd.readouterr().out

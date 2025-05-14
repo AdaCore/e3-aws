@@ -6,6 +6,7 @@ import tempfile
 import time
 import json
 from datetime import datetime
+import re
 
 import botocore.exceptions
 
@@ -352,18 +353,20 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         # The CI variable is set by GitLab
         if os.environ.get("CI") != "true" and self.args.command in ("push", "update"):
             repo = GitRepository(".")
+
+            # Retrieve the current branch
+            try:
+                branch = repo.git_cmd(
+                    ["branch", "--show-current"], output=PIPE
+                ).out.strip()
+            except Exception as e:
+                logging.error(f"Failed to get the current branch: {e}")
+                return 1
+
             # Check we are on the correct branch
-            if self.deploy_branch is not None:
-                try:
-                    branch = repo.git_cmd(
-                        ["branch", "--show-current"], output=PIPE
-                    ).out.strip()
-                    if self.deploy_branch != branch:
-                        print(f"Can only deploy from branch {self.deploy_branch}")
-                        return 1
-                except Exception as e:
-                    logging.error(f"Failed to get the current branch: {e}")
-                    return 1
+            if self.deploy_branch is not None and self.deploy_branch != branch:
+                print(f"Can only deploy from branch {self.deploy_branch}")
+                return 1
 
             # Check there are no local changes
             try:
@@ -376,6 +379,21 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     return 1
             except Exception as e:
                 logging.error(f"Failed to check local changes: {e}")
+                return 1
+
+            # Check the branch is up to date
+            try:
+                fetch_out = repo.git_cmd(
+                    ["fetch", "origin", branch, "--dry-run"], output=PIPE
+                ).out
+                # Check if there is a line indicating a commit
+                if re.search(r"{}\s*\-\>\s*origin\/".format(branch), fetch_out):
+                    print(
+                        "Can only deploy from up to date branch, please do a git pull"
+                    )
+                    return 1
+            except Exception as e:
+                logging.error(f"Failed to fetch {branch}: {e}")
                 return 1
 
         return_val = 0
