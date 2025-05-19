@@ -39,7 +39,7 @@ from e3.aws.troposphere.sqs import Queue
 
 if TYPE_CHECKING:
     from typing import Iterable, Callable
-    from flask import Application, Response
+    from flask import Response
     from pathlib import Path
 
 
@@ -957,7 +957,7 @@ def test_create_flask_wsgi_environ_with_rest_api_event():
 
 
 @pytest.fixture
-def base64_response_server() -> Iterable[Application]:
+def base64_response_server() -> Iterable[Flask]:
     """Create a server returning a text or base64 encoded response."""
     app = Flask("base64-response")
 
@@ -992,7 +992,7 @@ def base64_response_server() -> Iterable[Application]:
     yield app
 
 
-def test_text_response(base64_response_server: Application) -> None:
+def test_text_response(base64_response_server: Flask) -> None:
     """Query a route sending back a plain text response."""
     with open(
         os.path.join(
@@ -1009,7 +1009,7 @@ def test_text_response(base64_response_server: Application) -> None:
     assert response["body"] == b"world"
 
 
-def test_base64_response(base64_response_server: Application) -> None:
+def test_base64_response(base64_response_server: Flask) -> None:
     """Query a route sending back a base64 encoded response."""
     with open(
         os.path.join(
