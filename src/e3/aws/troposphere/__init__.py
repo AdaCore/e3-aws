@@ -210,6 +210,7 @@ class CFNProjectMain(CFNMain):
         stack_description: str,
         s3_bucket: str,
         regions: list[str],
+        deploy_branch: str | None = None,
     ) -> None:
         """
         Initialize a CFNProjectMain instance.
@@ -219,6 +220,7 @@ class CFNProjectMain(CFNMain):
         :param stack_description: description of the stack to deploy
         :param s3_bucket: see CFNMain
         :param regions: see CFNMain
+        :param deploy_branch: git branch the script is allowed to deploy from
         """
         super().__init__(
             regions=regions,
@@ -232,6 +234,7 @@ class CFNProjectMain(CFNMain):
                 f"arn:aws:iam::{account_id}:role/cfn-user/CFNAllowDeployOf{name}",
                 f"Deploy{name}Session",
             ),
+            deploy_branch=deploy_branch,
         )
         self.stack = Stack(
             name,
