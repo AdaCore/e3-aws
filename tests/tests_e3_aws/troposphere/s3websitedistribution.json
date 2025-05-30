@@ -307,6 +307,7 @@
     },
     "TestS3wDistCacheInvalidationLambdaLogGroup": {
         "DeletionPolicy": "Retain",
+        "UpdateReplacePolicy": "Retain",
         "Properties": {
             "LogGroupName": "/aws/lambda/TestS3wDistCacheInvalidationLambda",
             "RetentionInDays": 731

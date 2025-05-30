@@ -112,7 +112,8 @@
             "RetentionInDays": 731
         },
         "Type": "AWS::Logs::LogGroup",
-        "DeletionPolicy": "Retain"
+        "DeletionPolicy": "Retain",
+        "UpdateReplacePolicy": "Retain"
     },
     "TestS3wDistCacheInvalidationLambda": {
         "Properties": {

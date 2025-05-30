@@ -480,6 +480,7 @@ class Function(Construct):
             log_group = logs.LogGroup(
                 name_to_id(f"{self.name}LogGroup"),
                 DeletionPolicy="Retain",
+                UpdateReplacePolicy="Retain",
                 LogGroupName=f"/aws/lambda/{self.name}",
                 RetentionInDays=self.logs_retention_in_days,
             )
