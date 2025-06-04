@@ -138,6 +138,9 @@ class FlaskLambdaHandler:
         # Normalized headers
         headers = {k.title(): v for k, v in event["headers"].items()}
 
+        # Normalized cookies
+        cookies = ";".join(c for c in event.get("cookies", []))
+
         # Body
         body = event.get("body", "")
         if event.get("isBase64Encoded", "false") == "true":
@@ -176,6 +179,10 @@ class FlaskLambdaHandler:
         for header in headers:
             wsgi_name = "HTTP_" + header.upper().replace("-", "_")
             environ[wsgi_name] = headers[header]
+
+        # Set HTTP_COOKIE if necessary
+        if cookies:
+            environ["HTTP_COOKIE"] = cookies
 
         # Set REMOTE_USER if necessary
         if remote_user:
