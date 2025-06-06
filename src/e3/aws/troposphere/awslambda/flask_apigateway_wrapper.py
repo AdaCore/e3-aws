@@ -143,7 +143,7 @@ class FlaskLambdaHandler:
 
         # Body
         body = event.get("body", "")
-        if event.get("isBase64Encoded", "false") == "true":
+        if event.get("isBase64Encoded"):
             body = base64.b64decode(body)
         elif body:
             body = body.encode("utf-8")
