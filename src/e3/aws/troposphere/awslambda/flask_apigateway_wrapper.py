@@ -54,12 +54,18 @@ class FlaskLambdaHandler:
         """Lambda entry point."""
         self.status = None
         self.response_headers = None
-
-        body = next(
-            self.app.wsgi_app(
-                self.create_flask_wsgi_environ(event, context), self.start_response
+        try:
+            body = next(
+                self.app.wsgi_app(
+                    self.create_flask_wsgi_environ(event, context), self.start_response
+                )
             )
-        )
+        except StopIteration:
+            # Flask can return empty body. It can happen for static files that are
+            # automatically added to a view. For instance, if the status code is 304
+            # (Not Modified) there is no response body.
+            print("wsgi_app does not return a response body")
+            body = ""
 
         returndict: FlaskLambdaResponse = {
             "statusCode": cast(int, self.status),
