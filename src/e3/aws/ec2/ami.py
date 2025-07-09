@@ -1,9 +1,16 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import re
 from datetime import datetime
 
 from dateutil.parser import parse as parse_date
 from e3.aws import session
 from e3.aws.ec2 import BlockDeviceMapping, EC2Element
+
+if TYPE_CHECKING:
+    from typing import Any
+
+    from e3.aws import Session
 
 
 class AMI(EC2Element):
@@ -16,77 +23,89 @@ class AMI(EC2Element):
         "RootDeviceName": "root_device",
     }
 
+    id: str
+    """The ID of the AMI."""
+    owner_id: str
+    """The ID of the Amazon Web Services account that owns the image."""
+    public: bool
+    """Indicates whether the image has public launch permissions."""
+    root_device: str
+    """The device name of the root device volume (for example, /dev/sda1)."""
+
     @session()
-    def __init__(self, ami_id, region=None, data=None, session=None):
+    def __init__(
+        self,
+        ami_id: str,
+        region: str | None = None,
+        data: dict[str, Any] | None = None,
+        session: Session | None = None,
+    ) -> None:
         """Inialize an AMI description object.
 
         :param ami_id: the id of the AMI
-        :type ami_id: str
         :param region: region in which the AMI is present. If None then
             use default region
-        :type region: None | str
         :param data: a dict representing the metadata of the AMI. If None then
             download AMI description using EC2 api
-        :type data: dict | None
         """
         if data is None:
-            assert ami_id is not None
+            assert ami_id is not None and session is not None
             data = session.client("ec2", region).describe_images(ImageIds=[ami_id])[
                 "Images"
             ][0]
         super().__init__(data, region)
 
     @property
-    def creation_date(self):
+    def creation_date(self) -> datetime:
         """Creation date.
 
         :return: AMI creation date
-        :rtype: datetime.datetime
         """
         return parse_date(self.data["CreationDate"]).replace(tzinfo=None)
 
     @property
-    def age(self):
+    def age(self) -> int:
         """Return age of the AMI in days."""
         age = datetime.now() - self.creation_date
         return int(age.total_seconds() / (3600 * 24))
 
     @property
-    def os_version(self):
+    def os_version(self) -> str:
         return self.tags.get("os_version", "unknown")
 
     @property
-    def platform(self):
+    def platform(self) -> str:
         return self.tags.get("platform", "unknown")
 
     @property
-    def kind(self):
+    def kind(self) -> str:
         return self.tags.get("kind", "unknown")
 
     @property
-    def is_windows(self):
+    def is_windows(self) -> bool:
         return "windows" in self.data.get("Platform", "unknown")
 
     @property
-    def timestamp(self):
+    def timestamp(self) -> int:
         return int(self.tags.get("timestamp", "0"))
 
     @property
-    def block_device_mappings(self):
+    def block_device_mappings(self) -> list[BlockDeviceMapping]:
         return [
             BlockDeviceMapping(bdm, region=self.region)
             for bdm in self.data.get("BlockDeviceMappings", [])
         ]
 
     @property
-    def snapshot_ids(self):
-        result = []
+    def snapshot_ids(self) -> list[str]:
+        result: list[str] = []
         for device in self.block_device_mappings:
             if device.is_ebs:
+                assert device.snapshot_id is not None
                 result.append(device.snapshot_id)
         return result
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "%-12s %-24s: %s" % (
             self.region,
             self.data["ImageId"],
@@ -95,20 +114,23 @@ class AMI(EC2Element):
 
     @classmethod
     @session()
-    def ls(cls, filters=None, session=None, owners=None):
+    def ls(
+        cls,
+        filters: list[dict[str, Any]] | None = None,
+        session: Session | None = None,
+        owners: list[str] | None = None,
+    ) -> list[AMI]:
         """List user AMIs.
 
         :param filters: same as Filters parameters of describe_images
             (see botocore)
-        :type filters: dict
         :return a list of images
         :param owners: a list of accounts owning the AMIs we want to list,
             by default it is set at 'self' to list all the AMIs belonging to
             the account we are in. This is the same as Owners parameter of
             describe_images (see botocore)
-        :type owners: list[str]
-        :rtype: list[AMI]
         """
+        assert session is not None
         if filters is None:
             filters = []
         if owners is None:
@@ -125,14 +147,14 @@ class AMI(EC2Element):
     @session()
     def find(
         cls,
-        platform=None,
-        os_version=None,
-        kind=None,
-        region=None,
-        session=None,
-        owners=None,
-        **kwargs
-    ):
+        platform: str | None = None,
+        os_version: str | None = None,
+        kind: str | None = None,
+        region: str | None = None,
+        session: Session | None = None,
+        owners: list[str] | None = None,
+        **kwargs: Any,
+    ) -> list[AMI]:
         """Find AMIs.
 
         Only AMIs with platform, timestamps, os_version are considered.
@@ -140,24 +162,18 @@ class AMI(EC2Element):
         If kind is not None only consider AMIs also having a kind tag.
 
         :param platform: platform to match. If None all platforms are matched
-        :type platform: str | None
         :param os_version: os_version to match. If None all os_versions are
             matched
-        :type os_version: str | None
         :param kind: kind to match. If None all regions are matched
-        :type kind: str | None
         :param region: region to match. If None all regions are matched
-        :type region: str | None
         :param kwargs: additional filters on tags. parameter name if the tag
             name and the associated value the regexp
-        :type kwargs: dict
         :param owners: a list of accounts owning the AMIs we want to find,
             same as Owners parameter of describe_images (see botocore)
-        :type owners: list[str]
         :return: a list of AMI
-        :rtype: list[AMI]
         """
-        result = {}
+        assert session is not None
+        result: dict[tuple[str, str, str], tuple[int, AMI]] = {}
 
         filters = [
             {"Name": "tag-key", "Values": ["platform"]},
@@ -204,32 +220,27 @@ class AMI(EC2Element):
     @session()
     def select(
         cls,
-        platform,
-        os_version,
-        kind=None,
-        region=None,
-        session=None,
-        owners=None,
-        **kwargs
-    ):
+        platform: str,
+        os_version: str,
+        kind: str | None = None,
+        region: str | None = None,
+        session: Session | None = None,
+        owners: list[str] | None = None,
+        **kwargs: Any,
+    ) -> AMI:
         """Select one AMI based on platform, os_version and kind.
 
         :param platform: platform name
-        :type platform: str
         :param os_version: OS version
-        :type os_version: str
         :param kind: kind
-        :type kind: str
         :param region: region name or None (default region)
-        :type region: str | None
         :param owners: a list of accounts owning the AMIs we want to select,
             same as Owners parameter of describe_images (see botocore)
-        :type owners: list[str]
         :return: a list of AMI
         :return: one AMI
-        :rtype: AMI
         """
         if region is None:
+            assert session is not None
             region = session.default_region
 
         kind_filter = kind + "$" if kind is not None else None
@@ -240,7 +251,7 @@ class AMI(EC2Element):
             region=region,
             session=session,
             owners=owners,
-            **kwargs
+            **kwargs,
         )
         assert (
             len(result) == 1

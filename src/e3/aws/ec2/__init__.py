@@ -1,5 +1,13 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from e3.aws import session
 from dateutil.parser import parse as parse_date
+
+if TYPE_CHECKING:
+    from typing import Any
+    from datetime import datetime
+
+    from e3.aws import Session
 
 
 class EC2Element:
@@ -8,13 +16,13 @@ class EC2Element:
     All objects returned by EC2 API
     """
 
-    def __init__(self, data, region):
+    PROPERTIES: dict[str, Any] = {}
+
+    def __init__(self, data: dict[str, Any], region: str | None = None) -> None:
         """Initialize an EC2 Element.
 
         :param data: data as returned by botocore
-        :type data: dict
         :param region: region of the EC2 object
-        :type region: str
         """
         self.data = data
         self.region = region
@@ -31,15 +39,14 @@ class EC2Element:
             setattr(
                 self.__class__,
                 name,
-                property(lambda s, default_key=key: s.data.get(default_key)),
+                property(lambda s, default_key=key: s.data.get(default_key)),  # type: ignore
             )
 
     @property
-    def logical_id(self):
+    def logical_id(self) -> str | None:
         """Cloud Formation logical id.
 
         :return: the id or None (if the element is not part of a stack)
-        :rtype: str | None
         """
         return self.tags.get("aws:cloudformation:logical-id")
 
@@ -49,21 +56,30 @@ class SecurityGroup(EC2Element):
 
     PROPERTIES = {"GroupName": "group_name", "GroupId": "group_id"}
 
+    group_name: str
+    """The name of the security group."""
+    group_id: str
+    """The ID of the security group."""
+
     @session()
-    def __init__(self, group_id=None, region=None, data=None, session=None):
+    def __init__(
+        self,
+        group_id: str | None = None,
+        region: str | None = None,
+        data: dict[str, Any] | None = None,
+        session: Session | None = None,
+    ) -> None:
         """Initialize a security group.
 
         :param group_id: group id. Used to retrieve group data
             if data parameter is None
-        :type group_id: str | None
         :param region: region of the security group
-        :type region: str | None
         :param data: botocore data describing the group. If None
             then data is fetched automatically using group id and
             region
         """
         if data is None:
-            assert region is not None and group_id is not None
+            assert region is not None and group_id is not None and session is not None
             data = session.client("ec2", region).describe_security_groups(
                 GroupIds=[group_id]
             )["SecurityGroups"][0]
@@ -71,7 +87,11 @@ class SecurityGroup(EC2Element):
 
     @classmethod
     @session()
-    def ls(cls, filters=None, session=None):
+    def ls(
+        cls,
+        filters: list[dict[str, Any]] | None = None,
+        session: Session | None = None,
+    ) -> list[SecurityGroup]:
         """List user security groups.
 
         Note that this API is cross region. All regions used when creating
@@ -79,10 +99,9 @@ class SecurityGroup(EC2Element):
 
         :param filters: same as Filters parameters of describe_security_groups
             (see botocore)
-        :type filters: dict
         :return a list of images
-        :rtype: list[SecurityGroup]
         """
+        assert session is not None
         if filters is None:
             filters = []
         result = []
@@ -99,21 +118,30 @@ class Instance(EC2Element):
 
     PROPERTIES = {"InstanceId": "instance_id"}
 
+    instance_id: str
+    """The ID of the instance."""
+
     @session()
-    def __init__(self, instance_id=None, region=None, data=None, session=None):
+    def __init__(
+        self,
+        instance_id: str | None = None,
+        region: str | None = None,
+        data: dict[str, Any] | None = None,
+        session: Session | None = None,
+    ) -> None:
         """Initialize an EC2 instance description.
 
         :param instance_id: instance id. Used to retrieve instance data
             if data parameter is None
-        :type group_id: str | None
         :param region: region of the security group
-        :type region: str | None
         :param data: botocore data describing the instance. If None
             then data is fetched automatically using instance id and
             region
         """
         if data is None:
-            assert instance_id is not None and region is not None
+            assert (
+                instance_id is not None and region is not None and session is not None
+            )
             data = session.client("ec2", region).describe_instances(
                 InstanceIds=[instance_id]
             )["Reservations"]["Instances"][0]
@@ -121,11 +149,10 @@ class Instance(EC2Element):
         super().__init__(data, region)
 
     @property
-    def security_groups(self):
+    def security_groups(self) -> list[SecurityGroup]:
         """List security groups attached to the instance.
 
         :return: a list of security groups
-        :rtype: list[SecurityGroup]
         """
         return [
             SecurityGroup(el["GroupId"], region=self.region)
@@ -133,11 +160,10 @@ class Instance(EC2Element):
         ]
 
     @property
-    def network_interfaces(self):
+    def network_interfaces(self) -> list[NetworkInterface]:
         """List network interfaces attached to an instance.
 
         :return: a list of network interface
-        :rtype: list[NetworkInterface]
         """
         return [
             NetworkInterface(ni, region=self.region)
@@ -145,11 +171,10 @@ class Instance(EC2Element):
         ]
 
     @property
-    def has_public_ip(self):
+    def has_public_ip(self) -> bool:
         """Check if instance has a public IP.
 
         :return: True if at least one interface has a public IP
-        :rtype: bool
         """
         for ni in self.network_interfaces:
             if ni.public_ip is not None:
@@ -157,11 +182,10 @@ class Instance(EC2Element):
         return False
 
     @property
-    def block_device_mappings(self):
+    def block_device_mappings(self) -> list[BlockDeviceMapping]:
         """List block device mappings.
 
         :return: the list of mappings
-        :rtype: list[BlockDeviceMapping]
         """
         return [
             BlockDeviceMapping(bdm, region=self.region)
@@ -170,17 +194,20 @@ class Instance(EC2Element):
 
     @classmethod
     @session()
-    def ls(cls, filters=None, session=None):
+    def ls(
+        cls,
+        filters: list[dict[str, Any]] | None = None,
+        session: Session | None = None,
+    ) -> list[Instance]:
         """List user instances.
 
         Note that instances in "terminated" mode are ignored.
 
         :param filters: same as Filters parameters of describe_instances
             (see botocore)
-        :type filters: dict
         :return a list of instances
-        :rtype: list[Instance]
         """
+        assert session is not None
         if filters is None:
             filters = []
         result = []
@@ -210,30 +237,30 @@ class BlockDeviceMapping(EC2Element):
 
     PROPERTIES = {"DeviceName": "device_name"}
 
+    device_name: str
+    """The device name."""
+
     @property
-    def is_ebs(self):
+    def is_ebs(self) -> bool:
         """Check if mapping is an EBS.
 
         :return: True if this is an EBS, False otherwise
-        :rtype: bool
         """
         return "Ebs" in self.data
 
     @property
-    def encrypted(self):
+    def encrypted(self) -> bool:
         """Check if the block device is encrypted.
 
         :return: True if encrypted, false otherwise
-        :rtype: bool
         """
         return "Ebs" in self.data and self.data["Ebs"].get("Encrypted", False)
 
     @property
-    def snapshot_id(self):
+    def snapshot_id(self) -> str | None:
         """Retrieve snapshot id.
 
         :return: the associated snaptshot if it exist
-        :rtype: str | None
         """
         if self.is_ebs:
             return self.data["Ebs"].get("SnapshotId")
@@ -252,38 +279,46 @@ class VolumeAttachment(EC2Element):
         "DeleteOnTermination": "delete_on_termination",
     }
 
-    def __init__(self, data, region):
+    instance_id: str
+    """The ID of the instance."""
+    device: str
+    """The device name."""
+    state: str
+    """The attachment state of the volume."""
+    volume_id: str
+    """The ID of the volume."""
+    delete_on_termination: bool
+    """Indicates whether the EBS volume is deleted on instance termination."""
+
+    def __init__(self, data: dict[str, Any], region: str | None = None) -> None:
         """Initialize Volume Attachment description."""
         super().__init__(data, region)
-        self._instance_cache = None
-        self._volume_cache = None
+        self._instance_cache: Instance | None = None
+        self._volume_cache: Volume | None = None
 
     @property
-    def attach_time(self):
+    def attach_time(self) -> datetime:
         """Return time at which attachment was done.
 
         :return: attach time
-        :rtype: datetime.datetime
         """
         return parse_date(self.data["AttachTime"])
 
     @property
-    def instance(self):
+    def instance(self) -> Instance:
         """Retrieve instance attached to the volume.
 
         :return: an Instance object
-        :rtype: Instance
         """
         if self._instance_cache is None:
             self._instance_cache = Instance(self.instance_id, region=self.region)
         return self._instance_cache
 
     @property
-    def volume(self):
+    def volume(self) -> Volume:
         """Retrieve the Volume.
 
         :return: the Volume part of the attachment.
-        :rtype: Volume
         """
         if self._volume_cache is None:
             self._volume_cache = Volume(self.volume_id, region=self.region)
@@ -303,21 +338,40 @@ class Volume(EC2Element):
         "Encrypted": "encrypted",
     }
 
+    volume_id: str
+    """The ID of the volume."""
+    availability_zone: str
+    """The Availability Zone for the volume."""
+    size: int
+    """The size of the volume, in GiBs."""
+    snapshot_id: str
+    """The snapshot from which the volume was created, if applicable."""
+    state: str
+    """The volume state."""
+    volume_type: str
+    """The volume type."""
+    encrypted: bool
+    """Indicates whether the volume is encrypted."""
+
     @session()
-    def __init__(self, volume_id=None, region=None, data=None, session=None):
+    def __init__(
+        self,
+        volume_id: str | None = None,
+        region: str | None = None,
+        data: dict[str, Any] | None = None,
+        session: Session | None = None,
+    ) -> None:
         """Initialize an EC2 volume description.
 
         :param volume_id: volume id. Used to retrieve volume data
             if data parameter is None
-        :type group_id: str | None
         :param region: region of the volume
-        :type region: str | None
         :param data: botocore data describing the volume. If None
             then data is fetched automatically using volume id and
             region
         """
         if data is None:
-            assert volume_id is not None and region is not None
+            assert volume_id is not None and region is not None and session is not None
             data = session.client("ec2", region).describe_volumes(
                 InstanceIds=[volume_id]
             )["Volumes"][0]
@@ -325,39 +379,40 @@ class Volume(EC2Element):
         super().__init__(data, region)
 
     @property
-    def attachments(self):
+    def attachments(self) -> list[VolumeAttachment]:
         """List attachments that involve that volume.
 
         :return: a list of attachments
-        :rtype: list[VolumeAttachment]
         """
         return [VolumeAttachment(va, self.region) for va in self.data["Attachments"]]
 
     @property
-    def create_time(self):
+    def create_time(self) -> datetime:
         """Return creation time.
 
         :return: time at which volume was created
-        :rtype: datetime.datetime
         """
         return parse_date(self.data["CreateTime"])
 
     @session()
-    def delete(self):
+    def delete(self, session: Session | None = None) -> None:
         """Delete a volume."""
+        assert session is not None
         session.client("ec2", self.region).delete_volume(VolumeId=self.volume_id)
 
     @classmethod
     @session()
-    def ls(cls, filters=None):
+    def ls(
+        cls, filters: list[dict[str, Any]] | None = None, session: Session | None = None
+    ) -> list[Volume]:
         """List user AMIs.
 
         :param filters: same as Filters parameters of describe_volumes
             (see botocore)
-        :type filters: dict
         :return a list of volumes
-        :rtype: list[Volume]
         """
+        assert session is not None
+
         if filters is None:
             filters = []
         result = []
@@ -372,21 +427,32 @@ class Volume(EC2Element):
 class Snapshot(EC2Element):
     PROPERTIES = {"Encrypted": "encrypted", "SnapshotId": "snapshot_id"}
 
+    encrypted: bool
+    """Indicates whether the snapshot is encrypted."""
+    snapshot_id: str
+    """The ID of the snapshot."""
+
     @session()
-    def __init__(self, snapshot_id=None, region=None, data=None, session=None):
+    def __init__(
+        self,
+        snapshot_id: str | None = None,
+        region: str | None = None,
+        data: dict[str, Any] | None = None,
+        session: Session | None = None,
+    ) -> None:
         """Initialize an EC2 snapshot description.
 
         :param snapshot_id: snapshot id. Used to retrieve snapshot data
             if data parameter is None
-        :type snapshot_id: str | None
         :param region: region of the snapshot
-        :type region: str | None
         :param data: botocore data describing the snapshot. If None
             then data is fetched automatically using snapshot id and
             region
         """
         if data is None:
-            assert snapshot_id is not None and region is not None
+            assert (
+                snapshot_id is not None and region is not None and session is not None
+            )
             data = session.client("ec2", region).describe_snapshots(
                 SnapshotIds=[snapshot_id]
             )["Snapshots"][0]
@@ -394,21 +460,23 @@ class Snapshot(EC2Element):
         super().__init__(data, region)
 
     @session()
-    def delete(self, session=None):
+    def delete(self, session: Session | None = None) -> None:
         """Delete a snapshot."""
+        assert session is not None
         session.client("ec2", self.region).delete_snapshot(SnapshotId=self.snapshot_id)
 
     @classmethod
     @session()
-    def ls(cls, filters=None, session=None):
+    def ls(
+        cls, filters: list[dict[str, Any]] | None = None, session: Session | None = None
+    ) -> list[Snapshot]:
         """List snapshots.
 
         :param filters: same as Filters parameters of describe_snapshots
             (see botocore)
-        :type filters: dict
         :return a list of snaptshots
-        :rtype: list[Snapshot]
         """
+        assert session is not None
         if filters is None:
             filters = []
         result = []
@@ -423,11 +491,10 @@ class Snapshot(EC2Element):
 class NetworkInterface(EC2Element):
     """EC2 Network Interface."""
 
-    def public_ip(self):
+    def public_ip(self) -> str | None:
         """Return public ip.
 
         :return: return public ip or None
-        :rtype: str | None
         """
         if "Association" in self.data:
             return self.data["Association"].get("PublicIp")

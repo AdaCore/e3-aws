@@ -415,16 +415,14 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         """Create a stack.
 
         :return: Stack on which the application will operate
-        :rtype: Stack
         """
         pass
 
     @property
-    def stack_policy_body(self):
+    def stack_policy_body(self) -> str | None:
         """Stack Policy that can be set by calling the command ``protect``.
 
         :return: the inline stack policy
-        :rtype: str
         """
         return None
 

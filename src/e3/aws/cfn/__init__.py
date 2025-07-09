@@ -28,8 +28,8 @@ def client(name: str) -> Callable:
     :type name: str
     """
 
-    def decorator(func):
-        def wrapper(*args, **kwargs):
+    def decorator(func: Callable) -> Callable:
+        def wrapper(*args: Any, **kwargs: Any) -> Callable:
             aws_env = Env().aws_env
             if "region" in kwargs:
                 region = kwargs["region"]
@@ -80,13 +80,11 @@ class AWSType(Enum):
 class GetAtt(object):
     """Intrinsic function Fn::Getatt."""
 
-    def __init__(self, name, attribute):
+    def __init__(self, name: str, attribute: str) -> None:
         """Initialize a Getatt instance.
 
         :param name: resource name
-        :type name: str
         :param attribute: attribute name
-        :type attribute: str
         """
         self.name = name
         self.attribute = attribute
@@ -95,11 +93,10 @@ class GetAtt(object):
 class Ref(object):
     """Intrinsic function Fn::Ref."""
 
-    def __init__(self, name):
+    def __init__(self, name: str) -> None:
         """Initialize a reference.
 
         :param name: resource name
-        :type name: str
         """
         self.name = name
 
@@ -107,11 +104,10 @@ class Ref(object):
 class Base64(object):
     """Intrinsic function Fn::Base64."""
 
-    def __init__(self, content):
+    def __init__(self, content: str | Sub) -> None:
         """Initialize a base64 content.
 
         :param content: content to be encoded into base64
-        :type content: str
         """
         self.content = content
 
@@ -119,13 +115,11 @@ class Base64(object):
 class Join(object):
     """Intrinsic function Fn::Join."""
 
-    def __init__(self, content, delimiter=""):
+    def __init__(self, content: list[Any], delimiter: str = "") -> None:
         """Initialize a Join object.
 
         :param content: a list
-        :type content: list
         :param delimiter: a join delimiter
-        :type delimiter: str
         """
         self.content = content
         self.delimiter = delimiter
@@ -134,49 +128,46 @@ class Join(object):
 class Sub(object):
     """Intrinsic function Fn::Sub."""
 
-    def __init__(self, content, variables=None):
+    def __init__(self, content: str, variables: dict[str, str] | None = None) -> None:
         """Initialize a Sub object.
 
         :param content: a string
-        :type content: str
         :param variables: a dict asssociating a key to a value
-        :type variables: dict(str, str)
         """
         self.content = content
-        if variables:
-            self.variables = dict(variables)
-        else:
-            self.variables = None
+        self.variables = dict(variables) if variables else None
 
 
 # Declare Yaml representer for intrinsic functions
 
 
-def getatt_representer(dumper, data):
+def getatt_representer(dumper: CFNYamlDumper, data: Any) -> yaml.ScalarNode:
     return dumper.represent_scalar("!GetAtt", "%s.%s" % (data.name, data.attribute))
 
 
-def ref_representer(dumper, data):
+def ref_representer(dumper: CFNYamlDumper, data: Any) -> yaml.ScalarNode:
     return dumper.represent_scalar("!Ref", data.name)
 
 
-def base64_representer(dumper, data):
+def base64_representer(dumper: CFNYamlDumper, data: Any) -> yaml.MappingNode:
     return dumper.represent_dict({"Fn::Base64": data.content})
 
 
-def sub_representer(dumper, data):
+def sub_representer(
+    dumper: CFNYamlDumper, data: Any
+) -> yaml.SequenceNode | yaml.ScalarNode:
     if data.variables:
         return dumper.represent_sequence("!Sub", [data.content, data.variables])
     else:
         return dumper.represent_scalar("!Sub", data.content)
 
 
-def join_representer(dumper, data):
+def join_representer(dumper: CFNYamlDumper, data: Any) -> yaml.SequenceNode:
     return dumper.represent_sequence("!Join", [data.delimiter, data.content])
 
 
 class CFNYamlDumper(yaml.Dumper):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Yaml dumper for cloud formation templates.
 
         See yaml.Dumper documentation.
@@ -189,7 +180,7 @@ class CFNYamlDumper(yaml.Dumper):
         self.add_representer(Join, join_representer)
         self.add_representer(Sub, sub_representer)
 
-    def ignore_aliases(self, data):
+    def ignore_aliases(self, data: Any) -> bool:
         """Ignore aliases."""
         return True
 
@@ -200,7 +191,7 @@ class Resource:
     # List of valid attribute names
     ATTRIBUTES: Iterable[str] = ()
 
-    def __init__(self, name: str, kind: AWSType):
+    def __init__(self, name: str, kind: AWSType) -> None:
         """Initialize a resource.
 
         :param name: name of the resource (alphanumeric)
@@ -212,7 +203,7 @@ class Resource:
         assert name.isalnum(), "resource name should be alphanumeric: found %s" % name
         self.name = name
         self.kind = kind
-        self.depends = None
+        self.depends: str | None = None
 
         # Track region in which the resource is created
         e = Env()
@@ -222,34 +213,30 @@ class Resource:
             self.region = "invalid-region"
         self.metadata: dict = {}
 
-    def getatt(self, name):
+    def getatt(self, name: str) -> GetAtt:
         """Return an attribute reference.
 
         :param name: attribute name. should one of the valid attribute
             declared in ATTRIBUTES class variable
-        :type name: str
         :return: a getatt object
-        :rtype: e3.aws.cfn.types.GetAtt
 
         """
         assert name in self.ATTRIBUTES, "invalid attribute %s" % name
         return GetAtt(self.name, name)
 
     @property
-    def ref(self):
+    def ref(self) -> Ref:
         """Return a reference to the current resource.
 
         :return: a reference
-        :rtype: e3.aws.cfn.types.Ref
         """
         return Ref(self.name)
 
     @property
-    def properties(self):
+    def properties(self) -> dict[str, Any]:
         """Return the resource properties dict.
 
         :return: the resources Properties key value for the current resource.
-        :rtype: dict
         """
         return {}
 
@@ -477,23 +464,21 @@ class Stack(object):
         self.resources[element.name] = element
         return self
 
-    def __iadd__(self, element):
+    def __iadd__(self, element: Stack | Resource) -> Stack:
         """Add a resource or merge a stack.
 
         :param element: if a resource add the resource to the stack. If a stack
             merge its resources into the current stack.
-        :type element: Stack | Resources
         :return: the current stack
-        :rtype: Stack
         """
         return self.add(element)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: str) -> Resource | Stack:
         if key not in self.resources:
             raise KeyError
         return self.resources[key]
 
-    def __contains__(self, key):
+    def __contains__(self, key: str) -> bool:
         return key in self.resources
 
     def create_data_dir(self, root_dir: str) -> None:
@@ -508,7 +493,6 @@ class Stack(object):
         """Export stack as dict.
 
         :return: a dict that can be serialized as YAML to produce a template
-        :rtype: dict
         """
         resources = {}
         for resource in self.resources.values():
@@ -532,7 +516,6 @@ class Stack(object):
         """Export stack as a CloudFormation template.
 
         :return: a valid CloudFormation template
-        :rtype: str
         """
         return yaml.dump(self.export(), Dumper=CFNYamlDumper)
 
@@ -601,7 +584,7 @@ class Stack(object):
             return False
 
     @client("cloudformation")
-    def state(self, client):
+    def state(self, client: botocore.client.BaseClient) -> Any:
         """Return state of the stack on AWS."""
         result = client.describe_stacks(StackName=self.stack_id)["Stacks"][0]
         if self.stack_id != result["StackId"]:
@@ -609,18 +592,17 @@ class Stack(object):
         return result
 
     @client("cloudformation")
-    def validate(self, client, url=None):
+    def validate(
+        self, client: botocore.client.BaseClient, url: str | None = None
+    ) -> Any:
         """Validate a template.
 
         :param client: a botocore client
-        :type client: botocore.client.Client. This parameter is handled by the
-            decorator
         param url: url of the template body in S3. When not None this suppose
             the user has uploaded the template body on S3 first at the given
             url. Use S3 to refer to the template body rather than using inline
             version allows to use template of size up to 500Ko instead of
             50Ko.
-        :type url: str | None
         """
         if url is None:
             return client.validate_template(TemplateBody=self.body)
@@ -628,7 +610,9 @@ class Stack(object):
             return client.validate_template(TemplateURL=url)
 
     @client("cloudformation")
-    def create_change_set(self, name, client, url=None):
+    def create_change_set(
+        self, name: str, client: botocore.client.BaseClient, url: str | None = None
+    ) -> Any:
         """Create a change set.
 
         This creates a difference between the state of the stack on AWS servers
@@ -636,15 +620,12 @@ class Stack(object):
 
         :param client: a botocore client. This parameter is handled by the
             decorator
-        :type client: botocore.client.Client
         :param name: name of the changeset
-        :type name: str
         :param url: url of the template body in S3. When not None this suppose
             the user has uploaded the template body on S3 first at the given
             url. Use S3 to refer to the template body rather than using inline
             version allows to use template of size up to 500Ko instead of
             50Ko.
-        :type url: str | None
         """
         parameters = {
             "ChangeSetName": name,
@@ -667,20 +648,19 @@ class Stack(object):
             )
 
     @client("cloudformation")
-    def describe_change_set(self, name, client):
+    def describe_change_set(self, name: str, client: botocore.client.BaseClient) -> Any:
         """Describe a change set.
 
         Retrieve status of a given changeset
 
         :param client: a botocore client
-        :type client: botocore.client.Client
         :param name: name of the changeset
         :type name: str
         """
         return client.describe_change_set(ChangeSetName=name, StackName=self.name)
 
     @client("cloudformation")
-    def delete_change_set(self, name, client):
+    def delete_change_set(self, name: str, client: botocore.client.BaseClient) -> Any:
         """Delete a change set.
 
         :param client: a botocore client
@@ -755,24 +735,25 @@ class Stack(object):
                 yield event
 
     @client("cloudformation")
-    def cost(self, client):
+    def cost(self, client: botocore.client.BaseClient) -> Any:
         """Compute cost of the stack (estimation).
 
         :param client: a botocore client
-        :type client: botocore.client.BaseClient
         """
         return client.estimate_template_cost(TemplateBody=self.body)
 
     @client("cloudformation")
-    def execute_change_set(self, client, changeset_name, wait=False):
+    def execute_change_set(
+        self,
+        client: botocore.client.BaseClient,
+        changeset_name: str,
+        wait: bool = False,
+    ) -> Any:
         """Execute a changeset.
 
         :param client: a botocore client
-        :type client: botocore.client.BaseClient
         :param changeset_name: name of the changeset to apply
-        :type changeset_name: str
         :param wait: whether to wait for the completion of the command
-        :type wait: bool
         """
         client.execute_change_set(
             ChangeSetName=changeset_name,
@@ -785,19 +766,18 @@ class Stack(object):
             logging.info(f"Done (status: {self.wait()})")
 
     @client("cloudformation")
-    def resource_status(self, client, in_progress_only=True):
+    def resource_status(
+        self, client: botocore.client.BaseClient, in_progress_only: bool = True
+    ) -> Any:
         """Return status of each resources of the stack.
 
         The state of the stack taken is the one pushed on AWS (after a call
         to create for example).
 
         :param client: a botocore client
-        :type client: botocore.client.BaseClient
         :param in_progress_only: if True return only resources that are in
             one of the "PROGRESS" state (deletion, creation, ...)
-        :type in_progress_only: bool
         :return: a dict associating a resource logical name to a status name
-        :rtype: dict
         """
         aws_result = client.describe_stack_resources(StackName=self.name)
         assert "StackResources" in aws_result
@@ -808,7 +788,7 @@ class Stack(object):
         return result
 
     @client("cloudformation")
-    def enable_termination_protection(self, client):
+    def enable_termination_protection(self, client: botocore.client.BaseClient) -> Any:
         """Enable termination protection for a stack."""
         aws_result = self.state()
         if aws_result["EnableTerminationProtection"]:
@@ -822,11 +802,12 @@ class Stack(object):
         print("Stack termination protection enabled")
 
     @client("cloudformation")
-    def set_stack_policy(self, stack_policy_body, client):
+    def set_stack_policy(
+        self, stack_policy_body: str, client: botocore.client.BaseClient
+    ) -> Any:
         """Set a stack policy.
 
         :param stack_policy_body: stack policy body to apply
-        :type stack_policy_body: str
         """
         aws_result = client.get_stack_policy(StackName=self.name)
 
