@@ -8,7 +8,7 @@ import botocore
 import boto3
 
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, BinaryIO
     from collections.abc import Iterable, Iterator
 
 logger = logging.getLogger("e3.aws.s3")
@@ -99,7 +99,9 @@ class S3:
         self.clear_bucket()
         self.client.delete_bucket(Bucket=self.bucket)
 
-    def push(self, key: str, content: bytes, exist_ok: bool | None = None) -> None:
+    def push(
+        self, key: str, content: bytes | BinaryIO, exist_ok: bool | None = None
+    ) -> None:
         """Push content to S3.
 
         You can set exist_ok to false to prevent the object from being

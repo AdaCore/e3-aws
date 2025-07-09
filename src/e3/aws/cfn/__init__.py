@@ -482,7 +482,7 @@ class Stack(object):
         return key in self.resources
 
     def create_data_dir(self, root_dir: str) -> None:
-        """Populate directory that will be exported into a S3 bucket for the stack.
+        """Populate data directory that will be exported into a S3 bucket for the stack.
 
         :param root_dir: temporary local directory
         """

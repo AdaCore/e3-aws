@@ -13,6 +13,7 @@ import botocore.exceptions
 from e3.os.process import PIPE
 from e3.vcs.git import GitRepository
 from e3.aws import AWSEnv, Session
+from e3.aws.s3 import bucket
 from e3.aws.cfn import Stack
 from e3.env import Env
 from e3.fs import find, sync_tree
@@ -26,6 +27,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         self,
         regions: list[str],
         default_profile: str | None = None,
+        assets_dir: str | None = None,
         data_dir: str | None = None,
         s3_bucket: str | None = None,
         s3_key: str = "",
@@ -37,6 +39,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         :param regions: list of regions on which we can operate
         :param default_profile: default AWS profile to use to create the stack
+        :param assets_dir: directory containing assets of the stack
         :param data_dir: directory containing files used by cfn-init
         :param s3_bucket: if defined S3 will be used as a proxy for resources.
             Template body will be uploaded to S3 before calling operation on
@@ -140,8 +143,11 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         self.regions = regions
 
+        self.assets_dir = assets_dir
         self.data_dir = data_dir
         self.s3_bucket = s3_bucket
+        self.s3_assets_key = None
+        self.s3_assets_url = None
         self.s3_data_key = None
         self.s3_data_url = None
         self.s3_template_key = None
@@ -150,23 +156,28 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         self.assume_role = assume_role
         self.aws_env: Session | AWSEnv | None = None
         self.deploy_branch = deploy_branch
+        # A temporary dir will be assigned when generating assets
+        self.gen_assets_dir: str | None = None
 
         self.timestamp = datetime.utcnow().strftime("%Y-%m-%d/%H:%M:%S.%f")
 
         if s3_bucket is not None:
-            s3_root_key = (
-                "/".join([s3_key.rstrip("/"), self.timestamp]).strip("/") + "/"
+            s3_root_key = f"{s3_key.strip('/')}/"
+            s3_root_url = f"https://{self.s3_bucket}.s3.amazonaws.com/"
+
+            # Assets use a static key
+            self.s3_assets_key = f"{s3_root_key}assets/"
+            self.s3_assets_url = f"{s3_root_url}{self.s3_assets_key}"
+
+            # Data and template use a dynamic key based on the timestamp
+            s3_timestamp_key = (
+                "/".join([s3_root_key.rstrip("/"), self.timestamp]).strip("/") + "/"
             )
-            self.s3_data_key = s3_root_key + "data/"
-            self.s3_data_url = "https://%s.s3.amazonaws.com/%s" % (
-                self.s3_bucket,
-                self.s3_data_key,
-            )
-            self.s3_template_key = s3_root_key + "template"
-            self.s3_template_url = "https://%s.s3.amazonaws.com/%s" % (
-                self.s3_bucket,
-                self.s3_template_key,
-            )
+            self.s3_data_key = f"{s3_timestamp_key}data/"
+            self.s3_data_url = f"{s3_root_url}{self.s3_data_key}"
+
+            self.s3_template_key = f"{s3_timestamp_key}template"
+            self.s3_template_url = f"{s3_root_url}{self.s3_template_key}"
 
     @property
     def dry_run(self) -> bool:
@@ -206,6 +217,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         s3_bucket: str,
         s3_key: str,
         s3_client: botocore.client.S3 | None = None,
+        check_exists: bool = False,
     ) -> None:
         """Upload directory to S3 bucket.
 
@@ -213,7 +225,10 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         :param s3_bucket: bucket where to upload files
         :param s3_key: key prefix for uploaded files
         :param s3_client: a client for the S3 API
+        :param check_exists: check if an S3 object exists before uploading it
         """
+        assert self.args is not None
+
         for f in find(root_dir):
             subkey = os.path.relpath(f, root_dir).replace("\\", "/")
 
@@ -228,26 +243,54 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             if s3_client is None:
                 continue
 
-            with open(f, "rb") as fd:
-                s3_client.put_object(
-                    Bucket=self.s3_bucket,
-                    Body=fd,
-                    ServerSideEncryption="AES256",
-                    Key=s3_key + subkey,
-                )
+            with bucket(
+                s3_bucket, client=s3_client, auto_create=False
+            ) as upload_bucket:
+                # Check already existing S3 objects.
+                # Ignore the potential 403 error as CFN roles often only have the
+                # s3:GetObject permission on the bucket
+                s3_object_key = f"{s3_key}{subkey}"
+                if check_exists and upload_bucket.object_exists(
+                    s3_object_key, ignore_error_403=True
+                ):
+                    logging.info(
+                        "Skip already existing %s",
+                        subkey,
+                    )
+                    continue
+
+                if not self.args.dry_run:
+                    with open(f, "rb") as fd:
+                        upload_bucket.push(key=s3_object_key, content=fd, exist_ok=True)
 
     def _upload_stack(self, stack: Stack) -> None:
-        """Upload stack data and template to S3.
+        """Upload stack assets, data, and template to S3.
 
         :param stack: the stack to upload
         """
+        # Nothing to upload if there is no S3 bucket set
+        if self.s3_bucket is None:
+            return
+
         assert self.args is not None
 
-        if not self.args.dry_run:
-            assert self.aws_env
+        if self.aws_env:
             s3 = self.aws_env.client("s3")
         else:
             s3 = None
+            logging.warning(
+                "no aws session, won't be able to check if assets exist in the bucket"
+            )
+
+        # Synchronize assets to the bucket before creating the stack
+        if self.gen_assets_dir is not None and self.s3_assets_key is not None:
+            self._upload_dir(
+                root_dir=self.gen_assets_dir,
+                s3_bucket=self.s3_bucket,
+                s3_key=self.s3_assets_key,
+                s3_client=s3,
+                check_exists=True,
+            )
 
         with tempfile.TemporaryDirectory() as tempd:
             # Push data associated with CFNMain and then all data
@@ -266,9 +309,11 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         if self.s3_template_key is not None:
             logging.info(
-                "Upload template to %s:%s", self.s3_bucket, self.s3_template_key
+                "Upload template to %s:%s",
+                self.s3_bucket,
+                self.s3_template_key,
             )
-            if s3 is not None:
+            if s3 is not None and not self.args.dry_run:
                 s3.put_object(
                     Bucket=self.s3_bucket,
                     Body=stack.body.encode("utf-8"),
@@ -370,6 +415,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     return self._push_stack_changeset(
                         stack=stack, s3_template_url=self.s3_template_url
                     )
+
             elif self.args.command == "show":
                 print(stack.body)
             elif self.args.command == "protect":
@@ -464,18 +510,30 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 return 1
 
         return_val = 0
-        stacks = self.create_stack()
 
-        if isinstance(stacks, list):
-            for stack in stacks:
-                return_val = self.execute_for_stack(stack, aws_env=aws_env)
-                # Stop at first failure
-                if return_val:
-                    return return_val
-        else:
-            return_val = self.execute_for_stack(stacks, aws_env=aws_env)
+        # Create a temporary assets dir here as assets need to be generated at the
+        # time of create_stack
+        with tempfile.TemporaryDirectory() as temp_assets_dir:
+            self.gen_assets_dir = temp_assets_dir
+            self.pre_create_stack()
+            stacks = self.create_stack()
+            self.post_create_stack()
 
+            if isinstance(stacks, list):
+                for stack in stacks:
+                    return_val = self.execute_for_stack(stack, aws_env=aws_env)
+                    # Stop at first failure
+                    if return_val:
+                        return return_val
+            else:
+                return_val = self.execute_for_stack(stacks, aws_env=aws_env)
+
+        self.gen_assets_dir = None
         return return_val
+
+    def pre_create_stack(self) -> None:
+        """Before create_stack."""
+        pass
 
     @abc.abstractmethod
     def create_stack(self) -> Stack | list[Stack]:
@@ -483,6 +541,10 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         :return: Stack on which the application will operate
         """
+        pass
+
+    def post_create_stack(self) -> None:
+        """After create_stack."""
         pass
 
     @property
