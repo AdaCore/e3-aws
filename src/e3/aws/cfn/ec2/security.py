@@ -70,8 +70,10 @@ class GroupSecurityRule:
             self.description = description
 
     @property
-    def properties(self):
-        result = {self.RULE_TYPE: self.target, "IpProtocol": self.ip_protocol}
+    def properties(self) -> dict[str, Any]:
+        result: dict[str, Any] = {"IpProtocol": self.ip_protocol}
+        if self.RULE_TYPE is not None:
+            result[self.RULE_TYPE] = self.target
         if self.from_port is not None:
             result["FromPort"] = self.from_port
         if self.to_port is not None:
@@ -104,24 +106,25 @@ class Ipv4IngressRule(IngressRule):
 class SecurityGroup(Resource):
     """EC2 Security group resource."""
 
-    def __init__(self, name, vpc, rules=None, description=None):
+    def __init__(
+        self,
+        name: str,
+        vpc: VPC,
+        rules: list[GroupSecurityRule] | None = None,
+        description: str | None = None,
+    ) -> None:
         """Initialize a security group.
 
         :param name: logical name in the stack
-        :type name: str
         :param vpc: a VPC to which the rule is attached
-        :type vpc: e3.aws.cfn.ec2.VPC
         :param rules: a list of rules to apply (both egress and ingress)
-        :type rules: None | list[e3.aws.cfn.ec2.security.GroupSecurityRule]
         :param description: an optional description
-        :type description: str | None
         """
         super().__init__(name, kind=AWSType.EC2_SECURITY_GROUP)
-        assert isinstance(vpc, VPC)
         self.vpc = vpc
         self.description = description
-        self.egress = []
-        self.ingress = []
+        self.egress: list[EgressRule] = []
+        self.ingress: list[IngressRule] = []
         if rules is not None:
             for rule in rules:
                 self.add_rule(rule)
@@ -139,13 +142,13 @@ class SecurityGroup(Resource):
             raise AssertionError("a security group rule is expected")
 
     @property
-    def group_id(self):
+    def group_id(self) -> GetAtt:
         """Return SecurityGroup GroupId."""
         return GetAtt(self.name, "GroupId")
 
     @property
-    def properties(self):
-        result = {"VpcId": self.vpc.ref}
+    def properties(self) -> dict[str, Any]:
+        result: dict[str, Any] = {"VpcId": self.vpc.ref}
 
         if self.egress:
             result["SecurityGroupEgress"] = [r.properties for r in self.egress]

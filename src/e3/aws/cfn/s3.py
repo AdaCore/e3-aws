@@ -1,7 +1,14 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from enum import Enum
 
 from e3.aws.cfn import AWSType, Resource
 from e3.aws.cfn.iam import PolicyDocument
+
+if TYPE_CHECKING:
+    from typing import Any
+
+    from e3.aws.cfn import GetAtt
 
 
 class AccessControl(Enum):
@@ -20,31 +27,26 @@ class AccessControl(Enum):
 class BucketPolicy(Resource):
     """S3 Bucket Policy."""
 
-    def __init__(self, name, bucket, policy_document):
+    def __init__(
+        self, name: str, bucket: Bucket | str, policy_document: PolicyDocument
+    ) -> None:
         """Initialize a bucket policy.
 
         :param name: logical name of the resource in the stack
-        :type name: str
         :param bucket: bucket on which to apply the policy
-        :type bucket: Bucket
         :param policy_document: Policy document to apply
-        :type policy_document: PolicyDocument
         """
         super(BucketPolicy, self).__init__(name, kind=AWSType.S3_BUCKET_POLICY)
-        assert isinstance(policy_document, PolicyDocument)
-        assert isinstance(bucket, str) or isinstance(bucket, Bucket)
         self.bucket = bucket
         self.policy_document = policy_document
 
     @property
-    def properties(self):
+    def properties(self) -> dict[str, Any]:
         """Serialize the object as a simple dict.
 
         Can be used to transform to CloudFormation Yaml format.
-
-        :rtype: dict
         """
-        result = {"PolicyDocument": self.policy_document.properties}
+        result: dict[str, Any] = {"PolicyDocument": self.policy_document.properties}
         if isinstance(self.bucket, Bucket):
             result["Bucket"] = self.bucket.ref
         else:
@@ -57,40 +59,40 @@ class Bucket(Resource):
 
     ATTRIBUTES = ("Arn", "DomainName")
 
-    def __init__(self, name, access_control=None, bucket_name=None, versioning=False):
+    def __init__(
+        self,
+        name: str,
+        access_control: AccessControl | None = None,
+        bucket_name: str | None = None,
+        versioning: bool = False,
+    ) -> None:
         """Initialize a S3 bucket.
 
         :param name: logical name of the resource in the stack
-        :type name: str
         :param acccess_control: A canned access control list (ACL) that grants
             predefined permissions to the bucket. if None default is PRIVATE
-        :type access_control: None | AccessControl
         :param bucket_name: the bucket name in AWS. If set cloud formation will
             not be able to update settings of the buckets automatically.
-        :type bucket_name: str | None
         """
         super(Bucket, self).__init__(name, kind=AWSType.S3_BUCKET)
         if access_control is None:
             self.access_control = AccessControl.PRIVATE
         else:
-            assert isinstance(access_control, AccessControl)
             self.access_control = access_control
         self.bucket_name = bucket_name
         self.versioning = versioning
 
     @property
-    def arn(self):
+    def arn(self) -> GetAtt:
         return self.getatt("Arn")
 
     @property
-    def properties(self):
+    def properties(self) -> dict[str, Any]:
         """Serialize the object as a simple dict.
 
         Can be used to transform to CloudFormation Yaml format.
-
-        :rtype: dict
         """
-        result = {
+        result: dict[str, Any] = {
             "AccessControl": self.access_control.value,
             "BucketEncryption": {
                 "ServerSideEncryptionConfiguration": [

@@ -1,7 +1,8 @@
 from __future__ import annotations
+from typing import TYPE_CHECKING
 from itertools import chain
 
-from e3.aws.cfn import Stack, Join
+from e3.aws.cfn import Stack, Join, Resource
 from e3.aws.cfn.arch.security import amazon_security_groups, github_security_groups
 from e3.aws.cfn.ec2 import (
     EC2NetworkInterface,
@@ -29,6 +30,10 @@ from e3.aws.cfn.ec2.security import (
 from e3.aws.cfn.iam import PolicyDocument, Principal, PrincipalKind, InstanceRole, Allow
 from e3.aws.cfn.s3 import Bucket
 
+if TYPE_CHECKING:
+    from e3.aws.cfn.iam import Policy
+    from e3.aws.ec2.ami import AMI
+
 
 # Prefix lists are static name used to select a list of IPs for a given
 # AWS services. Currently Amazon only offer prefix lists for s3 and
@@ -48,19 +53,17 @@ class AWSFortressError(Exception):
 class SubnetStack(Stack):
     """Create a subnet with a route table."""
 
-    def __init__(self, name, vpc, cidr_block, description=None):
+    def __init__(
+        self, name: str, vpc: VPC, cidr_block: str, description: str | None = None
+    ) -> None:
         """Initialize a subnet.
 
         This block create a basic subnet with an empty route table
 
         :param name: logical name of the subnet in the stack
-        :type name: str
         :param vpc: VPC containing the subnet
-        :type vpc: VPC
         :param cidr_block: block of addresses associated with the subnet
-        :type cidr_block: str
         :param description: optional description
-        :type description: str | None
         """
         super().__init__(name, description)
 
@@ -75,7 +78,7 @@ class SubnetStack(Stack):
             )
         )
 
-    def add_bucket_access(self, bucket_list):
+    def add_bucket_access(self, bucket_list: list[Bucket] | list[str]) -> None:
         """Authorize access to a list of buckets using vpc endpoint.
 
         Note that this just allow an instance in the vpc to ask access
@@ -86,7 +89,6 @@ class SubnetStack(Stack):
         on the first call.
 
         :param bucket_list: list of bucket names
-        :type bucket_list: list[Bucket] | list[str]
         """
         if self.name + "S3EndPoint" not in self:
             self.add(
@@ -99,10 +101,7 @@ class SubnetStack(Stack):
                 )
             )
         for bucket in bucket_list:
-            if isinstance(bucket, Bucket):
-                bucket_name = bucket.ref
-            else:
-                bucket_name = bucket
+            bucket_name = bucket.ref if isinstance(bucket, Bucket) else bucket
             self.s3_endpoint.policy_document.append(
                 Allow(
                     to="s3:*",
@@ -115,20 +114,26 @@ class SubnetStack(Stack):
             )
 
     @property
-    def s3_endpoint(self):
-        return self[self.name + "S3EndPoint"]
+    def s3_endpoint(self) -> VPCEndpoint:
+        resource = self[self.name + "S3EndPoint"]
+        assert isinstance(resource, VPCEndpoint)
+        return resource
 
     @property
-    def subnet(self):
-        return self[self.name]
+    def subnet(self) -> Subnet:
+        resource = self[self.name]
+        assert isinstance(resource, Subnet)
+        return resource
 
     @property
-    def cidr_block(self):
-        return self[self.name].cidr_block
+    def cidr_block(self) -> str:
+        return self.subnet.cidr_block
 
     @property
-    def route_table(self):
-        return self[self.name + "RouteTable"]
+    def route_table(self) -> RouteTable:
+        resource = self[self.name + "RouteTable"]
+        assert isinstance(resource, RouteTable)
+        return resource
 
 
 class VPCStack(Stack):
@@ -137,15 +142,14 @@ class VPCStack(Stack):
     Handle a VPC with various networks elements such as subnets and gateways.
     """
 
-    def __init__(self, name, cidr_block, description=None):
+    def __init__(
+        self, name: str, cidr_block: str, description: str | None = None
+    ) -> None:
         """Create a VPC stack.
 
         :param name: stack name
-        :type name: str
         :param cidr_block: ipv4 address range for the vpc
-        :type cird_block: str
         :param description: optional description
-        :type description: str | None
         """
         super().__init__(name, description=description)
         self.add(VPC(self.name, cidr_block))
@@ -153,45 +157,49 @@ class VPCStack(Stack):
         self.add(VPCGatewayAttachment(self.name + "GateLink", self.vpc, self.gateway))
 
     @property
-    def region(self):
+    def region(self) -> str:
         """Region in which the stack is allocated.
 
         :return: a region
-        :rtype: str
         """
-        return self[self.name].region
+        resource = self[self.name]
+        assert isinstance(resource, Resource)
+        return resource.region
 
-    def add_subnet(self, name, cidr_block, is_public=False, use_nat=False, nat_to=None):
+    def add_subnet(
+        self,
+        name: str,
+        cidr_block: str,
+        is_public: bool = False,
+        use_nat: bool = False,
+        nat_to: str | None = None,
+    ) -> None:
         """Add a subnet.
 
         :param name: subnet logical name in the stack
-        :type name: str
         :param cidr_block: address range of the subnet. Should be a subnet
             of the vpc address range (no check done).
-        :type cidr_block: str
         :param is_public: if True create a public subnet. This means that
             a route is created automatically to the vpc internet gateway.
             (default: False)
-        :type is_public: bool
         :param use_nat: if True and is_public is True, then add a NAT
             gateway that can be reused by private subnets.
             (default: False)
-        :type use_nat: bool
         :param nat_to: if is_public is False and nat_to is a string,
             then create a route to the NAT gateway of the designed
             public subnet.
-        :type nat_to: None | str
         """
         # Create the subnet
-        self.add(SubnetStack(name, self.vpc, cidr_block))
+        subnet_stack = SubnetStack(name, self.vpc, cidr_block)
+        self.add(subnet_stack)
 
         if is_public:
             # Public subnet
             # Connect to the internet
-            self[name].add(
+            subnet_stack.add(
                 Route(
                     name + "InternetRoute",
-                    self[name].route_table,
+                    subnet_stack.route_table,
                     "0.0.0.0/0",
                     self.gateway,
                     self.gate_attach,
@@ -199,58 +207,65 @@ class VPCStack(Stack):
             )
             if use_nat:
                 # Add if needed a NAT gateway
-                self[name].add(EIP(name + "NatEIP", self.gate_attach))
-                self[name].add(
-                    NatGateway(
-                        name + "NatGateway",
-                        self[name][name + "NatEIP"],
-                        self[name].subnet,
-                    )
+                eip = EIP(name + "NatEIP", self.gate_attach)
+                subnet_stack.add(eip)
+                subnet_stack.add(
+                    NatGateway(name + "NatGateway", eip, subnet_stack.subnet)
                 )
         elif nat_to:
             assert nat_to in self, "invalid subnet name: %s" % nat_to
-            assert nat_to + "NatGateway" in self[nat_to], (
+            subnet_stack_to = self[nat_to]
+            assert isinstance(subnet_stack_to, SubnetStack)
+            assert nat_to + "NatGateway" in subnet_stack_to, (
                 "subnet %s has no NAT gateway" % nat_to
             )
-            self[name].add(
+            nat = subnet_stack_to[nat_to + "NatGateway"]
+            assert isinstance(nat, (InternetGateway, NatGateway))
+            subnet_stack.add(
                 Route(
                     name + "NatRoute",
-                    self[name].route_table,
+                    subnet_stack_to.route_table,
                     "0.0.0.0/0",
-                    self[nat_to][nat_to + "NatGateway"],
+                    nat,
                     self.gate_attach,
                 )
             )
 
     @property
-    def vpc(self):
+    def vpc(self) -> VPC:
         """Get the VPC CloudFormation resource."""
-        return self[self.name]
+        resource = self[self.name]
+        assert isinstance(resource, VPC)
+        return resource
 
     @property
-    def gateway(self):
+    def gateway(self) -> InternetGateway:
         """Get the Gateway CloudFormation resource."""
-        return self[self.name + "InternetGateway"]
+        resource = self[self.name + "InternetGateway"]
+        assert isinstance(resource, InternetGateway)
+        return resource
 
     @property
-    def gate_attach(self):
+    def gate_attach(self) -> VPCGatewayAttachment:
         """Get the GateAttachment CloudFormation resource."""
-        return self[self.name + "GateLink"]
+        resource = self[self.name + "GateLink"]
+        assert isinstance(resource, VPCGatewayAttachment)
+        return resource
 
 
 class Fortress(Stack):
     def __init__(
         self,
-        name,
-        internal_server_policy,
-        bastion_ami=None,
-        allow_ssh_from=None,
-        description=None,
-        vpc_cidr_block="10.10.0.0/16",
-        private_cidr_block="10.10.0.0/17",
-        public_cidr_block="10.10.128.0/18",
-        aws_endpoints_cidr_block="10.10.192.0/18",
-    ):
+        name: str,
+        internal_server_policy: Policy,
+        bastion_ami: AMI | None = None,
+        allow_ssh_from: list[str] | None = None,
+        description: str | None = None,
+        vpc_cidr_block: str = "10.10.0.0/16",
+        private_cidr_block: str = "10.10.0.0/17",
+        public_cidr_block: str = "10.10.128.0/18",
+        aws_endpoints_cidr_block: str = "10.10.192.0/18",
+    ) -> None:
         """Create a VPC Fortress.
 
         This create a vpc with a public and a private subnet. Servers in the
@@ -259,27 +274,19 @@ class Fortress(Stack):
         services endpoints network interfaces.
 
         :param name: stack name
-        :type name: str
         :param internal_server_policy: policy associated with instance role
             of private servers
-        :type internal_server_policy: Policy
         :param bastion_ami: AMI used for the bastion server. If None no bastion
             is setup
-        :type bastion_ami: AMI | None
         :param allow_ssh_from: ip ranges from which ssh can be done to the
             bastion. if bastion_ami is None, parameter is discarded
-        :type allow_ssh_from: str | None
         :param vpc_cidr_block: ip ranges for the associated vpc
-        :type vpc_cidr_block: str
         :param private_cidr_block: ip ranges (subset of vpc_cidr_block) used
             for private subnet
-        :type private_cidr_block: str
         :param public_cidr_block: ip ranges (subset of vpc_cidr_block) used
             for public subnet
-        :type public_cidr_block: str
         :param aws_endpoints_cidr_block: ip ranges (subset of vpc_cidr_block) used
             for aws endpoints
-        :type aws_endpoints_cidr_block: str
         """
         super().__init__(name, description)
 
@@ -293,28 +300,29 @@ class Fortress(Stack):
         )
         self.vpc.add_subnet(self.name + "AWSEndpointsNet", aws_endpoints_cidr_block)
 
-        self.amazon_groups = {}
-        self.github_groups = {}
+        self.amazon_groups: dict[str, SecurityGroup] = {}
+        self.github_groups: dict[str, SecurityGroup] = {}
 
         if bastion_ami is not None:
             # Allow ssh to bastion only from a range of IP address
-            self.add(
-                SecurityGroup(
-                    self.name + "BastionSG",
-                    self.vpc.vpc,
-                    description="security group for bastion servers",
-                    rules=[Ipv4IngressRule("ssh", cidr) for cidr in allow_ssh_from],
-                )
+            bastion_sg = SecurityGroup(
+                self.name + "BastionSG",
+                self.vpc.vpc,
+                description="security group for bastion servers",
+                rules=(
+                    [Ipv4IngressRule("ssh", cidr) for cidr in allow_ssh_from]
+                    if allow_ssh_from is not None
+                    else None
+                ),
             )
+            self.add(bastion_sg)
 
             # Create the bastion
             self.add(Instance(self.name + "Bastion", bastion_ami))
             self.bastion.tags["Name"] = "Bastion (%s)" % self.name
             self.bastion.add(
                 EC2NetworkInterface(
-                    self.public_subnet.subnet,
-                    public_ip=True,
-                    groups=[self[self.name + "BastionSG"]],
+                    self.public_subnet.subnet, public_ip=True, groups=[bastion_sg]
                 )
             )
 
@@ -364,13 +372,12 @@ class Fortress(Stack):
         self.add(ir)
 
     @property
-    def region(self):
+    def region(self) -> str:
         """Return the region in which the stack is allocated.
 
         :return: a region
-        :rtype: str
         """
-        return self[self.name + "VPC"].region
+        return self.vpc.region
 
     def add_service_access(
         self,
@@ -392,26 +399,27 @@ class Fortress(Stack):
                 VPCInterfaceEndpoint(
                     name=endpoint_name,
                     service=service_name,
-                    vpc=self.vpc,
+                    vpc=self.vpc.vpc,
                     subnet=self.aws_endpoints_subnet.subnet,
                     policy_document=policy_document,
                     security_group=self.aws_endpoints_security_group,
                 )
             )
 
-    def add_lambda_access(self, lambda_arns):
+    def add_lambda_access(self, lambda_arns: list[str]) -> None:
         """Add a lambda interface endpoint with permissions to invoke given lambdas.
 
         :param lambda_arns: arn identifying the lambda to give access to
-        :type lambda_arns: list[str]
         """
         endpoint_name = f"{self.name}LambdaEndPoint"
         pd = PolicyDocument()
         pd.append(
             Allow(
                 to=["lambda:InvokeFunction"],
-                on=chain.from_iterable(
-                    ((lambda_arn, lambda_arn + ":*") for lambda_arn in lambda_arns)
+                on=list(
+                    chain.from_iterable(
+                        ((lambda_arn, lambda_arn + ":*") for lambda_arn in lambda_arns)
+                    )
                 ),
                 apply_to=Principal(PrincipalKind.EVERYONE),
             )
@@ -420,11 +428,10 @@ class Fortress(Stack):
             service_name="lambda", policy_document=pd, endpoint_name=endpoint_name
         )
 
-    def add_secret_access(self, secret_arn):
+    def add_secret_access(self, secret_arn: str) -> None:
         """Give read access to a given secret.
 
         :param secret_name: arn identifying the secret to give access to
-        :type secret_name: str
         """
         endpoint_name = f"{self.name}SecretsManagerEndPoint"
         pd = PolicyDocument()
@@ -460,34 +467,32 @@ class Fortress(Stack):
         :param from_port: optional starting port
         :param to_port: optional ending port
         """
-        self[self.name + "InternalSG"].add_rule(
+        self.internal_security_group.add_rule(
             Ipv4EgressRule(protocol, cidr_block, from_port=from_port, to_port=to_port)
         )
 
-    def add_s3_endpoint_access(self):
-        self[self.name + "InternalSG"].add_rule(
-            PrefixListEgressRule(
-                "https", PREFIX_LISTS[self[self.name + "InternalSG"].region]["s3"]
-            )
+    def add_s3_endpoint_access(self) -> None:
+        internal_sg = self.internal_security_group
+        internal_sg.add_rule(
+            PrefixListEgressRule("https", PREFIX_LISTS[internal_sg.region]["s3"])
         )
 
     def private_server_security_groups(
-        self, amazon_access=True, github_access=True, extra_groups=None
-    ):
+        self,
+        amazon_access: bool | None = True,
+        github_access: bool | None = True,
+        extra_groups: list[SecurityGroup] | None = None,
+    ) -> list[SecurityGroup]:
         """Return list of security groups to apply to private servers.
 
         :param amazon_access: if True add a security group that allow access to
             amazon services. Default is True
-        :type amazon_access: bool
         :param github_access: if True add a security group that allow access to
             github services. Default is True
-        :type github_access: bool
         :param extra_groups: additional security groups
-        :type extra_groups: Optional[list[SecurityGroups]]
         :return: a list of security groups
-        :rtype: list[SecurityGroups]
         """
-        groups = [self[self.name + "InternalSG"]]
+        groups = [self.internal_security_group]
         if amazon_access:
             if not self.amazon_groups:
                 self.amazon_groups = amazon_security_groups(
@@ -520,43 +525,34 @@ class Fortress(Stack):
 
     def add_private_server(
         self,
-        server_ami,
-        names,
-        instance_type="t2.micro",
-        disk_size=None,
-        amazon_access=True,
-        github_access=False,
-        persistent_eni=False,
-        is_template=False,
-        template_name=None,
-        extra_groups=None,
-    ):
+        server_ami: AMI,
+        names: list[str],
+        instance_type: str = "t2.micro",
+        disk_size: int | None = None,
+        amazon_access: bool = True,
+        github_access: bool = False,
+        persistent_eni: bool = False,
+        is_template: bool = False,
+        template_name: str | None = None,
+        extra_groups: list[SecurityGroup] | None = None,
+    ) -> None:
         """Add servers in the private network.
 
         :param server_ami: AMI to use
-        :type server_ami: AMI
         :param names: list of server names (names will be used as stack logical
             names)
-        :type names: list[str]
         :param instance_type: instance type (default: t2.micro)
-        :type instance_type: str
         :param disk_size: disk size of the instance in Go or None to reuse the
             AMI snapshot size
-        :type disk_size: int | None
         :param amazon_access: if True add a security group that allow access to
             amazon services. Default is True
-        :type amazon_access: bool
         :param github_access: if True add a security group that allow access to
             github services. Default is False
-        :type github_access: bool
         :param persistent_eni: Use a separate network interface (i.e: not
             embedded inside the EC2 instance). This is useful to preserve for
             example IP address and MAC address when a server is redeployed.
-        :type persistent_eni: bool
         :param is_template: create a template rather than an instance
-        :type is_template: bool
         :param extra_groups: a list of security groups to add
-        :type extra_groups: Optional[list[SecurityGroup]]
         """
         groups = self.private_server_security_groups(
             amazon_access=amazon_access,
@@ -571,28 +567,26 @@ class Fortress(Stack):
             )
 
         for name in names:
-            if not is_template:
-                self.add(
-                    Instance(
-                        name,
-                        server_ami,
-                        instance_type=instance_type,
-                        disk_size=disk_size,
-                    )
+            instance_or_template = (
+                Instance(
+                    name,
+                    server_ami,
+                    instance_type=instance_type,
+                    disk_size=disk_size,
                 )
-            else:
-                self.add(
-                    LaunchTemplate(
-                        name,
-                        server_ami,
-                        instance_type=instance_type,
-                        disk_size=disk_size,
-                        template_name=template_name,
-                    )
+                if not is_template
+                else LaunchTemplate(
+                    name,
+                    server_ami,
+                    instance_type=instance_type,
+                    disk_size=disk_size,
+                    template_name=template_name,
                 )
+            )
+            self.add(instance_or_template)
 
             if not persistent_eni:
-                self[name].add(
+                instance_or_template.add(
                     EC2NetworkInterface(
                         self.private_subnet.subnet, public_ip=False, groups=groups
                     )
@@ -602,45 +596,71 @@ class Fortress(Stack):
                     name + "ENI", subnet=self.private_subnet.subnet, groups=groups
                 )
                 self.add(network_interface)
-                self[name].add(EC2NetworkInterface(interface=network_interface))
+                instance_or_template.add(
+                    EC2NetworkInterface(interface=network_interface)
+                )
 
-            self[name].set_instance_profile(
-                self[self.name + "PrivServerInstanceRole"].instance_profile
+            instance_or_template.set_instance_profile(
+                self.private_server_instance_role.instance_profile
             )
-            self[name].tags["Name"] = "%s (%s)" % (name, self.name)
+            instance_or_template.tags["Name"] = "%s (%s)" % (name, self.name)
 
     @property
-    def vpc(self):
-        return self[self.name + "VPC"]
+    def vpc(self) -> VPCStack:
+        resource = self[self.name + "VPC"]
+        assert isinstance(resource, VPCStack)
+        return resource
 
     @property
-    def private_subnet(self):
-        return self.vpc[self.name + "PrivateNet"]
+    def private_subnet(self) -> SubnetStack:
+        resource = self.vpc[self.name + "PrivateNet"]
+        assert isinstance(resource, SubnetStack)
+        return resource
 
     @property
-    def aws_endpoints_subnet(self):
-        return self.vpc[self.name + "AWSEndpointsNet"]
+    def aws_endpoints_subnet(self) -> SubnetStack:
+        resource = self.vpc[self.name + "AWSEndpointsNet"]
+        assert isinstance(resource, SubnetStack)
+        return resource
 
     @property
-    def internal_security_group(self):
-        return self[self.name + "InternalSG"]
+    def internal_security_group(self) -> SecurityGroup:
+        resource = self[self.name + "InternalSG"]
+        assert isinstance(resource, SecurityGroup)
+        return resource
 
     @property
-    def aws_endpoints_security_group(self):
-        return self[self.name + "InterfaceEndpointsSG"]
+    def aws_endpoints_security_group(self) -> SecurityGroup:
+        resource = self[self.name + "InterfaceEndpointsSG"]
+        assert isinstance(resource, SecurityGroup)
+        return resource
 
     @property
-    def secretsmanager_endpoint(self):
-        return self[self.name + "SecretsManagerEndPoint"]
+    def secretsmanager_endpoint(self) -> VPCInterfaceEndpoint:
+        resource = self[self.name + "SecretsManagerEndPoint"]
+        assert isinstance(resource, VPCInterfaceEndpoint)
+        return resource
 
     @property
-    def lambda_endpoint(self):
-        return self[self.name + "LambdaEndPoint"]
+    def lambda_endpoint(self) -> VPCInterfaceEndpoint:
+        resource = self[self.name + "LambdaEndPoint"]
+        assert isinstance(resource, VPCInterfaceEndpoint)
+        return resource
 
     @property
-    def public_subnet(self):
-        return self.vpc[self.name + "PublicNet"]
+    def public_subnet(self) -> SubnetStack:
+        resource = self.vpc[self.name + "PublicNet"]
+        assert isinstance(resource, SubnetStack)
+        return resource
 
     @property
-    def bastion(self):
-        return self[self.name + "Bastion"]
+    def bastion(self) -> Instance:
+        resource = self[self.name + "Bastion"]
+        assert isinstance(resource, Instance)
+        return resource
+
+    @property
+    def private_server_instance_role(self) -> InstanceRole:
+        resource = self[self.name + "PrivServerInstanceRole"]
+        assert isinstance(resource, InstanceRole)
+        return resource

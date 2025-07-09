@@ -1,26 +1,29 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from ipaddress import AddressValueError, IPv4Network, IPv6Network
 import logging
 import requests
 from e3.aws.cfn.ec2.security import Ipv4EgressRule, SecurityGroup
+
+if TYPE_CHECKING:
+    from e3.aws.cfn.ec2 import VPC
 
 # This is the static address at which AWS publish the list of ip-ranges
 # used by its services.
 IP_RANGES_URL = "https://ip-ranges.amazonaws.com/ip-ranges.json"
 
 
-def amazon_security_groups(name, vpc):
+def amazon_security_groups(name: str, vpc: VPC) -> dict[str, SecurityGroup]:
     """Create a dict of security group authorizing access to aws services.
 
     As the number of rules per security group is limited to 60,
     we create blocks of 60 rules.
 
     :param vpc: vpc in which to create the group
-    :type vpc: VPC
     :return: a dict of security groups indexed by name
-    :rtype: dict(str, SecurityGroup)
     """
 
-    def select_region(ip_range_record):
+    def select_region(ip_range_record: dict[str, str]) -> bool:
         """Select the VPN region and the us-east-1 region.
 
         Note that some global interface (e.g. sts) are only available in
@@ -67,18 +70,17 @@ def amazon_security_groups(name, vpc):
     return sgs
 
 
-def github_security_groups(name, vpc, protocol):
+def github_security_groups(
+    name: str, vpc: VPC, protocol: str
+) -> dict[str, SecurityGroup]:
     """Create a dict of security group authorizing access to github services.
 
     As the number of rules per security group is limited to 50,
     we create blocks of 50 rules.
 
     :param vpc: vpc in which to create the group
-    :type vpc: VPC
     :param protocol: protocol to allow (https, ssh)
-    :type protocol: str
     :return: a dict of security groups indexed by name
-    :rtype: dict(str, SecurityGroup)
     """
     ip_ranges = requests.get("https://api.github.com/meta").json()["git"]
 

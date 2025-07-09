@@ -2,10 +2,12 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from e3.aws.cfn import AWSType, GetAtt, Resource, Stack
+from e3.aws.cfn import AWSType, GetAtt, Join, Resource, Stack
 
 if TYPE_CHECKING:
-    from typing import Any, Iterable
+    from typing import Any, Iterable, Self
+
+    from e3.aws.cfn import Ref
 
 
 class PrincipalKind(Enum):
@@ -26,7 +28,6 @@ class Principal(object):
             to EVERYONE value should be None, otherwise value should
             be a string different from '*'
         """
-        assert isinstance(kind, PrincipalKind)
         self.kind = kind
         assert (kind == PrincipalKind.EVERYONE and value is None) or (
             value is not None and value != "*"
@@ -34,24 +35,22 @@ class Principal(object):
         self.value = value
 
     @classmethod
-    def property_list(cls, principals):
+    def property_list(cls, principals: list[Principal]) -> dict[str, list[str]] | str:
         """Serialize a list of principal as a simple object.
 
         :param principals: list of principals
-        :type principals: list[Principal]
-        :rtype: dict | str
         """
-        result = {}
+        result: dict[str, list[str]] = {}
         for principal in principals:
             if principal.kind == PrincipalKind.EVERYONE:
                 # If EVERYONE is present then it should be alone because
                 # it will mask any other principal.
                 assert len(principals) == 1, 'Principal "*" should be used alone'
-                result = "*"
-                break
+                return "*"
 
             if principal.kind.value not in result:
                 result[principal.kind.value] = []
+            assert principal.value is not None
             result[principal.kind.value].append(principal.value)
 
         return result
@@ -60,32 +59,31 @@ class Principal(object):
 class Statement(object):
     """Statement of IAM Policy Document."""
 
+    EFFECT: str = ""
+
     def __init__(
         self,
         sid: str | None = None,
         to: list[str] | str | None = None,
-        on: list[str] | str | None = None,
+        on: list[str | Join] | str | None = None,
         not_on: list[str] | str | None = None,
         apply_to: list[Principal] | Principal | None = None,
-    ):
+    ) -> None:
         """Initialize a statement.
 
         :param sid: statement id (optional)
         :param to: one or several action for the statement
         :param on: resource or list of resources on which the statement apply
-        :type on: list[str] | str | None
         :param not_on: resource or list of resources on which the statement
             does not apply. Note that not_on and on cannot be both set
-        :type not_on: list[str] | str | None
         :param apply_to: list of principals that are targeted by the statement
-        :type apply_to: list[Principals] | Principal | None
         """
         self.resources: list[Any] = []
         self.not_resources: list[Any] = []
         self.actions: list[Any] = []
         self.principals: list[Any] = []
         self.sid = sid
-        self.condition = None
+        self.condition: Any | None = None
 
         if to is not None:
             self.to(to)
@@ -97,14 +95,12 @@ class Statement(object):
             self.apply_to(apply_to)
 
     @property
-    def properties(self):
+    def properties(self) -> dict[str, Any]:
         """Serialize the object as a simple dict.
 
         Can be used to transform to CloudFormation Yaml format.
-
-        :rtype: dict
         """
-        result = {"Effect": self.EFFECT}
+        result: dict[str, Any] = {"Effect": self.EFFECT}
         if self.sid is not None:
             result["Sid"] = self.sid
         if self.resources:
@@ -131,26 +127,30 @@ class Statement(object):
             self.actions += actions
         return self
 
-    def on(self, resources: Iterable[str | GetAtt] | str | GetAtt) -> Statement:
+    def on(
+        self, resources: Iterable[str | GetAtt | Join] | str | GetAtt | Join
+    ) -> Statement:
         """Add resource(s) on which the statement apply.
 
         :param resources: resource or list of resources
         :return: the modified statement
         """
         assert not self.not_resources
-        if isinstance(resources, str) or isinstance(resources, GetAtt):
+        if isinstance(resources, (str, GetAtt, Join)):
             resources = [resources]
         self.resources += resources
         return self
 
-    def not_on(self, resources: Iterable[str | GetAtt] | str | GetAtt) -> Statement:
+    def not_on(
+        self, resources: Iterable[str | GetAtt | Join] | str | GetAtt | Join
+    ) -> Statement:
         """Add resource(s) on which not to apply the statement.
 
         :param resources: resource or list of resources
         :return: the modified statement
         """
         assert not self.resources
-        if isinstance(resources, str) or isinstance(resources, GetAtt):
+        if isinstance(resources, (str, GetAtt, Join)):
             resources = [resources]
         self.not_resources += resources
         return self
@@ -159,9 +159,7 @@ class Statement(object):
         """Add principal that can use the statement.
 
         :param principals: principal list
-        :type principals: list[Principal] | Principal
         :return: the modified statement
-        :rtype: Statement
         """
         if isinstance(principals, Principal):
             self.principals.append(principals)
@@ -185,46 +183,39 @@ class Deny(Statement):
 class PolicyDocument:
     """IAM Policy Document."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize a policy document."""
-        self.statements = []
+        self.statements: list[Statement] = []
 
-    def append(self, statement):
+    def append(self, statement: Statement) -> PolicyDocument:
         """Append a statement.
 
         :param statement: a IAM Statement
-        :type statement: Statement
         :return: the modified policy document
-        :rtype: PolicyDocument
         """
-        assert isinstance(statement, Statement)
         self.statements.append(statement)
         return self
 
-    def extend(self, statements):
+    def extend(self, statements: list[Statement]) -> PolicyDocument:
         """Append a list of statements.
 
         :param statements: IAM Statements
-        :type statements: list[Statement]
         :return: the modified policy document
-        :rtype: PolicyDocument
         """
-        for s in statements:
-            assert isinstance(s, Statement)
         self.statements.extend(statements)
         return self
 
-    def __iadd__(self, statements):
+    def __iadd__(self, statements: list[Statement]) -> PolicyDocument:  # type: ignore[misc]
         """see extend."""
         return self.extend(statements)
 
-    def __add__(self, other):
+    def __add__(
+        self, other: Statement | list[Statement] | PolicyDocument
+    ) -> PolicyDocument:
         """Add statement(s) or merge two policy documents.
 
         :param other: statement, list of statements or policy document
-        :type other: Statement | list[Statement] | PolicyDocument
         :return: the modified policy document
-        :rtype: PolicyDocument
         """
         result = PolicyDocument()
         result.extend(self.statements)
@@ -237,12 +228,10 @@ class PolicyDocument:
         return result
 
     @property
-    def properties(self):
+    def properties(self) -> dict[str, Any]:
         """Serialize the object as a simple dict.
 
         Can be used to transform to CloudFormation Yaml format.
-
-        :rtype: dict
         """
         assert self.statements, "A policy should have at least one statement"
         return {
@@ -259,19 +248,21 @@ INSTANCE_ASSUME_ROLE = Allow(
 class Policy(Resource):
     """A CloudFormation Policy resource."""
 
-    def __init__(self, name, policy_document=None, roles=None, groups=None, users=None):
+    def __init__(
+        self,
+        name: str,
+        policy_document: PolicyDocument | None = None,
+        roles: list[str] | None = None,
+        groups: list[str] | None = None,
+        users: list[str] | None = None,
+    ) -> None:
         """Initialize a policy.
 
         :param name: logical name on the stack
-        :type name: str
         :param policy_document: policy document
-        :type policy_document: PolicyDocument
         :param roles: list of roles to apply the policy to
-        :type roles: list[str] | None
         :param groups: list of groups to apply the policy to
-        :type groups: list[str] | None
         :param users: list of users to apply the policy to
-        :type users: list[str] | None
         """
         super(Policy, self).__init__(name, kind=AWSType.IAM_POLICY)
         self.roles = roles
@@ -280,14 +271,12 @@ class Policy(Resource):
         self.policy_document = policy_document
 
     @property
-    def properties(self):
+    def properties(self) -> dict[str, Any]:
         """Serialize the object as a simple dict.
 
         Can be used to transform to CloudFormation Yaml format.
-
-        :rtype: dict
         """
-        result = {"PolicyName": self.name}
+        result: dict[str, Any] = {"PolicyName": self.name}
         if self.policy_document is not None:
             result["PolicyDocument"] = self.policy_document.properties
 
@@ -303,24 +292,20 @@ class Policy(Resource):
 class InstanceProfile(Resource):
     """IAM Instance profile."""
 
-    def __init__(self, name, role):
+    def __init__(self, name: str, role: str | Ref) -> None:
         """Initialize an instance profile.
 
         :param name: logical name in the stack
-        :type name: str
         :param role: name of the associated role
-        :type role: str
         """
         super(InstanceProfile, self).__init__(name, kind=AWSType.IAM_INSTANCE_PROFILE)
         self.role = role
 
     @property
-    def properties(self):
+    def properties(self) -> dict[str, Any]:
         """Serialize the object as a simple dict.
 
         Can be used to transform to CloudFormation Yaml format.
-
-        :rtype: dict
         """
         return {"Roles": [self.role], "Path": "/"}
 
@@ -328,15 +313,14 @@ class InstanceProfile(Resource):
 class Role(Resource):
     """IAM Role."""
 
-    def __init__(self, name, assume_role_policy, path="/"):
+    def __init__(
+        self, name: str, assume_role_policy: PolicyDocument, path: str = "/"
+    ) -> None:
         """Initialize IAM Role.
 
         :param name: role name
-        :type name: str
         :param assume_role_policy: policy to define who can assume the role
-        :type assume_role_policy: PolicyDocument
         :param path: the path associated with this role (default: /)
-        :type path: str
         """
         # Note: we don't set RoleName attribute because of limitations during
         # update with cloudform. In that case RoleName is generated directly by
@@ -344,28 +328,23 @@ class Role(Resource):
         # part of a stack.
         super(Role, self).__init__(name, kind=AWSType.IAM_ROLE)
         self.path = path
-        self.policies = []
+        self.policies: list[Policy] = []
         self.assume_role_policy = assume_role_policy
 
-    def add(self, policy):
+    def add(self, policy: Policy) -> Role:
         """Add a policy.
 
         :param policy: a policy
-        :type policy: Policy
         :return: the object itself
-        :rtype: Role
         """
-        assert isinstance(policy, Policy)
         self.policies.append(policy)
         return self
 
     @property
-    def properties(self):
+    def properties(self) -> dict[str, Any]:
         """Serialize the object as a simple dict.
 
         Can be used to transform to CloudFormation Yaml format.
-
-        :rtype: dict
         """
         return {
             "AssumeRolePolicyDocument": self.assume_role_policy.properties,
@@ -379,41 +358,35 @@ class Group(Resource):
 
     ATTRIBUTES = ("Arn",)
 
-    def __init__(self, name, managed_policy_arns=None, path="/"):
+    def __init__(
+        self, name: str, managed_policy_arns: list[str] | None = None, path: str = "/"
+    ) -> None:
         """Initialize IAM Group.
 
         :param name: group name
-        :type name: str
         :param managed_policy_arns: A list of Amazon Resource Names (ARNs) of
             the IAM managed policies that you want to attach to the user.
-        :type managed_policy_arns: list[str] | None
         :param path: the path associated with this role (default: /)
-        :type path: str
         """
         super(Group, self).__init__(name, kind=AWSType.IAM_GROUP)
         self.path = path
-        self.policies = []
+        self.policies: list[Policy] = []
         self.managed_policy_arns = managed_policy_arns or []
 
-    def add(self, policy):
+    def add(self, policy: Policy) -> Group:
         """Add a policy.
 
         :param policy: a policy
-        :type policy: Policy
         :return: the object itself
-        :rtype: Role
         """
-        assert isinstance(policy, Policy)
         self.policies.append(policy)
         return self
 
     @property
-    def properties(self):
+    def properties(self) -> dict[str, Any]:
         """Serialize the object as a simple dict.
 
         Can be used to transform to CloudFormation Yaml format.
-
-        :rtype: dict
         """
         return {
             "ManagedPolicyArns": self.managed_policy_arns,
@@ -430,52 +403,42 @@ class User(Resource):
 
     def __init__(
         self,
-        name,
-        groups=None,
-        managed_policy_arns=None,
-        path="/",
-        permissions_boundary=None,
-    ):
+        name: str,
+        groups: list[str] | None = None,
+        managed_policy_arns: list[str] | None = None,
+        path: str = "/",
+        permissions_boundary: str | None = None,
+    ) -> None:
         """Initialize IAM User.
 
         :param name: user name
-        :type name: str
-        :type groups: list[str] | None
         :param managed_policy_arns: A list of Amazon Resource Names (ARNs) of
             the IAM managed policies that you want to attach to the user.
-        :type managed_policy_arns: list[str] | None
         :param path: the path associated with this role (default: /)
-        :type path: str
         :param permissions_boundary: The ARN of the policy that is used to set
             the permissions boundary for the user.
-        :type permissions_boundary: str | None
         """
         super(User, self).__init__(name, kind=AWSType.IAM_USER)
         self.groups = groups or []
         self.path = path
-        self.policies = []
+        self.policies: list[Policy] = []
         self.managed_policy_arns = managed_policy_arns or []
         self.permissions_boundary = permissions_boundary
 
-    def add(self, policy):
+    def add(self, policy: Policy) -> Self:
         """Add a policy.
 
         :param policy: a policy
-        :type policy: Policy
         :return: the object itself
-        :rtype: Role
         """
-        assert isinstance(policy, Policy)
         self.policies.append(policy)
         return self
 
     @property
-    def properties(self):
+    def properties(self) -> dict[str, Any]:
         """Serialize the object as a simple dict.
 
         Can be used to transform to CloudFormation Yaml format.
-
-        :rtype: dict
         """
         props = {
             "ManagedPolicyArns": self.managed_policy_arns or [],
@@ -495,37 +458,37 @@ class InstanceRole(Stack):
     Create both Role and associated profile.
     """
 
-    def __init__(self, name, path="/"):
+    def __init__(self, name: str, path: str = "/") -> None:
         """Initialize an instance role.
 
         :param name: name of the role. The instance profile name will be this
             name + ``InstanceProfile``
-        :type name: str
         :param path: path associated with this role
-        :type path: str
         """
         super(InstanceRole, self).__init__(name)
         assume_role_policy = PolicyDocument()
         assume_role_policy.append(INSTANCE_ASSUME_ROLE)
-        self.add(Role(name, assume_role_policy, path))
-        self.add(InstanceProfile(name + "InstanceProfile", self.resources[name].ref))
+        role = Role(name, assume_role_policy, path)
+        self.add(role)
+        self.add(InstanceProfile(name + "InstanceProfile", role.ref))
 
-    def add_policy(self, policy):
+    def add_policy(self, policy: Policy) -> InstanceRole:
         """Add a policy.
 
         :param policy: a policy
-        :type policy: Policy
         :return: the object itself
-        :rtype: InstanceRole
         """
-        self[self.name].add(policy)
+        resource = self[self.name]
+        assert isinstance(resource, Role)
+        resource.add(policy)
         return self
 
     @property
-    def instance_profile(self):
+    def instance_profile(self) -> InstanceProfile:
         """Return the name of the instance profile.
 
         :return: the name of the instance profile
-        :rtype: str
         """
-        return self.resources[self.name + "InstanceProfile"]
+        resource = self.resources[self.name + "InstanceProfile"]
+        assert isinstance(resource, InstanceProfile)
+        return resource
