@@ -83,6 +83,9 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             dest="wait_stack_creation",
             help="do not wait for stack creation completion",
         )
+        create_args.add_argument(
+            "--dry-run", action="store_true", help="do not create the stack, log only"
+        )
         create_args.set_defaults(command="push")
 
         update_args = subs.add_parser("update", help="update a stack")
@@ -106,6 +109,9 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             action="store_true",
             dest="skip_prompts",
             help="automatic yes to prompts",
+        )
+        update_args.add_argument(
+            "--dry-run", action="store_true", help="do not update the stack, log only"
         )
         update_args.set_defaults(command="update")
 
@@ -166,7 +172,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
     def dry_run(self) -> bool:
         """Return True if CloudFormation stack is not to be deployed."""
         assert self.args is not None
-        return self.args.command not in ("push", "update")
+        return self.args.command not in ("push", "update") or self.args.dry_run
 
     def create_data_dir(self, root_dir: str) -> None:
         """Sync into root_dir data uploaded to the s3 bucket used by the stack.
@@ -194,6 +200,72 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         ask = input(f"{msg} (y/N): ")
         return ask[0] in "Yy"
 
+    def _push_stack_changeset(self, stack: Stack, s3_template_url: str | None) -> int:
+        """Push the changeset of a stack from an already uploaded S3 template.
+
+        Create the stack if it doesn't exist.
+
+        :param stack: the stack
+        :param s3_template_url: URL of the template
+        :return: an error code
+        """
+        assert self.args is not None
+
+        if stack.exists():
+            changeset_name = "changeset%s" % int(time.time())
+            logging.info("Push changeset: %s" % changeset_name)
+            stack.create_change_set(changeset_name, url=s3_template_url)
+            result = stack.describe_change_set(changeset_name)
+            while result["Status"] in (
+                "CREATE_PENDING",
+                "CREATE_IN_PROGRESS",
+            ):
+                time.sleep(1.0)
+                result = stack.describe_change_set(changeset_name)
+
+            if result["Status"] == "FAILED":
+                change_executed = False
+                if (
+                    "The submitted information didn't contain changes"
+                    in result["StatusReason"]
+                ):
+                    logging.warning(result["StatusReason"])
+                    change_executed = True
+                else:
+                    logging.error(result["StatusReason"])
+
+                stack.delete_change_set(changeset_name)
+                if not change_executed:
+                    return 1
+            else:
+                for el in result["Changes"]:
+                    if "ResourceChange" not in el:
+                        continue
+                    logging.info(
+                        "%-8s %-32s: (replacement:%s)",
+                        el["ResourceChange"].get("Action"),
+                        el["ResourceChange"].get("LogicalResourceId"),
+                        el["ResourceChange"].get("Replacement", "n/a"),
+                    )
+
+                if self.args.apply_changeset and self._prompt_yes("Apply change"):
+                    stack.execute_change_set(
+                        changeset_name=changeset_name,
+                        wait=self.args.wait_stack_creation,
+                    )
+
+                    if self.args.wait_stack_creation:
+                        return (
+                            0
+                            if stack.state()["StackStatus"] == "UPDATE_COMPLETE"
+                            else 1
+                        )
+        else:
+            logging.info("Create new stack")
+            stack.create(url=s3_template_url, wait=self.args.wait_stack_creation)
+
+        return 0
+
     def execute_for_stack(self, stack: Stack, aws_env: Session | None = None) -> int:
         """Execute application for a given stack and return exit status.
 
@@ -208,8 +280,10 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
             if self.args.command in ("push", "update"):
                 # Synchronize resources to the S3 bucket
-                assert self.aws_env
-                s3 = self.aws_env.client("s3")
+                if not self.args.dry_run:
+                    assert self.aws_env
+                    s3 = self.aws_env.client("s3")
+
                 with tempfile.TemporaryDirectory() as tempd:
                     # Push data associated with CFNMain and then all data
                     # related to the stack
@@ -228,91 +302,43 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                                     self.s3_data_key,
                                     subkey,
                                 )
-                                s3.put_object(
-                                    Bucket=self.s3_bucket,
-                                    Body=fd,
-                                    ServerSideEncryption="AES256",
-                                    Key=self.s3_data_key + subkey,
-                                )
+                                if not self.args.dry_run:
+                                    s3.put_object(
+                                        Bucket=self.s3_bucket,
+                                        Body=fd,
+                                        ServerSideEncryption="AES256",
+                                        Key=self.s3_data_key + subkey,
+                                    )
 
                 if self.s3_template_key is not None:
                     logging.info(
                         "Upload template to %s:%s", self.s3_bucket, self.s3_template_key
                     )
-                    s3.put_object(
-                        Bucket=self.s3_bucket,
-                        Body=stack.body.encode("utf-8"),
-                        ServerSideEncryption="AES256",
-                        Key=self.s3_template_key,
-                    )
+                    if not self.args.dry_run:
+                        s3.put_object(
+                            Bucket=self.s3_bucket,
+                            Body=stack.body.encode("utf-8"),
+                            ServerSideEncryption="AES256",
+                            Key=self.s3_template_key,
+                        )
 
                 logging.info("Validate template for stack %s" % stack.name)
-                try:
-                    stack.validate(url=self.s3_template_url)
-                except Exception:
-                    logging.error("Invalid cloud formation template")
-                    logging.error(stack.body)
-                    raise
+                if not self.args.dry_run:
+                    try:
+                        stack.validate(url=self.s3_template_url)
+                    except Exception:
+                        logging.error("Invalid cloud formation template")
+                        logging.error(stack.body)
+                        raise
 
-                if stack.exists():
-                    changeset_name = "changeset%s" % int(time.time())
-                    logging.info("Push changeset: %s" % changeset_name)
-                    stack.create_change_set(changeset_name, url=self.s3_template_url)
-                    result = stack.describe_change_set(changeset_name)
-                    while result["Status"] in ("CREATE_PENDING", "CREATE_IN_PROGRESS"):
-                        time.sleep(1.0)
-                        result = stack.describe_change_set(changeset_name)
-
-                    if result["Status"] == "FAILED":
-                        change_executed = False
-                        if (
-                            "The submitted information didn't contain changes"
-                            in result["StatusReason"]
-                        ):
-                            logging.warning(result["StatusReason"])
-                            change_executed = True
-                        else:
-                            logging.error(result["StatusReason"])
-
-                        stack.delete_change_set(changeset_name)
-                        if not change_executed:
-                            return 1
-                    else:
-                        for el in result["Changes"]:
-                            if "ResourceChange" not in el:
-                                continue
-                            logging.info(
-                                "%-8s %-32s: (replacement:%s)",
-                                el["ResourceChange"].get("Action"),
-                                el["ResourceChange"].get("LogicalResourceId"),
-                                el["ResourceChange"].get("Replacement", "n/a"),
-                            )
-
-                        if self.args.apply_changeset and self._prompt_yes(
-                            "Apply change"
-                        ):
-                            stack.execute_change_set(
-                                changeset_name=changeset_name,
-                                wait=self.args.wait_stack_creation,
-                            )
-
-                            if self.args.wait_stack_creation:
-                                return (
-                                    0
-                                    if stack.state()["StackStatus"] == "UPDATE_COMPLETE"
-                                    else 1
-                                )
-                        return 0
-                else:
-                    logging.info("Create new stack")
-                    stack.create(
-                        url=self.s3_template_url, wait=self.args.wait_stack_creation
+                    return self._push_stack_changeset(
+                        stack=stack, s3_template_url=self.s3_template_url
                     )
             elif self.args.command == "show":
                 print(stack.body)
             elif self.args.command == "protect":
                 # Enable termination protection
-                result = stack.enable_termination_protection()
+                stack.enable_termination_protection()
 
                 if self.stack_policy_body is not None:
                     stack.set_stack_policy(self.stack_policy_body)
@@ -350,8 +376,13 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         assert self.args is not None
 
         # Some checks in case of deployment.
-        # The CI variable is set by GitLab
-        if os.environ.get("CI") != "true" and self.args.command in ("push", "update"):
+        # The CI variable is set by GitLab.
+        # Don't run the checks when in dry-run mode as this is not a real deploy.
+        if (
+            os.environ.get("CI") != "true"
+            and self.args.command in ("push", "update")
+            and not self.args.dry_run
+        ):
             repo = GitRepository(".")
 
             # Retrieve the current branch
@@ -458,8 +489,8 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 except botocore.exceptions.NoCredentialsError:
                     # Don't force assume the role for the show command. The stacks
                     # that require AWS API calls to generate the template can display
-                    # dummy values
-                    if not is_show:
+                    # dummy values. Same thing for the dry-run mode.
+                    if not is_show and not self.args.dry_run:
                         raise
             else:
                 self.aws_env = AWSEnv(regions=self.regions, profile=profile)
