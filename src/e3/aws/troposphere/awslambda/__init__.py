@@ -262,6 +262,7 @@ class Function(Construct):
         service: str,
         source_arn: str,
         source_account: str | None = None,
+        version: Version | Alias | None = None,
     ) -> awslambda.Permission:
         """Create a Lambda Permission object for a given service.
 
@@ -271,11 +272,14 @@ class Function(Construct):
         :param source_account: account that holds the resource. This is
             mandatory only when using S3 as a service as a bucket arn is
             not linked to an account.
+        :param version: specific version or alias to give permission for
         :return: an AWSObject
         """
+        target = version if version is not None else self
+
         params = {
             "Action": "lambda:InvokeFunction",
-            "FunctionName": self.ref,
+            "FunctionName": target.ref,
             "Principal": f"{service}.amazonaws.com",
             "SourceArn": source_arn,
         }
@@ -284,7 +288,7 @@ class Function(Construct):
         if source_account is not None:
             params["SourceAccount"] = source_account
 
-        return awslambda.Permission(name_to_id(self.name + name_suffix), **params)
+        return awslambda.Permission(name_to_id(target.name + name_suffix), **params)
 
 
 class DockerFunction(Function):

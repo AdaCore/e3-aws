@@ -22,6 +22,7 @@ from troposphere.awslambda import (
 from e3.aws import AWSEnv
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.awslambda import (
+    Function,
     PyFunction,
     Py38Function,
     DockerFunction,
@@ -1024,3 +1025,64 @@ def test_base64_response(base64_response_server: Flask) -> None:
     assert response["statusCode"] == 200
     assert response["headers"]["Content-Type"] == "image/png"
     assert response["body"] == "4pavUE5H4pCN4pCK4pCa4pCK"
+
+
+@pytest.mark.parametrize(
+    "version, expected_function_name_ref",
+    [
+        # Add the permission on the function itself
+        (
+            None,
+            "Mypylambda",
+        ),
+        # Add the permission on a version of the function
+        (
+            Version(
+                name="myversion", description="this is some version", lambda_arn=""
+            ),
+            "Myversion",
+        ),
+        # Add the permission on an alias of the function
+        (
+            Alias(
+                name="myalias",
+                description="this is some alias",
+                lambda_arn="",
+                lambda_version="",
+            ),
+            "Myalias",
+        ),
+    ],
+)
+def test_invoke_permission(
+    version: Version | Alias | None,
+    expected_function_name_ref: str,
+) -> None:
+    """Test Function.invoke_permission with various targets.
+
+    :param version: a version or alias of the function
+    :param expected_function_name_ref: name that should be referenced in FunctionName
+    """
+    function = Function(
+        name="mypylambda",
+        description="this is a test",
+        role="somearn",
+    )
+
+    permission = function.invoke_permission(
+        name_suffix="TopicName",
+        service="sns",
+        source_arn="arn:aws:sns:eu-west-1:123456789012:TopicName",
+        version=version,
+    )
+
+    assert permission.title == f"{expected_function_name_ref}TopicName"
+    assert permission.to_dict() == {
+        "Properties": {
+            "Action": "lambda:InvokeFunction",
+            "FunctionName": {"Ref": expected_function_name_ref},
+            "Principal": "sns.amazonaws.com",
+            "SourceArn": "arn:aws:sns:eu-west-1:123456789012:TopicName",
+        },
+        "Type": "AWS::Lambda::Permission",
+    }
