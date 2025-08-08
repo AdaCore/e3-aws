@@ -200,6 +200,82 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         ask = input(f"{msg} (y/N): ")
         return ask[0] in "Yy"
 
+    def _upload_dir(
+        self,
+        root_dir: str,
+        s3_bucket: str,
+        s3_key: str,
+        s3_client: botocore.client.S3 | None = None,
+    ) -> None:
+        """Upload directory to S3 bucket.
+
+        :param root_dir: directory
+        :param s3_bucket: bucket where to upload files
+        :param s3_key: key prefix for uploaded files
+        :param s3_client: a client for the S3 API
+        """
+        for f in find(root_dir):
+            subkey = os.path.relpath(f, root_dir).replace("\\", "/")
+
+            logging.info(
+                "Upload %s to %s:%s%s",
+                subkey,
+                s3_bucket,
+                s3_key,
+                subkey,
+            )
+
+            if s3_client is None:
+                continue
+
+            with open(f, "rb") as fd:
+                s3_client.put_object(
+                    Bucket=self.s3_bucket,
+                    Body=fd,
+                    ServerSideEncryption="AES256",
+                    Key=s3_key + subkey,
+                )
+
+    def _upload_stack(self, stack: Stack) -> None:
+        """Upload stack data and template to S3.
+
+        :param stack: the stack to upload
+        """
+        assert self.args is not None
+
+        if not self.args.dry_run:
+            assert self.aws_env
+            s3 = self.aws_env.client("s3")
+        else:
+            s3 = None
+
+        with tempfile.TemporaryDirectory() as tempd:
+            # Push data associated with CFNMain and then all data
+            # related to the stack
+            self.create_data_dir(root_dir=tempd)
+            stack.create_data_dir(root_dir=tempd)
+
+            if self.s3_data_key is not None:
+                # synchronize data to the bucket before creating the stack
+                self._upload_dir(
+                    root_dir=tempd,
+                    s3_bucket=self.s3_bucket,
+                    s3_key=self.s3_data_key,
+                    s3_client=s3,
+                )
+
+        if self.s3_template_key is not None:
+            logging.info(
+                "Upload template to %s:%s", self.s3_bucket, self.s3_template_key
+            )
+            if s3 is not None:
+                s3.put_object(
+                    Bucket=self.s3_bucket,
+                    Body=stack.body.encode("utf-8"),
+                    ServerSideEncryption="AES256",
+                    Key=self.s3_template_key,
+                )
+
     def _push_stack_changeset(self, stack: Stack, s3_template_url: str | None) -> int:
         """Push the changeset of a stack from an already uploaded S3 template.
 
@@ -280,47 +356,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
             if self.args.command in ("push", "update"):
                 # Synchronize resources to the S3 bucket
-                if not self.args.dry_run:
-                    assert self.aws_env
-                    s3 = self.aws_env.client("s3")
-
-                with tempfile.TemporaryDirectory() as tempd:
-                    # Push data associated with CFNMain and then all data
-                    # related to the stack
-                    self.create_data_dir(root_dir=tempd)
-                    stack.create_data_dir(root_dir=tempd)
-
-                    if self.s3_data_key is not None:
-                        # synchronize data to the bucket before creating the stack
-                        for f in find(tempd):
-                            with open(f, "rb") as fd:
-                                subkey = os.path.relpath(f, tempd).replace("\\", "/")
-                                logging.info(
-                                    "Upload %s to %s:%s%s",
-                                    subkey,
-                                    self.s3_bucket,
-                                    self.s3_data_key,
-                                    subkey,
-                                )
-                                if not self.args.dry_run:
-                                    s3.put_object(
-                                        Bucket=self.s3_bucket,
-                                        Body=fd,
-                                        ServerSideEncryption="AES256",
-                                        Key=self.s3_data_key + subkey,
-                                    )
-
-                if self.s3_template_key is not None:
-                    logging.info(
-                        "Upload template to %s:%s", self.s3_bucket, self.s3_template_key
-                    )
-                    if not self.args.dry_run:
-                        s3.put_object(
-                            Bucket=self.s3_bucket,
-                            Body=stack.body.encode("utf-8"),
-                            ServerSideEncryption="AES256",
-                            Key=self.s3_template_key,
-                        )
+                self._upload_stack(stack)
 
                 logging.info("Validate template for stack %s" % stack.name)
                 if not self.args.dry_run:
