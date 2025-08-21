@@ -574,7 +574,7 @@ class Alias(Construct):
         name: str,
         description: str,
         lambda_arn: str | GetAtt | Ref,
-        lambda_version: str,
+        lambda_version: str | GetAtt | Version,
         alias_name: str | None = None,
         provisioned_concurrency_config: (
             awslambda.ProvisionedConcurrencyConfiguration | None
@@ -610,11 +610,17 @@ class Alias(Construct):
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
+        lambda_version = (
+            self.lambda_version.version
+            if isinstance(self.lambda_version, Version)
+            else self.lambda_version
+        )
+
         params = {
             "Name": self.alias_name if self.alias_name is not None else self.name,
             "Description": self.description,
             "FunctionName": self.lambda_arn,
-            "FunctionVersion": self.lambda_version,
+            "FunctionVersion": lambda_version,
         }
 
         if self.provisioned_concurrency_config is not None:
@@ -842,7 +848,7 @@ class BlueGreenAliasConfiguration(object):
 
     def __init__(
         self,
-        version: str,
+        version: str | GetAtt | Version,
         name: str | None = None,
         provisioned_concurrency_config: (
             awslambda.ProvisionedConcurrencyConfiguration | None
