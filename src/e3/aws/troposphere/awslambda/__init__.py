@@ -746,18 +746,18 @@ class AutoVersion(Construct):
         self.latest.provisioned_concurrency_config = provisioned_concurrency_config
         self.latest.code_sha256 = code_sha256
 
-    def get_version(self, number: int) -> Version | None:
+    def get_version(self, number: int) -> Version:
         """Return a version.
 
         :param number: version number
+        :raises ValueError: if number is out of range
         """
-        number = number - self.min_version
+        index = number - self.min_version
 
-        return (
-            self.versions[number]
-            if number >= 0 and number < len(self.versions)
-            else None
-        )
+        if index >= 0 and index < len(self.versions):
+            return self.versions[index]
+
+        raise ValueError(f"version {number} if out of range")
 
     @property
     def previous(self) -> Version:

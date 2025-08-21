@@ -794,14 +794,13 @@ def test_autoversion_default(stack: Stack, simple_lambda_function: PyFunction) -
     stack.add(auto_version)
     print(stack.export()["Resources"])
     assert stack.export()["Resources"] == EXPECTED_AUTOVERSION_DEFAULT_TEMPLATE
-    assert (
-        version := auto_version.get_version(1)
-    ) and version.name == "mypylambdaVersion1"
-    assert (
-        version := auto_version.get_version(2)
-    ) and version.name == "mypylambdaVersion2"
-    assert (version := auto_version.previous) and version.name == "mypylambdaVersion1"
-    assert (version := auto_version.latest) and version.name == "mypylambdaVersion2"
+    assert auto_version.get_version(1).name == "mypylambdaVersion1"
+    assert auto_version.get_version(2).name == "mypylambdaVersion2"
+    assert auto_version.previous.name == "mypylambdaVersion1"
+    assert auto_version.latest.name == "mypylambdaVersion2"
+
+    with pytest.raises(ValueError):
+        auto_version.get_version(3)
 
 
 def test_autoversion_single(stack: Stack, simple_lambda_function: PyFunction) -> None:
@@ -832,14 +831,10 @@ def test_autoversion(stack: Stack, simple_lambda_function: PyFunction) -> None:
     stack.add(auto_version)
     print(stack.export()["Resources"])
     assert stack.export()["Resources"] == EXPECTED_AUTOVERSION_TEMPLATE
-    assert (
-        version := auto_version.get_version(2)
-    ) and version.name == "mypylambdaVersion2"
-    assert (
-        version := auto_version.get_version(3)
-    ) and version.name == "mypylambdaVersion3"
-    assert (version := auto_version.previous) and version.name == "mypylambdaVersion2"
-    assert (version := auto_version.latest) and version.name == "mypylambdaVersion3"
+    assert auto_version.get_version(2).name == "mypylambdaVersion2"
+    assert auto_version.get_version(3).name == "mypylambdaVersion3"
+    assert auto_version.previous.name == "mypylambdaVersion2"
+    assert auto_version.latest.name == "mypylambdaVersion3"
 
 
 def test_bluegreenaliases_default(
