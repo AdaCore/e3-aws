@@ -780,6 +780,63 @@ class AutoVersion(Construct):
         return self.versions
 
 
+class BlueGreenVersions(AutoVersion):
+    """Automatic blue/green lambda versions."""
+
+    def __init__(
+        self,
+        blue_version: int,
+        green_version: int,
+        min_version: int | None = None,
+        lambda_name: str | None = None,
+        lambda_arn: str | GetAtt | Ref | None = None,
+        lambda_function: Function | None = None,
+        provisioned_concurrency_config: (
+            awslambda.ProvisionedConcurrencyConfiguration | None
+        ) = None,
+        code_sha256: str | None = None,
+    ) -> None:
+        """Create lambda versions from 1 to blue/green versions included.
+
+        See AutoVersion.
+
+        :param blue_version: number of the blue version
+        :param green_version: number of the green version
+        :param min_version: minimum deployed version (default 1)
+        :param lambda_name: the name of the Lambda function
+        :param lambda_arn: the arn of the Lambda function
+        :param lambda_function: the Lambda function
+        :param provisioned_concurrency_config: specifies a provisioned concurrency
+            configuration for a function's version. Updates are not supported for this
+            property.
+        :param code_sha256: only publish a version if the hash value matches the value
+            that's specified. Use this option to avoid publishing a version if the
+            function code has changed since you last updated it. Updates are not
+            supported for this property
+        """
+        super().__init__(
+            version=max(blue_version, green_version),
+            min_version=min_version,
+            lambda_name=lambda_name,
+            lambda_arn=lambda_arn,
+            lambda_function=lambda_function,
+            provisioned_concurrency_config=provisioned_concurrency_config,
+            code_sha256=code_sha256,
+        )
+        self.blue_version = blue_version
+        self.green_version = green_version
+
+    @property
+    def blue(self) -> Version:
+        """Return the blue version."""
+        return self.get_version(self.blue_version)
+
+    @property
+    def green(self) -> Version:
+        """Return the green version."""
+        return self.get_version(self.green_version)
+
+
 class BlueGreenAliasConfiguration(object):
     """Blue/Green alias configuration."""
 

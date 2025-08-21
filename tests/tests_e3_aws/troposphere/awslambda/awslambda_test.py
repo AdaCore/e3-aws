@@ -29,6 +29,7 @@ from e3.aws.troposphere.awslambda import (
     Alias,
     Version,
     AutoVersion,
+    BlueGreenVersions,
     BlueGreenAliases,
     BlueGreenAliasConfiguration,
 )
@@ -365,6 +366,30 @@ EXPECTED_AUTOVERSION_TEMPLATE = {
             "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
             "ProvisionedConcurrencyConfig": {"ProvisionedConcurrentExecutions": 1},
             "CodeSha256": "somesha",
+        },
+        "Type": "AWS::Lambda::Version",
+    },
+}
+
+EXPECTED_BLUEGREENVERSIONS_TEMPLATE = {
+    "MypylambdaVersion1": {
+        "Properties": {
+            "Description": "version 1 of mypylambda lambda",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
+        },
+        "Type": "AWS::Lambda::Version",
+    },
+    "MypylambdaVersion2": {
+        "Properties": {
+            "Description": "version 2 of mypylambda lambda",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
+        },
+        "Type": "AWS::Lambda::Version",
+    },
+    "MypylambdaVersion3": {
+        "Properties": {
+            "Description": "version 3 of mypylambda lambda",
+            "FunctionName": {"Fn::GetAtt": ["Mypylambda", "Arn"]},
         },
         "Type": "AWS::Lambda::Version",
     },
@@ -835,6 +860,20 @@ def test_autoversion(stack: Stack, simple_lambda_function: PyFunction) -> None:
     assert auto_version.get_version(3).name == "mypylambdaVersion3"
     assert auto_version.previous.name == "mypylambdaVersion2"
     assert auto_version.latest.name == "mypylambdaVersion3"
+
+
+def test_bluegreenversions(stack: Stack, simple_lambda_function: PyFunction) -> None:
+    """Test BlueGreenVersions creation."""
+    versions = BlueGreenVersions(
+        blue_version=2,
+        green_version=3,
+        lambda_function=simple_lambda_function,
+    )
+    stack.add(versions)
+    print(stack.export()["Resources"])
+    assert stack.export()["Resources"] == EXPECTED_BLUEGREENVERSIONS_TEMPLATE
+    assert versions.blue.name == "mypylambdaVersion2"
+    assert versions.green.name == "mypylambdaVersion3"
 
 
 def test_bluegreenaliases_default(
