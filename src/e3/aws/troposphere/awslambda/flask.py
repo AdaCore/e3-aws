@@ -33,7 +33,7 @@ from __future__ import annotations
 import os
 
 from troposphere import GetAtt
-from troposphere.awslambda import LoggingConfig
+from troposphere.awslambda import LoggingConfig, VPCConfig
 from e3.aws.troposphere.iam.role import Role
 from e3.fs import cp
 from . import PyFunction
@@ -67,6 +67,7 @@ class PyFlaskFunction(PyFunction):
         reserved_concurrent_executions: int | None = None,
         environment: dict[str, str] | None = None,
         logging_config: LoggingConfig | None = None,
+        vpc_config: VPCConfig | None = None,
     ):
         """Initialize a Flask AWS lambda function using a Python runtime.
 
@@ -90,6 +91,10 @@ class PyFlaskFunction(PyFunction):
         :param environment: Environment variables that are accessible from function
             code during execution
         :param logging_config: The function's Amazon CloudWatch Logs settings
+        :param vpc_config: For network connectivity to AWS resources in a VPC, specify
+            a list of security groups and subnets in the VPC. When you connect a
+            function to a VPC, it can access resources and the internet only
+            through that VPC
         """
         self.app_module, self.app_name = app.rsplit(".", 1)
 
@@ -108,6 +113,7 @@ class PyFlaskFunction(PyFunction):
             reserved_concurrent_executions=reserved_concurrent_executions,
             environment=environment,
             logging_config=logging_config,
+            vpc_config=vpc_config,
         )
 
     def populate_package_dir(self, package_dir: str) -> None:
@@ -142,6 +148,7 @@ class Py38FlaskFunction(PyFlaskFunction):
         memory_size: int | None = None,
         logs_retention_in_days: int | None = None,
         logging_config: LoggingConfig | None = None,
+        vpc_config: VPCConfig | None = None,
     ):
         """Initialize a Flask AWS lambda function using Python 3.8 runtime.
 
@@ -160,4 +167,5 @@ class Py38FlaskFunction(PyFlaskFunction):
             memory_size=memory_size,
             logs_retention_in_days=logs_retention_in_days,
             logging_config=logging_config,
+            vpc_config=vpc_config,
         )
