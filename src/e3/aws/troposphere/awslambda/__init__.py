@@ -574,7 +574,7 @@ class Alias(Construct):
         name: str,
         description: str,
         lambda_arn: str | GetAtt | Ref,
-        lambda_version: str,
+        lambda_version: str | GetAtt | Version,
         alias_name: str | None = None,
         provisioned_concurrency_config: (
             awslambda.ProvisionedConcurrencyConfiguration | None
@@ -610,11 +610,17 @@ class Alias(Construct):
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
+        lambda_version = (
+            self.lambda_version.version
+            if isinstance(self.lambda_version, Version)
+            else self.lambda_version
+        )
+
         params = {
             "Name": self.alias_name if self.alias_name is not None else self.name,
             "Description": self.description,
             "FunctionName": self.lambda_arn,
-            "FunctionVersion": self.lambda_version,
+            "FunctionVersion": lambda_version,
         }
 
         if self.provisioned_concurrency_config is not None:
@@ -780,12 +786,69 @@ class AutoVersion(Construct):
         return self.versions
 
 
+class BlueGreenVersions(AutoVersion):
+    """Automatic blue/green lambda versions."""
+
+    def __init__(
+        self,
+        blue_version: int,
+        green_version: int,
+        min_version: int | None = None,
+        lambda_name: str | None = None,
+        lambda_arn: str | GetAtt | Ref | None = None,
+        lambda_function: Function | None = None,
+        provisioned_concurrency_config: (
+            awslambda.ProvisionedConcurrencyConfiguration | None
+        ) = None,
+        code_sha256: str | None = None,
+    ) -> None:
+        """Create lambda versions from min_version to blue/green versions included.
+
+        See AutoVersion.
+
+        :param blue_version: number of the blue version
+        :param green_version: number of the green version
+        :param min_version: minimum deployed version (default 1)
+        :param lambda_name: the name of the Lambda function
+        :param lambda_arn: the arn of the Lambda function
+        :param lambda_function: the Lambda function
+        :param provisioned_concurrency_config: specifies a provisioned concurrency
+            configuration for a function's version. Updates are not supported for this
+            property.
+        :param code_sha256: only publish a version if the hash value matches the value
+            that's specified. Use this option to avoid publishing a version if the
+            function code has changed since you last updated it. Updates are not
+            supported for this property
+        """
+        super().__init__(
+            version=max(blue_version, green_version),
+            min_version=min_version,
+            lambda_name=lambda_name,
+            lambda_arn=lambda_arn,
+            lambda_function=lambda_function,
+            provisioned_concurrency_config=provisioned_concurrency_config,
+            code_sha256=code_sha256,
+        )
+        self.blue_version = blue_version
+        self.green_version = green_version
+
+    @property
+    def blue(self) -> Version:
+        """Return the blue version."""
+        return self.get_version(self.blue_version)
+
+    @property
+    def green(self) -> Version:
+        """Return the green version."""
+        return self.get_version(self.green_version)
+
+
 class BlueGreenAliasConfiguration(object):
     """Blue/Green alias configuration."""
 
     def __init__(
         self,
-        version: str,
+        version: str | GetAtt | Version,
         name: str | None = None,
         provisioned_concurrency_config: (
             awslambda.ProvisionedConcurrencyConfiguration | None
