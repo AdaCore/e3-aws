@@ -802,7 +802,7 @@ class BlueGreenVersions(AutoVersion):
         ) = None,
         code_sha256: str | None = None,
     ) -> None:
-        """Create lambda versions from 1 to blue/green versions included.
+        """Create lambda versions from min_version to blue/green versions included.
 
         See AutoVersion.
 
