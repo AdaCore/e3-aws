@@ -731,6 +731,7 @@ class RestApi(Api):
         integration_uri: str | Ref | Sub | None = None,
         iam_path: str = "/",
         policy: list[PolicyStatement] | None = None,
+        minimum_compression_size: int | None = None,
     ):
         """Initialize a Rest API.
 
@@ -770,6 +771,9 @@ class RestApi(Api):
             (must be either / or a string starting and ending with /)
         :param policy: the policy document that contains the permissions for
             the RestApi resource.
+        :param minimum_compression_size: a nullable integer that is used to
+            enable compression (with non-negative between 0 and 10485760 (10M)
+            bytes, inclusive) or disable compression (with a null value) on an API
         """
         super().__init__(
             name=name,
@@ -787,6 +791,7 @@ class RestApi(Api):
         assert iam_path.endswith("/"), "iam_path must end with '/'"
         self.iam_path = iam_path
         self.policy = policy
+        self.minimum_compression_size = minimum_compression_size
 
         # For backward compatibility
         if resource_list is None:
@@ -1207,6 +1212,9 @@ class RestApi(Api):
         }
         if self.policy:
             api_params["Policy"] = PolicyDocument(statements=self.policy).as_dict
+
+        if self.minimum_compression_size is not None:
+            api_params["MinimumCompressionSize"] = self.minimum_compression_size
 
         result.append(apigateway.RestApi(self.logical_id, **api_params))
 

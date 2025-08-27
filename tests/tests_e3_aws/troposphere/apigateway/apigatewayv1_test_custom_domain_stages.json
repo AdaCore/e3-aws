@@ -50,7 +50,8 @@
                         }
                     }
                 ]
-            }
+            },
+            "MinimumCompressionSize": 0
         },
         "Type": "AWS::ApiGateway::RestApi"
     },
