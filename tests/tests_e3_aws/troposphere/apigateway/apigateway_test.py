@@ -635,6 +635,8 @@ def test_rest_api_custom_domain(stack: Stack, lambda_fun: PyFunction) -> None:
                 condition={"NotIpAddress": {"aws:SourceIp": ["1.2.3.4"]}},
             ),
         ],
+        # Compression can be enabled this way
+        minimum_compression_size=0,
     )
     rest_api.add_cognito_authorizer(
         name="testauthorizer",
@@ -692,6 +694,8 @@ def test_rest_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> 
                 condition={"NotIpAddress": {"aws:SourceIp": ["1.2.3.4"]}},
             ),
         ],
+        # Compression can be enabled this way
+        minimum_compression_size=0,
     )
     rest_api.add_cognito_authorizer(
         name="testauthorizer",
