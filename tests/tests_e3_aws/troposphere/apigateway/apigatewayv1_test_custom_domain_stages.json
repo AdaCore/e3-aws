@@ -51,7 +51,10 @@
                     }
                 ]
             },
-            "MinimumCompressionSize": 0
+            "MinimumCompressionSize": 0,
+            "BinaryMediaTypes": [
+                "image/png"
+            ]
         },
         "Type": "AWS::ApiGateway::RestApi"
     },
@@ -91,7 +94,7 @@
                         "Arn"
                     ]
                 },
-                "Format": "{\"source_ip\": \"$context.identity.sourceIp\", \"request_time\": \"$context.requestTime\", \"method\": \"$context.httpMethod\", \"route\": \"$context.routeKey\", \"protocol\": \"$context.protocol\", \"status\": \"$context.status\", \"response_length\": \"$context.responseLength\", \"request_id\": \"$context.requestId\", \"integration_error_msg\": \"$context.integrationErrorMessage\"}"
+                "Format": "{\"source_ip\": \"$context.identity.sourceIp\", \"request_time\": \"$context.requestTime\", \"method\": \"$context.httpMethod\", \"path\": \"$context.path\", \"protocol\": \"$context.protocol\", \"status\": \"$context.status\", \"response_length\": \"$context.responseLength\", \"request_id\": \"$context.requestId\", \"extendedRequestId\": \"$context.extendedRequestId\", \"integration_error\": \"$context.integration.error\"}"
             },
             "RestApiId": {
                 "Ref": "Testapi"
@@ -134,7 +137,7 @@
                         "Arn"
                     ]
                 },
-                "Format": "{\"source_ip\": \"$context.identity.sourceIp\", \"request_time\": \"$context.requestTime\", \"method\": \"$context.httpMethod\", \"route\": \"$context.routeKey\", \"protocol\": \"$context.protocol\", \"status\": \"$context.status\", \"response_length\": \"$context.responseLength\", \"request_id\": \"$context.requestId\", \"integration_error_msg\": \"$context.integrationErrorMessage\"}"
+                "Format": "{\"source_ip\": \"$context.identity.sourceIp\", \"request_time\": \"$context.requestTime\", \"method\": \"$context.httpMethod\", \"path\": \"$context.path\", \"protocol\": \"$context.protocol\", \"status\": \"$context.status\", \"response_length\": \"$context.responseLength\", \"request_id\": \"$context.requestId\", \"extendedRequestId\": \"$context.extendedRequestId\", \"integration_error\": \"$context.integration.error\"}"
             },
             "RestApiId": {
                 "Ref": "Testapi"
