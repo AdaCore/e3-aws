@@ -732,6 +732,7 @@ class RestApi(Api):
         iam_path: str = "/",
         policy: list[PolicyStatement] | None = None,
         minimum_compression_size: int | None = None,
+        binary_media_types: list[str] | None = None,
     ):
         """Initialize a Rest API.
 
@@ -774,6 +775,8 @@ class RestApi(Api):
         :param minimum_compression_size: a nullable integer that is used to
             enable compression (with non-negative between 0 and 10485760 (10M)
             bytes, inclusive) or disable compression (with a null value) on an API
+        :param binary_media_types: the list of binary media types supported by
+            the RestApi
         """
         super().__init__(
             name=name,
@@ -792,6 +795,7 @@ class RestApi(Api):
         self.iam_path = iam_path
         self.policy = policy
         self.minimum_compression_size = minimum_compression_size
+        self.binary_media_types = binary_media_types
 
         # For backward compatibility
         if resource_list is None:
@@ -1215,6 +1219,9 @@ class RestApi(Api):
 
         if self.minimum_compression_size is not None:
             api_params["MinimumCompressionSize"] = self.minimum_compression_size
+
+        if self.binary_media_types is not None:
+            api_params["BinaryMediaTypes"] = self.binary_media_types
 
         result.append(apigateway.RestApi(self.logical_id, **api_params))
 

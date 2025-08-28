@@ -51,7 +51,10 @@
                     }
                 ]
             },
-            "MinimumCompressionSize": 0
+            "MinimumCompressionSize": 0,
+            "BinaryMediaTypes": [
+                "image/png"
+            ]
         },
         "Type": "AWS::ApiGateway::RestApi"
     },

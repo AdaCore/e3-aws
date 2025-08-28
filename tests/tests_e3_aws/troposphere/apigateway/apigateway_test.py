@@ -637,6 +637,8 @@ def test_rest_api_custom_domain(stack: Stack, lambda_fun: PyFunction) -> None:
         ],
         # Compression can be enabled this way
         minimum_compression_size=0,
+        # Some media type can be treated as binary data
+        binary_media_types=["image/png"],
     )
     rest_api.add_cognito_authorizer(
         name="testauthorizer",
@@ -696,6 +698,8 @@ def test_rest_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> 
         ],
         # Compression can be enabled this way
         minimum_compression_size=0,
+        # Some media type can be treated as binary data
+        binary_media_types=["image/png"],
     )
     rest_api.add_cognito_authorizer(
         name="testauthorizer",
