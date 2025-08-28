@@ -872,12 +872,13 @@ class RestApi(Api):
             "source_ip": "$context.identity.sourceIp",
             "request_time": "$context.requestTime",
             "method": "$context.httpMethod",
-            "route": "$context.routeKey",
+            "path": "$context.path",
             "protocol": "$context.protocol",
             "status": "$context.status",
             "response_length": "$context.responseLength",
             "request_id": "$context.requestId",
-            "integration_error_msg": "$context.integrationErrorMessage",
+            "extendedRequestId": "$context.extendedRequestId",
+            "integration_error": "$context.integration.error",
         }
 
         access_log_settings = apigateway.AccessLogSetting(
