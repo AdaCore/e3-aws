@@ -30,13 +30,18 @@ The resulting lambda can then be added into an HttpAPI::
 """
 
 from __future__ import annotations
+from typing import TYPE_CHECKING
 import os
 
 from troposphere import GetAtt
 from troposphere.awslambda import LoggingConfig, VPCConfig
+from e3.aws import name_to_id
 from e3.aws.troposphere.iam.role import Role
 from e3.fs import cp
-from . import PyFunction
+from . import PyFunction, PyFunctionAsset
+
+if TYPE_CHECKING:
+    from e3.aws.troposphere.asset import Asset
 
 
 STARTUP_CODE = """
@@ -48,6 +53,65 @@ lambda_handler_fun = lambda_handler.lambda_handler
 """
 
 
+def generate_flask_wrapper(
+    app_module: str,
+    app_name: str,
+    out_dir: str,
+) -> None:
+    """Generate a Flask wrapper for calling a lambda handler.
+
+    :param app_module: module that contains the Flask app
+    :param app_name: Flask app symbol name
+    :param out_dir: output directory
+    """
+    handler_file = os.path.join(out_dir, "lambda_handler_module.py")
+    with open(handler_file, "w") as fd:
+        fd.write(STARTUP_CODE % {"app_module": app_module, "app_name": app_name})
+    wrapper_file = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "flask_apigateway_wrapper.py",
+    )
+    cp(wrapper_file, out_dir)
+
+
+class PyFlaskFunctionAsset(PyFunctionAsset):
+    """PyFlaskFunction code packaged with dependencies."""
+
+    def __init__(
+        self,
+        name: str,
+        *,
+        code_dir: str,
+        app: str,
+        runtime: str,
+        requirement_file: str | None = None,
+    ) -> None:
+        """Initialize PyFlaskFunctionAsset.
+
+        :param name: name of the archive
+        :param code_dir: directory that contains the Python code
+        :param app: Flask app symbol name
+        :param runtime: the Python runtime
+        :param requirement_file: the list of Python dependencies
+        """
+        super().__init__(
+            name, code_dir=code_dir, runtime=runtime, requirement_file=requirement_file
+        )
+        self.app = app
+        self.app_module, self.app_name = app.rsplit(".", 1)
+
+    def populate_package_dir(self, package_dir: str) -> None:
+        """Copy user code into package directory.
+
+        :param package_dir: directory in which the package content is put
+        """
+        super().populate_package_dir(package_dir=package_dir)
+
+        generate_flask_wrapper(
+            app_module=self.app_module, app_name=self.app_name, out_dir=package_dir
+        )
+
+
 class PyFlaskFunction(PyFunction):
     """Provide PyFlaskFunction Construct."""
 
@@ -56,9 +120,10 @@ class PyFlaskFunction(PyFunction):
         name: str,
         description: str,
         role: str | GetAtt | Role,
-        code_dir: str,
         app: str,
         runtime: str,
+        code_asset: Asset | None = None,
+        code_dir: str | None = None,
         requirement_file: str | None = None,
         code_version: int | None = None,
         timeout: int = 3,
@@ -74,9 +139,10 @@ class PyFlaskFunction(PyFunction):
         :param name: function name
         :param description: a description of the function
         :param role: role to be asssumed during lambda execution
-        :param code_dir: directory containing the python code
         :param app: Flask app symbol name
         :param runtime: lambda runtime. It must be a Python runtime.
+        :param code_asset: asset containing the python code
+        :param code_dir: directory containing the python code
         :param requirement_file: requirement file for the application code.
             Required packages are automatically fetched (works only from linux)
             and packaged along with the lambda code
@@ -96,15 +162,27 @@ class PyFlaskFunction(PyFunction):
             function to a VPC, it can access resources and the internet only
             through that VPC
         """
-        self.app_module, self.app_name = app.rsplit(".", 1)
+        if code_asset is None:
+            assert (
+                code_dir is not None
+            ), "code_dir must be provided when code_asset is None"
+
+            code_asset = PyFlaskFunctionAsset(
+                name=name_to_id(f"{name}Sources"),
+                code_dir=code_dir,
+                app=app,
+                runtime=runtime,
+                requirement_file=requirement_file,
+            )
 
         super().__init__(
             name=name,
             description=description,
             role=role,
-            code_dir=code_dir,
             handler="lambda_handler_module.lambda_handler_fun",
             runtime=runtime,
+            code_asset=code_asset,
+            code_dir=code_dir,
             requirement_file=requirement_file,
             code_version=code_version,
             timeout=timeout,
@@ -116,20 +194,7 @@ class PyFlaskFunction(PyFunction):
             vpc_config=vpc_config,
         )
 
-    def populate_package_dir(self, package_dir: str) -> None:
-        super().populate_package_dir(package_dir=package_dir)
-
-        handler_file = os.path.join(package_dir, "lambda_handler_module.py")
-        with open(handler_file, "w") as fd:
-            fd.write(
-                STARTUP_CODE
-                % {"app_module": self.app_module, "app_name": self.app_name}
-            )
-        wrapper_file = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)),
-            "flask_apigateway_wrapper.py",
-        )
-        cp(wrapper_file, package_dir)
+        self.app_module, self.app_name = app.rsplit(".", 1)
 
 
 class Py38FlaskFunction(PyFlaskFunction):

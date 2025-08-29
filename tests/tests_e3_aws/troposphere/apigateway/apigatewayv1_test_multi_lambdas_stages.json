@@ -3,7 +3,7 @@
         "Properties": {
             "Code": {
                 "S3Bucket": "cfn_bucket",
-                "S3Key": "templates/accountslambda_lambda.zip"
+                "S3Key": "assets/AccountslambdaSources/AccountslambdaSources_dummychecksum.zip"
             },
             "Timeout": 3,
             "Description": "this is a test",
@@ -18,7 +18,7 @@
         "Properties": {
             "Code": {
                 "S3Bucket": "cfn_bucket",
-                "S3Key": "templates/productslambda_lambda.zip"
+                "S3Key": "assets/ProductslambdaSources/ProductslambdaSources_dummychecksum.zip"
             },
             "Timeout": 3,
             "Description": "this is a test",

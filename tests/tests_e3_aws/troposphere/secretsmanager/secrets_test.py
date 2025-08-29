@@ -13,9 +13,6 @@ TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def test_secret_rotation_schedule(stack: Stack) -> None:
     """Test RotatingSecret."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
-
     secret = Secret(
         name="TestSecret",
         description="TestSecret description",

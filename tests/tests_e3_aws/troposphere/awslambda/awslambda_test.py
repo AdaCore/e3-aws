@@ -56,7 +56,7 @@ EXPECTED_PY38FUNCTION_TEMPLATE = {
         "Properties": {
             "Code": {
                 "S3Bucket": "cfn_bucket",
-                "S3Key": "templates/mypylambda_lambda.zip",
+                "S3Key": "assets/MypylambdaSources/MypylambdaSources_dummychecksum.zip",
             },
             "Description": "this is a test",
             "FunctionName": "mypylambda",
@@ -74,7 +74,7 @@ EXPECTED_PYFUNCTION_DEFAULT_TEMPLATE = {
         "Properties": {
             "Code": {
                 "S3Bucket": "cfn_bucket",
-                "S3Key": "templates/mypylambda_lambda.zip",
+                "S3Key": "assets/MypylambdaSources/MypylambdaSources_dummychecksum.zip",
             },
             "Description": "this is a test",
             "FunctionName": "mypylambda",
@@ -104,7 +104,7 @@ EXPECTED_PYFUNCTION_TEMPLATE = {
         "Properties": {
             "Code": {
                 "S3Bucket": "cfn_bucket",
-                "S3Key": "templates/mypylambda_lambda.zip",
+                "S3Key": "assets/MypylambdaSources/MypylambdaSources_dummychecksum.zip",
             },
             "Description": "this is a test",
             "FunctionName": "mypylambda",
@@ -136,12 +136,13 @@ EXPECTED_PYFUNCTION_TEMPLATE = {
     },
 }
 
+
 EXPECTED_PYFUNCTION_WITH_DLQ_TEMPLATE = {
     "Mypylambda": {
         "Properties": {
             "Code": {
                 "S3Bucket": "cfn_bucket",
-                "S3Key": "templates/mypylambda_lambda.zip",
+                "S3Key": "assets/MypylambdaSources/MypylambdaSources_dummychecksum.zip",
             },
             "DeadLetterConfig": {
                 "TargetArn": {"Fn::GetAtt": ["PyFunctionDLQ", "Arn"]},
@@ -188,7 +189,7 @@ EXPECTED_PYFUNCTION_WITH_VPC_TEMPLATE = {
         "Properties": {
             "Code": {
                 "S3Bucket": "cfn_bucket",
-                "S3Key": "templates/mypylambda_lambda.zip",
+                "S3Key": "assets/MypylambdaSources/MypylambdaSources_dummychecksum.zip",
             },
             "Description": "this is a test with vpcconfig",
             "FunctionName": "mypylambda",
@@ -475,8 +476,6 @@ def simple_lambda_function() -> PyFunction:
 
 def test_py38function(stack: Stack) -> None:
     """Test Py38Function creation."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
     stack.add(
         Py38Function(
             name="mypylambda",
@@ -491,8 +490,6 @@ def test_py38function(stack: Stack) -> None:
 
 def test_pyfunction_default(stack: Stack) -> None:
     """Test PyFunction creation with default settings."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
     stack.add(
         PyFunction(
             name="mypylambda",
@@ -511,8 +508,6 @@ def test_pyfunction_default(stack: Stack) -> None:
 
 def test_pyfunction(stack: Stack) -> None:
     """Test PyFunction creation."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
     stack.add(
         PyFunction(
             name="mypylambda",
@@ -538,8 +533,6 @@ def test_pyfunction(stack: Stack) -> None:
 
 
 def test_pyfunction_with_dlconfig(stack: Stack) -> None:
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
     dlq = Queue(name="PyFunctionDLQ")
     stack.add(dlq)
     stack.add(
@@ -568,8 +561,6 @@ def test_pyfunction_with_dlconfig(stack: Stack) -> None:
 
 
 def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
     stack.add(
         PyFunction(
             name="mypylambda",
@@ -626,11 +617,9 @@ def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
     ],
 )
 def test_pyfunction_with_requirements(
-    python_version: str, platform_list: list[str], tmp_path: Path, stack: Stack
+    python_version: str, platform_list: list[str], tmp_path: Path
 ) -> None:
     """Test PyFunction creation."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
     code_dir = tmp_path
 
     with patch("e3.aws.troposphere.awslambda.Run") as mock_run:
@@ -643,7 +632,7 @@ def test_pyfunction_with_requirements(
             code_dir=str(code_dir),
             handler="app.main",
             requirement_file="requirements.txt",
-        ).create_data_dir("dummy")
+        ).create_assets_dir("dummy")
     # Ensure the right pip command is called
     mock_run.assert_called_once_with(
         [
@@ -655,7 +644,7 @@ def test_pyfunction_with_requirements(
             *(f"--platform={platform}" for platform in platform_list),
             "--implementation=cp",
             "--only-binary=:all:",
-            "--target=dummy/Mypylambda/package",
+            "--target=dummy/MypylambdaSources/package",
             "-r",
             "requirements.txt",
         ],
@@ -665,8 +654,6 @@ def test_pyfunction_with_requirements(
 
 def test_pyfunction_policy_document(stack: Stack) -> None:
     """Test cfn_policy_document of PyFunction."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
     stack.add(
         PyFunction(
             name="mypylambda",

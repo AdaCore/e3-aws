@@ -5,9 +5,12 @@ import logging
 import os
 import sys
 from typing import TYPE_CHECKING
+from zipfile import ZipFile
+from hashlib import sha256
 
+from e3.fingerprint import Fingerprint
 from e3.archive import create_archive
-from e3.fs import sync_tree, rm
+from e3.fs import sync_tree, rm, mv
 from e3.os.process import Run
 from troposphere import awslambda, logs, GetAtt, Ref, Sub
 
@@ -16,14 +19,176 @@ from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 from e3.aws.troposphere.iam.role import Role
+from e3.aws.troposphere.asset import Asset
 from e3.aws.util.ecr import build_and_push_image
 
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, Callable
     from troposphere import AWSObject
     from e3.aws.troposphere import Stack
 
 logger = logging.getLogger("e3.aws.troposphere.awslambda")
+
+
+def package_pyfunction_code(
+    filename: str,
+    /,
+    package_dir: str,
+    root_dir: str,
+    populate_package_dir: Callable[[str], None],
+    runtime: str | None = None,
+    requirement_file: str | None = None,
+) -> None:
+    """Package user code with dependencies.
+
+    :param filename: name of the archive
+    :param package_dir: temporary packaging directory
+    :param root_dir: destination directory for the archive
+    :param populate_package_dir: callback to populate the package directory with
+        extra code
+    :param runtime: the Python runtime
+    :param requirement_file: the list of Python dependencies
+    """
+    # Install the requirements
+    if requirement_file is not None:
+        assert runtime is not None
+        runtime_config = PyFunction.RUNTIME_CONFIGS[runtime]
+        p = Run(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                f"--python-version={runtime.lstrip('python')}",
+                *(f"--platform={platform}" for platform in runtime_config["platforms"]),
+                f"--implementation={runtime_config['implementation']}",
+                "--only-binary=:all:",
+                f"--target={package_dir}",
+                "-r",
+                requirement_file,
+            ],
+            output=None,
+        )
+        assert p.status == 0
+
+    # Populate the package directory with extra code
+    if populate_package_dir is not None:
+        populate_package_dir(package_dir)
+
+    # Create an archive
+    create_archive(
+        filename,
+        from_dir=package_dir,
+        dest=root_dir,
+        no_root_dir=True,
+    )
+
+    # Remove the temporary directory
+    rm(package_dir, recursive=True)
+
+
+class ChecksumNotComputedError(Exception):
+    """Error raised when PyFunctionAsset.checksum was not computed."""
+
+
+class PyFunctionAsset(Asset):
+    """PyFunction code packaged with dependencies."""
+
+    def __init__(
+        self,
+        name: str,
+        *,
+        code_dir: str,
+        runtime: str,
+        requirement_file: str | None = None,
+    ) -> None:
+        """Initialize PyFunctionAsset.
+
+        :param name: name of the archive
+        :param code_dir: directory that contains the Python code
+        :param runtime: the Python runtime
+        :param requirement_file: the list of Python dependencies
+        """
+        self.name = name
+        self.code_dir = code_dir
+        self.runtime = runtime
+        self.requirement_file = requirement_file
+        self.checksum: str | None = None
+
+    @property
+    def s3_key(self) -> str:
+        """Return a unique S3 key with the checksum of the package."""
+        if self.checksum is None:
+            raise ChecksumNotComputedError(
+                "no checksum, was the asset added to the stack?"
+            )
+
+        return f"{self.name}/{self.name}_{self.checksum}.zip"
+
+    def populate_package_dir(self, package_dir: str) -> None:
+        """Copy user code into package directory.
+
+        :param package_dir: directory in which the package content is put
+        """
+        # Add lambda code
+        sync_tree(self.code_dir, package_dir, delete=False)
+
+    def compute_checksum(self, archive_path: str) -> str:
+        """Compute the checksum of the archive.
+
+        All .pyc files are excluded as they are not reproducible.
+
+        :param archive_path: path of the archive
+        :return: the checksum
+        """
+        fingerprint = Fingerprint()
+        with ZipFile(archive_path) as zip:
+            for zip_info in zip.infolist():
+                if zip_info.is_dir():
+                    fingerprint.add(zip_info.filename, "")
+                elif not zip_info.filename.endswith(".pyc"):
+                    with zip.open(zip_info) as f:
+                        hash = sha256()
+                        hash.update(f.read())
+                        fingerprint.add(zip_info.filename, hash.hexdigest())
+
+        return fingerprint.checksum()
+
+    def create_assets_dir(self, root_dir: str) -> None:
+        """Populate the assets dir.
+
+        :param root_dir: directory where to put assets
+        """
+        # Stop if code already packaged and checksum already computed.
+        # This allows to possibly add the same asset multiple times to the stack
+        # without risking to package it each time
+        if self.checksum is not None:
+            return
+
+        # Directory where the archive is generated
+        archive_dir = os.path.join(root_dir, self.name)
+
+        # Create a temporary packaging directory
+        package_dir = os.path.join(archive_dir, "package")
+
+        # Package the code with dependencies
+        archive_name = f"{self.name}.zip"
+        package_pyfunction_code(
+            archive_name,
+            package_dir=package_dir,
+            root_dir=archive_dir,
+            populate_package_dir=self.populate_package_dir,
+            runtime=self.runtime,
+            requirement_file=self.requirement_file,
+        )
+
+        archive_path = os.path.abspath(os.path.join(archive_dir, archive_name))
+        self.checksum = self.compute_checksum(archive_path)
+
+        # Rename the archive with the checksum
+        checksum_archive_name = f"{self.name}_{self.checksum}.zip"
+        checksum_archive_path = os.path.join(archive_dir, checksum_archive_name)
+        mv(archive_path, checksum_archive_path)
 
 
 class Function(Construct):
@@ -392,9 +557,10 @@ class PyFunction(Function):
         name: str,
         description: str,
         role: str | GetAtt | Role,
-        code_dir: str,
         handler: str,
         runtime: str,
+        code_asset: Asset | None = None,
+        code_dir: str | None = None,
         requirement_file: str | None = None,
         code_version: int | None = None,
         timeout: int = 3,
@@ -412,9 +578,10 @@ class PyFunction(Function):
         :param name: function name
         :param description: a description of the function
         :param role: role to be asssumed during lambda execution
-        :param code_dir: directory containing the python code
         :param handler: name of the function to be invoked on lambda execution
         :param runtime: lambda runtime. It must be a Python runtime.
+        :param code_asset: asset containing the python code
+        :param code_dir: directory containing the python code
         :param requirement_file: requirement file for the application code.
             Required packages are automatically fetched (works only from linux)
             and packaged along with the lambda code
@@ -462,65 +629,31 @@ class PyFunction(Function):
         self.code_dir = code_dir
         self.requirement_file = requirement_file
 
+        if code_asset is not None:
+            self.code_asset = code_asset
+        else:
+            assert (
+                code_dir is not None
+            ), "code_dir must be provided when code_asset is None"
+
+            self.code_asset = PyFunctionAsset(
+                name=name_to_id(f"{name}Sources"),
+                code_dir=code_dir,
+                runtime=runtime,
+                requirement_file=requirement_file,
+            )
+
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Compute AWS resources for the construct."""
         assert isinstance(stack.s3_bucket, str)
         return self.lambda_resources(
             code_bucket=stack.s3_bucket,
-            code_key=f"{stack.s3_key}{self.name}_lambda.zip",
+            code_key=f"{stack.s3_assets_key}{self.code_asset.s3_key}",
         )
 
-    def populate_package_dir(self, package_dir: str) -> None:
-        """Copy user code into lambda package directory.
-
-        :param package_dir: directory in which the package content is put
-        """
-        # Add lambda code
-        sync_tree(self.code_dir, package_dir, delete=False)
-
-    def create_data_dir(self, root_dir: str) -> None:
-        """Create data to be pushed to bucket used by cloudformation for resources."""
-        # Create directory specific to that lambda
-        package_dir = os.path.join(root_dir, name_to_id(self.name), "package")
-
-        # Install the requirements
-        if self.requirement_file is not None:
-            assert self.runtime is not None
-            runtime_config = PyFunction.RUNTIME_CONFIGS[self.runtime]
-            p = Run(
-                [
-                    sys.executable,
-                    "-m",
-                    "pip",
-                    "install",
-                    f"--python-version={self.runtime.lstrip('python')}",
-                    *(
-                        f"--platform={platform}"
-                        for platform in runtime_config["platforms"]
-                    ),
-                    f"--implementation={runtime_config['implementation']}",
-                    "--only-binary=:all:",
-                    f"--target={package_dir}",
-                    "-r",
-                    self.requirement_file,
-                ],
-                output=None,
-            )
-            assert p.status == 0
-
-        # Copy user code
-        self.populate_package_dir(package_dir=package_dir)
-
-        # Create an archive
-        create_archive(
-            f"{self.name}_lambda.zip",
-            from_dir=package_dir,
-            dest=root_dir,
-            no_root_dir=True,
-        )
-
-        # Remove temporary directory
-        rm(package_dir, recursive=True)
+    def create_assets_dir(self, root_dir: str) -> None:
+        """Create assets to be pushed to bucket used by cloudformation for resources."""
+        self.code_asset.create_assets_dir(root_dir=root_dir)
 
 
 class Py38Function(PyFunction):

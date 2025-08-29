@@ -30,7 +30,7 @@ COMMON_TEMPLATE = {
         "Properties": {
             "Code": {
                 "S3Bucket": "cfn_bucket",
-                "S3Key": "templates/mypylambda_lambda.zip",
+                "S3Key": "assets/MypylambdaSources/MypylambdaSources_dummychecksum.zip",
             },
             "Timeout": 3,
             "Description": "this is a test",
@@ -311,9 +311,6 @@ def lambda_fun() -> PyFunction:
 
 def test_http_api(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test basic HTTP API."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
-
     stack.add(lambda_fun)
     stack.add(
         HttpApi(
@@ -329,9 +326,6 @@ def test_http_api(stack: Stack, lambda_fun: PyFunction) -> None:
 
 def test_http_api_stages(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test HTTP API with stages."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
-
     http_api = HttpApi(
         name="testapi",
         description="this is a test",
@@ -351,9 +345,6 @@ def test_http_api_stages(stack: Stack, lambda_fun: PyFunction) -> None:
 
 def test_http_api_lambda_alias(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test HTTP API with lambda alias."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
-
     lambda_versions = AutoVersion(2, lambda_function=lambda_fun)
 
     lambda_aliases = BlueGreenAliases(
@@ -395,9 +386,6 @@ def test_http_api_lambda_alias(stack: Stack, lambda_fun: PyFunction) -> None:
 
 def test_http_api_custom_domain(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test basic HTTP API with custom domain."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
-
     stack.add(lambda_fun)
     http_api = HttpApi(
         name="testapi",
@@ -427,9 +415,6 @@ def test_http_api_custom_domain(stack: Stack, lambda_fun: PyFunction) -> None:
 
 def test_http_api_multi_domains(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test basic HTTP API with two domains."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
-
     stack.add(lambda_fun)
     http_api = HttpApi(
         name="testapi",
@@ -457,9 +442,6 @@ def test_http_api_multi_domains(stack: Stack, lambda_fun: PyFunction) -> None:
 
 def test_http_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test basic HTTP API with custom domain and stage."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
-
     stack.add(lambda_fun)
     http_api = HttpApi(
         name="testapi",
@@ -495,9 +477,6 @@ def test_http_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> 
 
 def test_rest_api(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test basic REST API."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
-
     rest_api = RestApi(
         name="testapi",
         description="this is a test",
@@ -521,9 +500,6 @@ def test_rest_api(stack: Stack, lambda_fun: PyFunction) -> None:
 
 def test_rest_api_stages(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test REST API with stages."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
-
     rest_api = RestApi(
         name="testapi",
         description="this is a test",
@@ -553,9 +529,6 @@ def test_rest_api_stages(stack: Stack, lambda_fun: PyFunction) -> None:
 
 def test_rest_api_lambda_alias(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test REST API with lambda alias."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
-
     lambda_versions = AutoVersion(2, lambda_function=lambda_fun)
 
     lambda_aliases = BlueGreenAliases(
@@ -606,9 +579,6 @@ def test_rest_api_lambda_alias(stack: Stack, lambda_fun: PyFunction) -> None:
 
 def test_rest_api_custom_domain(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test REST api custom domain."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
-
     rest_api = RestApi(
         name="testapi",
         description="this is a test",
@@ -661,9 +631,6 @@ def test_rest_api_custom_domain(stack: Stack, lambda_fun: PyFunction) -> None:
 
 def test_rest_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test REST api custom domain and stage."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
-
     rest_api = RestApi(
         name="testapi",
         description="this is a test",
@@ -722,9 +689,6 @@ def test_rest_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> 
 
 def test_rest_api_nested_resources(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test REST API with nested resources."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
-
     rest_api = RestApi(
         name="testapi",
         description="this is a test",
@@ -752,9 +716,6 @@ def test_rest_api_nested_resources(stack: Stack, lambda_fun: PyFunction) -> None
 
 def test_rest_api_multi_lambdas_stages(stack: Stack) -> None:
     """Test REST API with multiple lambdas and stages."""
-    stack.s3_bucket = "cfn_bucket"
-    stack.s3_key = "templates/"
-
     # Create two lambdas for two different methods
     accounts_lambda, products_lambda = [
         PyFunction(
