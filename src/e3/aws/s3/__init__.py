@@ -179,6 +179,28 @@ class S3:
                 return False
             raise
 
+    def object_exists(self, key: str, /, ignore_error_403: bool = False) -> bool:
+        """Check if an object exists.
+
+        :param key: object key
+        :param ignore_error_403: boto3.head_object returns a 403 error when the
+            object doesn't exist and the IAM role doesn't have the s3:ListBucket
+            permission. Setting ignore_error_403=True makes the function return
+            False instead of raising a ClientError
+        :return: if the object exists
+        :raises ClientError: in case of error, or in case of permission issue
+            when the object doesn't exist, the IAM role doesn't have the
+            s3:ListBucket permission, and ignore_error_403 is False
+        """
+        try:
+            self.client.head_object(Bucket=self.bucket, Key=key)
+            return True
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            if error_code == "404" or (error_code == "403" and ignore_error_403):
+                return False
+            raise
+
     @property
     def key_count(self) -> int:
         """Return the number of keys from S3."""
