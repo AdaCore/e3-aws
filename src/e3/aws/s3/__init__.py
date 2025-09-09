@@ -8,7 +8,7 @@ import botocore
 import boto3
 
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, BinaryIO
     from collections.abc import Iterable, Iterator
 
 logger = logging.getLogger("e3.aws.s3")
@@ -99,7 +99,9 @@ class S3:
         self.clear_bucket()
         self.client.delete_bucket(Bucket=self.bucket)
 
-    def push(self, key: str, content: bytes, exist_ok: bool | None = None) -> None:
+    def push(
+        self, key: str, content: bytes | BinaryIO, exist_ok: bool | None = None
+    ) -> None:
         """Push content to S3.
 
         You can set exist_ok to false to prevent the object from being
@@ -176,6 +178,28 @@ class S3:
             return True
         except ClientError as e:
             if e.response["Error"]["Code"] == "404":
+                return False
+            raise
+
+    def object_exists(self, key: str, /, ignore_error_403: bool = False) -> bool:
+        """Check if an object exists.
+
+        :param key: object key
+        :param ignore_error_403: boto3.head_object returns a 403 error when the
+            object doesn't exist and the IAM role doesn't have the s3:ListBucket
+            permission. Setting ignore_error_403=True makes the function return
+            False instead of raising a ClientError
+        :return: if the object exists
+        :raises ClientError: in case of error, or in case of permission issue
+            when the object doesn't exist, the IAM role doesn't have the
+            s3:ListBucket permission, and ignore_error_403 is False
+        """
+        try:
+            self.client.head_object(Bucket=self.bucket, Key=key)
+            return True
+        except ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            if error_code == "404" or (error_code == "403" and ignore_error_403):
                 return False
             raise
 

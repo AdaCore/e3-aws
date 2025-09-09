@@ -40,6 +40,16 @@ class Construct(ABC):
         """
         return PolicyDocument([])
 
+    def create_assets_dir(self, root_dir: str) -> None:  # noqa: B027
+        """Put assets in root_dir before export to S3 bucket referenced by the stack.
+
+        :param root_dir: local directory in which assets should be stored. Assets will
+            be then uploaded to an S3 bucket accessible from the template. The
+            target location is the one received by resources method. Note that
+            the same root_dir is shared by all resources in your stack.
+        """
+        pass
+
     def create_data_dir(self, root_dir: str) -> None:  # noqa: B027
         """Put data in root_dir before export to S3 bucket referenced by the stack.
 
@@ -63,7 +73,9 @@ class Stack(cfn.Stack):
         dry_run: bool | None = False,
         s3_bucket: str | None = None,
         s3_key: str | None = None,
+        s3_assets_key: str | None = None,
         version: str | None = None,
+        gen_assets_dir: str | None = None,
     ) -> None:
         """Initialize Stack attributes.
 
@@ -75,7 +87,9 @@ class Stack(cfn.Stack):
         :param description: a description of the stack
         :param s3_bucket: s3 bucket used to store data needed by the stack
         :param s3_key: s3 prefix in s3_bucket in which data is stored
+        :param s3_assets_key: s3 prefix in s3_bucket in which assets are stored
         :param version: template format version
+        :param gen_assets_dir: directory where to generate stack assets to upload to S3
         """
         super().__init__(
             stack_name,
@@ -89,16 +103,24 @@ class Stack(cfn.Stack):
         self.deploy_session = deploy_session
         self.dry_run = dry_run
         self.version = version
+        self.s3_assets_key = s3_assets_key
+        self.gen_assets_dir = gen_assets_dir
         self.template = Template()
 
     def construct_to_objects(self, construct: Construct | AWSObject) -> list[AWSObject]:
         """Return list of AWS objects resources from a construct.
+
+        The function create_assets_dir is called at the same time, on each construct,
+        as some AWS objects may have properties that depend on assets.
 
         :param construct: construct to list resources from
         """
         if isinstance(construct, AWSObject):
             return [construct]
         else:
+            if self.gen_assets_dir is not None:
+                construct.create_assets_dir(self.gen_assets_dir)
+
             return list(
                 chain.from_iterable(
                     [
@@ -242,7 +264,16 @@ class CFNProjectMain(CFNMain):
             description=stack_description,
             s3_bucket=s3_bucket,
             s3_key=self.s3_data_key,
+            s3_assets_key=self.s3_assets_key,
         )
+
+    def pre_create_stack(self) -> None:
+        """Assign the temporary assets directory to the stack."""
+        self.stack.gen_assets_dir = self.gen_assets_dir
+
+    def post_create_stack(self) -> None:
+        """Unassign the temporary assets directory from the stack."""
+        self.stack.gen_assets_dir = None
 
     def add(self, element: AWSObject | Construct | Stack) -> Stack:
         """Add resource to project's stack.

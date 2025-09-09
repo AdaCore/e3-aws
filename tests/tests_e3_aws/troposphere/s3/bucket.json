@@ -17,7 +17,7 @@
         "Properties": {
             "Code": {
                 "S3Bucket": "cfn_bucket",
-                "S3Key": "templates/mypylambda_lambda.zip"
+                "S3Key": "assets/MypylambdaSources/MypylambdaSources_dummychecksum.zip"
             },
             "Timeout": 3,
             "Description": "this is a test",
