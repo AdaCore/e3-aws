@@ -56,6 +56,24 @@ class Construct(ABC):
         """
         pass
 
+    def diff(self, stack: Stack) -> None:
+        """Compare this construct with the currently deployed one.
+
+        :param stack: the stack that contains the construct
+        """
+        for resource in self.resources(stack=stack):
+            if isinstance(resource, Construct):
+                resource.diff(stack=stack)
+
+    def show(self, stack: Stack) -> None:
+        """Output this construct.
+
+        :param stack: the stack that contains the construct
+        """
+        for resource in self.resources(stack=stack):
+            if isinstance(resource, Construct):
+                resource.show(stack=stack)
+
 
 class Asset(Construct):
     """Generic asset.
@@ -418,3 +436,19 @@ class CFNProjectMain(CFNMain):
 
         # Upload the rest
         super()._upload_stack(stack)
+
+    def _show(self, stack: cfn.Stack) -> None:
+        assert self.args is not None
+        if self.args.assets and isinstance(stack, Stack):
+            # While we want to output assets, this must be done via the constructs.
+            # For example, the PyFunctionAsset itself may be used by multiple functions,
+            # and so is not able to diff itself. This must be done via the PyFunction
+            # construct
+            for construct in stack.constructs:
+                if self.args.diff:
+                    construct.diff(stack=stack)
+                else:
+                    construct.show(stack=stack)
+
+        # Output the rest of the stack
+        super()._show(stack=stack)

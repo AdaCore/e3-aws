@@ -1,0 +1,34 @@
+Diff for the new version of function mypylambda:
++ app.py
+
+Diff of the template:
+  AWSTemplateFormatVersion: '2010-09-09'
+  Description: TestStack
++ Parameters:
++   MypylambdaSourcesS3Key:
++     Default: MypylambdaSources/MypylambdaSources_568470d013cd12e4f388206520da39ab9a4e4c3c6b95846cbc281abc1ba3c959.zip
++     Description: S3 key of asset MypylambdaSources
++     Type: String
+- Resources: {}
+?           ---
++ Resources:
++   Mypylambda:
++     Properties:
++       Code:
++         S3Bucket: cfn-test-deploy-bucket
++         S3Key:
++           Fn::Sub: TestProject/assets/${MypylambdaSourcesS3Key}
++       Description: this is a test
++       FunctionName: mypylambda
++       Handler: app.main
++       Role: somearn
++       Runtime: python3.9
++       Timeout: 3
++     Type: AWS::Lambda::Function
++   MypylambdaLogGroup:
++     DeletionPolicy: Retain
++     Properties:
++       LogGroupName: /aws/lambda/mypylambda
++       RetentionInDays: 731
++     Type: AWS::Logs::LogGroup
+

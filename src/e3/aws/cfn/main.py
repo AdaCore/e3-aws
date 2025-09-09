@@ -7,14 +7,16 @@ import time
 import json
 from datetime import datetime
 import re
+import difflib
 
 import botocore.exceptions
 
 from e3.os.process import PIPE
 from e3.vcs.git import GitRepository
 from e3.aws import AWSEnv, Session
+from e3.aws.util import color_diff, modified_diff_lines
 from e3.aws.s3 import bucket
-from e3.aws.cfn import Stack
+from e3.aws.cfn import Stack, get_stack_template
 from e3.env import Env
 from e3.fs import find, sync_tree
 from e3.main import Main
@@ -119,6 +121,12 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         update_args.set_defaults(command="update")
 
         show_args = subs.add_parser("show", help="show the changeset content")
+        show_args.add_argument(
+            "--assets", action="store_true", help="also show the assets"
+        )
+        show_args.add_argument(
+            "--diff", action="store_true", help="compare with the deployed stack"
+        )
         show_args.set_defaults(command="show")
 
         protect_args = subs.add_parser(
@@ -369,6 +377,35 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         return 0
 
+    def _show(self, stack: Stack) -> None:
+        """Output a given stack.
+
+        :param stack: the stack
+        """
+        assert self.args is not None
+        if not self.args.diff:
+            # Simply output the template without diff
+            print(stack.body)
+            return
+
+        # Lines of the deployed CloudFormation template
+        active_template = get_stack_template(stack.name)
+        active_template_lines = (
+            active_template.splitlines(keepends=True)
+            if active_template is not None
+            else []
+        )
+
+        # Lines of this CloudFormation template
+        template_lines = stack.body.splitlines(keepends=True)
+
+        diff = list(difflib.ndiff(active_template_lines, template_lines))
+        if modified_diff_lines(diff):
+            print("Diff of the template:")
+            print("".join(color_diff(diff)))
+        else:
+            print("No template diff")
+
     def execute_for_stack(self, stack: Stack, aws_env: Session | None = None) -> int:
         """Execute application for a given stack and return exit status.
 
@@ -399,7 +436,11 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     )
 
             elif self.args.command == "show":
-                print(stack.body)
+                if self.args.diff and self.aws_env is None:
+                    print("An AWS session is required to perform the diff")
+                    return 1
+
+                self._show(stack=stack)
             elif self.args.command == "protect":
                 # Enable termination protection
                 stack.enable_termination_protection()

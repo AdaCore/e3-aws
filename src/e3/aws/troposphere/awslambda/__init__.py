@@ -8,19 +8,25 @@ from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 from zipfile import ZipFile
 from hashlib import sha256
+import difflib
+import zipfile
 from functools import cached_property
+import botocore.exceptions
 
 from e3.archive import create_archive
 from e3.fs import sync_tree, rm, mv
 from e3.os.process import Run
+from e3.net.http import HTTPSession
 from troposphere import awslambda, logs, GetAtt, Ref, Sub
 
 from e3.aws import name_to_id
+from e3.aws.cfn import client
 from e3.aws.troposphere import Construct, Asset
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 from e3.aws.troposphere.iam.role import Role
 from e3.aws.util.ecr import build_and_push_image
+from e3.aws.util import color_diff, modified_diff_lines
 
 if TYPE_CHECKING:
     from typing import Any, Callable
@@ -742,6 +748,145 @@ class PyFunction(Function):
                 f"{stack.s3_assets_key}${{{self.code_asset.s3_key_parameter_name}}}"
             ),
         )
+
+    @client("lambda")
+    def _exist_version(
+        self, version: Version, client: botocore.client.BaseClient
+    ) -> bool:
+        """Check if a version of the function exists.
+
+        The check works by listing all the versions and checking the descriptions
+        as there is no way to get the number of a version by its logical id.
+
+        :param version: the version
+        :param client: an AWS client
+        :return: if it exists
+        """
+        paginator = client.get_paginator("list_versions_by_function")
+        for results in paginator.paginate(FunctionName=self.name):
+            for item in results["Versions"]:
+                if item["Description"] == version.description:
+                    return True
+
+        return False
+
+    @client("lambda")
+    def download_code_asset(
+        self,
+        dest: str,
+        client: botocore.client.BaseClient,
+        filename: str | None = None,
+        qualifier: str | None = None,
+    ) -> None:
+        """Download the code asset of this function.
+
+        :param dest: destination directory
+        :param client: an AWS client
+        :param filename: destination file
+        :param qualifier: an alias or version of the function
+        """
+        params: dict[str, Any] = {}
+        if qualifier is not None:
+            params["Qualifier"] = qualifier
+
+        resp = client.get_function(FunctionName=self.name, **params)
+
+        HTTPSession().download_file(
+            url=resp["Code"]["Location"], dest=dest, filename=filename
+        )
+
+    def _show_archive_files(self, archive_path: str) -> list[str]:
+        """Output the newline separated list of files of an archive.
+
+        The .pyc files are omitted to reduce the size of the output.
+
+        :param archive_path: path to the archive
+        :return: the list of files in the archive
+        """
+        with zipfile.ZipFile(archive_path) as zip:
+            return [
+                f"{line}\n"
+                for line in sorted(zip.namelist())
+                if not line.endswith(".pyc")
+            ]
+
+    def diff(self, stack: Stack, qualifier: str | None = None) -> None:
+        """Compare this function with the currently deployed one.
+
+        :param stack: the stack that contains the function
+        :param qualifier: an alias or version to compare with
+        """
+        if qualifier is None:
+            # In case of blue/green aliases, perform the diff on both aliases
+            if isinstance(self.alias, BlueGreenAliases):
+                for alias in [self.alias.blue, self.alias.green]:
+                    self.diff(stack=stack, qualifier=alias.alias_name)
+                return
+
+            # Perform the diff on the alias if set
+            if self.alias is not None:
+                qualifier = self.alias.alias_name
+
+        name_with_qualifier = "{}{}".format(
+            self.name, f":{qualifier}" if qualifier is not None else ""
+        )
+
+        # If the function is versioned, then check if the latest version
+        # is already deployed
+        if self.version is not None:
+            version = (
+                self.version
+                if isinstance(self.version, Version)
+                else self.version.latest
+            )
+
+            # If the version already exist then we are not deploying anything
+            # as a version is immutable. So there are no changes in that case
+            if self._exist_version(version=version):
+                print(f"No new version for function {name_with_qualifier}")
+                return
+
+        # Otherwise we are redeploying the function, so we get the list of files
+        # from the local code asset
+        archive_files = self._show_archive_files(self.code_asset.archive_path)
+
+        # Download the code archive of the deployed function by pointing either
+        # at the alias or at None ($LATEST)
+        active_archive_files: list[str] = []
+        try:
+            with TemporaryDirectory() as tmpd:
+                archive_name = "archive.zip"
+                self.download_code_asset(
+                    dest=tmpd,
+                    filename=archive_name,
+                    qualifier=qualifier,
+                )
+
+                # Output lines of the code archive
+                active_archive_files = self._show_archive_files(
+                    os.path.join(tmpd, archive_name)
+                )
+        except botocore.exceptions.ClientError as e:
+            # In this case the function has not yet been deployed
+            if e.response["Error"]["Code"] != "ResourceNotFoundException":
+                raise e
+
+        diff = modified_diff_lines(
+            list(difflib.ndiff(active_archive_files, archive_files))
+        )
+        if diff:
+            print(f"Diff for the new version of function {name_with_qualifier}:")
+            print("".join(color_diff(diff)))
+        else:
+            print(f"No diff for the new version of function {name_with_qualifier}")
+
+    def show(self, stack: Stack) -> None:
+        files = self._show_archive_files(self.code_asset.archive_path)
+        print(f"List of files for function {self.name}:")
+        if files:
+            print("".join(files))
+        else:
+            print("No files")
 
 
 class Py38Function(PyFunction):

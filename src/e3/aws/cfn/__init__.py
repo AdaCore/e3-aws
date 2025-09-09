@@ -8,6 +8,7 @@ import time
 import uuid
 import yaml
 import logging
+import botocore.exceptions
 
 if TYPE_CHECKING:
     import botocore.client
@@ -42,6 +43,26 @@ def client(name: str) -> Callable:
         return wrapper
 
     return decorator
+
+
+@client("cloudformation")
+def get_stack_template(
+    stack_name: str, /, client: botocore.client.Client
+) -> str | None:
+    """Get the template of a stack.
+
+    :param stack_name: the name or the unique stack ID that’s associated with
+        the stack
+    :param client: AWS client
+    :return: the template, or None if the stack doesn't exist
+    """
+    try:
+        return client.get_template(StackName=stack_name)["TemplateBody"]
+    except botocore.exceptions.ClientError as e:
+        if e.response["Error"]["Code"] == "ValidationError":
+            return None
+
+        raise
 
 
 class AWSType(Enum):

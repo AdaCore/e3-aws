@@ -1,0 +1,23 @@
+Diff of the template:
+  AWSTemplateFormatVersion: '2010-09-09'
+  Description: TestStack
+- Resources: {}
+?           ---
++ Resources:
++   TestRole:
++     Properties:
++       AssumeRolePolicyDocument:
++         Statement:
++         - Action: sts:AssumeRole
++           Effect: Allow
++           Principal:
++             Service: test
++         Version: '2012-10-17'
++       Description: TestRole description
++       Path: /
++       RoleName: TestRole
++       Tags:
++       - Key: Name
++         Value: TestRole
++     Type: AWS::IAM::Role
+
