@@ -52,7 +52,7 @@ class Role(Construct):
     tags: dict[str, str] = field(default_factory=lambda: {})
     path: str = "/"
     boundary: str | None = None
-    condition: dict[str, dict] | None = None
+    condition: str | dict[str, dict] | None = None
     inline_policies: dict[str, PolicyDocument | PolicyStatement | dict] | None = None
 
     @property
