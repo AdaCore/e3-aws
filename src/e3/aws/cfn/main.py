@@ -156,8 +156,6 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         self.assume_role = assume_role
         self.aws_env: Session | AWSEnv | None = None
         self.deploy_branch = deploy_branch
-        # A temporary dir will be assigned when generating assets
-        self.gen_assets_dir: str | None = None
 
         self.timestamp = datetime.utcnow().strftime("%Y-%m-%d/%H:%M:%S.%f")
 
@@ -264,7 +262,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                         upload_bucket.push(key=s3_object_key, content=fd, exist_ok=True)
 
     def _upload_stack(self, stack: Stack) -> None:
-        """Upload stack assets, data, and template to S3.
+        """Upload stack data and template to S3.
 
         :param stack: the stack to upload
         """
@@ -274,23 +272,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         assert self.args is not None
 
-        if self.aws_env:
-            s3 = self.aws_env.client("s3")
-        else:
-            s3 = None
-            logging.warning(
-                "no aws session, won't be able to check if assets exist in the bucket"
-            )
-
-        # Synchronize assets to the bucket before creating the stack
-        if self.gen_assets_dir is not None and self.s3_assets_key is not None:
-            self._upload_dir(
-                root_dir=self.gen_assets_dir,
-                s3_bucket=self.s3_bucket,
-                s3_key=self.s3_assets_key,
-                s3_client=s3,
-                check_exists=True,
-            )
+        s3 = self.aws_env.client("s3") if self.aws_env else None
 
         with tempfile.TemporaryDirectory() as tempd:
             # Push data associated with CFNMain and then all data
@@ -510,30 +492,18 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 return 1
 
         return_val = 0
+        stacks = self.create_stack()
 
-        # Create a temporary assets dir here as assets need to be generated at the
-        # time of create_stack
-        with tempfile.TemporaryDirectory() as temp_assets_dir:
-            self.gen_assets_dir = temp_assets_dir
-            self.pre_create_stack()
-            stacks = self.create_stack()
-            self.post_create_stack()
+        if isinstance(stacks, list):
+            for stack in stacks:
+                return_val = self.execute_for_stack(stack, aws_env=aws_env)
+                # Stop at first failure
+                if return_val:
+                    return return_val
+        else:
+            return_val = self.execute_for_stack(stacks, aws_env=aws_env)
 
-            if isinstance(stacks, list):
-                for stack in stacks:
-                    return_val = self.execute_for_stack(stack, aws_env=aws_env)
-                    # Stop at first failure
-                    if return_val:
-                        return return_val
-            else:
-                return_val = self.execute_for_stack(stacks, aws_env=aws_env)
-
-        self.gen_assets_dir = None
         return return_val
-
-    def pre_create_stack(self) -> None:
-        """Before create_stack."""
-        pass
 
     @abc.abstractmethod
     def create_stack(self) -> Stack | list[Stack]:
@@ -541,10 +511,6 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         :return: Stack on which the application will operate
         """
-        pass
-
-    def post_create_stack(self) -> None:
-        """After create_stack."""
         pass
 
     @property

@@ -41,7 +41,7 @@ from e3.fs import cp
 from . import PyFunction, PyFunctionAsset
 
 if TYPE_CHECKING:
-    from e3.aws.troposphere.asset import Asset
+    from e3.aws.troposphere import Asset
 
 
 STARTUP_CODE = """

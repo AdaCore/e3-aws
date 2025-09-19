@@ -14,11 +14,10 @@ from e3.os.process import Run
 from troposphere import awslambda, logs, GetAtt, Ref, Sub
 
 from e3.aws import name_to_id
-from e3.aws.troposphere import Construct
+from e3.aws.troposphere import Construct, Asset
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 from e3.aws.troposphere.iam.role import Role
-from e3.aws.troposphere.asset import Asset
 from e3.aws.util.ecr import build_and_push_image
 
 if TYPE_CHECKING:
@@ -86,10 +85,6 @@ def package_pyfunction_code(
     rm(package_dir, recursive=True)
 
 
-class ChecksumNotComputedError(Exception):
-    """Error raised when PyFunctionAsset.checksum was not computed."""
-
-
 class PyFunctionAsset(Asset):
     """PyFunction code packaged with dependencies."""
 
@@ -108,21 +103,20 @@ class PyFunctionAsset(Asset):
         :param runtime: the Python runtime
         :param requirement_file: the list of Python dependencies
         """
-        self.name = name
+        super().__init__(name)
         self.code_dir = code_dir
         self.runtime = runtime
         self.requirement_file = requirement_file
         self.checksum: str | None = None
 
     @property
-    def s3_key(self) -> str:
+    def s3_key(self) -> str | None:
         """Return a unique S3 key with the checksum of the package."""
-        if self.checksum is None:
-            raise ChecksumNotComputedError(
-                "no checksum, was the asset added to the stack?"
-            )
-
-        return f"{self.name}/{self.name}_{self.checksum}.zip"
+        return (
+            f"{self.name}/{self.name}_{self.checksum}.zip"
+            if self.checksum is not None
+            else None
+        )
 
     def populate_package_dir(self, package_dir: str) -> None:
         """Copy user code into package directory.
@@ -161,12 +155,6 @@ class PyFunctionAsset(Asset):
 
         :param root_dir: directory where to put assets
         """
-        # Stop if code already packaged and checksum already computed.
-        # This allows to possibly add the same asset multiple times to the stack
-        # without risking to package it each time
-        if self.checksum is not None:
-            return
-
         # Directory where the archive is generated
         archive_dir = os.path.join(root_dir, self.name)
 
@@ -645,17 +633,15 @@ class PyFunction(Function):
                 requirement_file=requirement_file,
             )
 
-    def resources(self, stack: Stack) -> list[AWSObject]:
+    def resources(self, stack: Stack) -> list[AWSObject | Construct]:
         """Compute AWS resources for the construct."""
         assert isinstance(stack.s3_bucket, str)
-        return self.lambda_resources(
+        return [self.code_asset] + self.lambda_resources(
             code_bucket=stack.s3_bucket,
-            code_key=f"{stack.s3_assets_key}{self.code_asset.s3_key}",
+            code_key=Sub(
+                f"{stack.s3_assets_key}${{{self.code_asset.s3_key_parameter_name}}}"
+            ),
         )
-
-    def create_assets_dir(self, root_dir: str) -> None:
-        """Create assets to be pushed to bucket used by cloudformation for resources."""
-        self.code_asset.create_assets_dir(root_dir=root_dir)
 
 
 class Py38Function(PyFunction):
