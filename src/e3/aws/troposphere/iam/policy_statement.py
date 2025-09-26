@@ -8,7 +8,7 @@ if TYPE_CHECKING:
 
     ResourceType = str | list[str]
     PrincipalType = str | dict[str, str | list[str]]
-    ConditionType = dict[str, dict[str, str | list[str]]]
+    ConditionType = str | dict[str, dict[str, str | list[str]]]
 
 
 class PolicyStatement:
