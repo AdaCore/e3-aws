@@ -4,11 +4,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Union, List, Dict
+    from typing import Any
 
-    ResourceType = Union[str, List[str]]
-    PrincipalType = Union[str, Dict[str, Union[str, List[str]]]]
-    ConditionType = Dict[str, Dict[str, Union[str, List[str]]]]
+    ResourceType = str | list[str]
+    PrincipalType = str | dict[str, str | list[str]]
+    ConditionType = dict[str, dict[str, str | list[str]]]
 
 
 class PolicyStatement:
