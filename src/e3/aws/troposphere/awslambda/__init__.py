@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 from zipfile import ZipFile
 from hashlib import sha256
 
-from e3.fingerprint import Fingerprint
 from e3.archive import create_archive
 from e3.fs import sync_tree, rm, mv
 from e3.os.process import Run
@@ -141,18 +140,21 @@ class PyFunctionAsset(Asset):
         :param archive_path: path of the archive
         :return: the checksum
         """
-        fingerprint = Fingerprint()
+        checksum = sha256()
         with ZipFile(archive_path) as zip:
             for zip_info in zip.infolist():
                 if zip_info.is_dir():
-                    fingerprint.add(zip_info.filename, "")
+                    content = b""
                 elif not zip_info.filename.endswith(".pyc"):
                     with zip.open(zip_info) as f:
-                        hash = sha256()
-                        hash.update(f.read())
-                        fingerprint.add(zip_info.filename, hash.hexdigest())
+                        content = f.read()
+                else:
+                    continue
 
-        return fingerprint.checksum()
+                checksum.update(zip_info.filename.encode())
+                checksum.update(content)
+
+        return checksum.hexdigest()
 
     def create_assets_dir(self, root_dir: str) -> None:
         """Populate the assets dir.
