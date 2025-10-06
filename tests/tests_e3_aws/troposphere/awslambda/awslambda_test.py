@@ -50,184 +50,216 @@ SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "source_di
 
 has_docker = require_tool("docker")
 
+EXPECTED_STACK_TEMPLATE = {
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "this is a test stack",
+    "Parameters": {
+        # The default value for the parameter of a PyFunctionAsset is determined
+        # only after packaging the source code during the push or update command
+        "MypylambdaSourcesS3Key": {
+            "Description": "S3 key of asset MypylambdaSources",
+            "Type": "String",
+        }
+    },
+}
 
-EXPECTED_PY38FUNCTION_TEMPLATE = {
-    "Mypylambda": {
-        "Properties": {
-            "Code": {
-                "S3Bucket": "cfn_bucket",
-                "S3Key": "assets/MypylambdaSources/MypylambdaSources_dummychecksum.zip",
+EXPECTED_PY38FUNCTION_TEMPLATE = EXPECTED_STACK_TEMPLATE | {
+    "Resources": {
+        "Mypylambda": {
+            "Properties": {
+                "Code": {
+                    "S3Bucket": "cfn_bucket",
+                    "S3Key": {
+                        "Fn::Sub": "assets/${MypylambdaSourcesS3Key}",
+                    },
+                },
+                "Description": "this is a test",
+                "FunctionName": "mypylambda",
+                "Handler": "app.main",
+                "Role": "somearn",
+                "Runtime": "python3.8",
+                "Timeout": 3,
             },
-            "Description": "this is a test",
-            "FunctionName": "mypylambda",
-            "Handler": "app.main",
-            "Role": "somearn",
-            "Runtime": "python3.8",
-            "Timeout": 3,
-        },
-        "Type": "AWS::Lambda::Function",
+            "Type": "AWS::Lambda::Function",
+        }
     }
 }
 
-EXPECTED_PYFUNCTION_DEFAULT_TEMPLATE = {
-    "Mypylambda": {
-        "Properties": {
-            "Code": {
-                "S3Bucket": "cfn_bucket",
-                "S3Key": "assets/MypylambdaSources/MypylambdaSources_dummychecksum.zip",
+EXPECTED_PYFUNCTION_DEFAULT_TEMPLATE = EXPECTED_STACK_TEMPLATE | {
+    "Resources": {
+        "Mypylambda": {
+            "Properties": {
+                "Code": {
+                    "S3Bucket": "cfn_bucket",
+                    "S3Key": {
+                        "Fn::Sub": "assets/${MypylambdaSourcesS3Key}",
+                    },
+                },
+                "Description": "this is a test",
+                "FunctionName": "mypylambda",
+                "Handler": "app.main",
+                "Role": "somearn",
+                "Runtime": "python3.9",
+                "Timeout": 3,
+                "EphemeralStorage": {"Size": 4096},
+                "Environment": {
+                    "Variables": {"env_key_1": "env_value_1", "env_key_2": "env_value2"}
+                },
             },
-            "Description": "this is a test",
-            "FunctionName": "mypylambda",
-            "Handler": "app.main",
-            "Role": "somearn",
-            "Runtime": "python3.9",
-            "Timeout": 3,
-            "EphemeralStorage": {"Size": 4096},
-            "Environment": {
-                "Variables": {"env_key_1": "env_value_1", "env_key_2": "env_value2"}
+            "Type": "AWS::Lambda::Function",
+        },
+        "MypylambdaLogGroup": {
+            "DeletionPolicy": "Retain",
+            "Properties": {
+                "LogGroupName": "/aws/lambda/mypylambda",
+                "RetentionInDays": 731,
             },
+            "Type": "AWS::Logs::LogGroup",
         },
-        "Type": "AWS::Lambda::Function",
-    },
-    "MypylambdaLogGroup": {
-        "DeletionPolicy": "Retain",
-        "Properties": {
-            "LogGroupName": "/aws/lambda/mypylambda",
-            "RetentionInDays": 731,
-        },
-        "Type": "AWS::Logs::LogGroup",
-    },
+    }
 }
 
-EXPECTED_PYFUNCTION_TEMPLATE = {
-    "Mypylambda": {
-        "Properties": {
-            "Code": {
-                "S3Bucket": "cfn_bucket",
-                "S3Key": "assets/MypylambdaSources/MypylambdaSources_dummychecksum.zip",
+EXPECTED_PYFUNCTION_TEMPLATE = EXPECTED_STACK_TEMPLATE | {
+    "Resources": {
+        "Mypylambda": {
+            "Properties": {
+                "Code": {
+                    "S3Bucket": "cfn_bucket",
+                    "S3Key": {
+                        "Fn::Sub": "assets/${MypylambdaSourcesS3Key}",
+                    },
+                },
+                "Description": "this is a test",
+                "FunctionName": "mypylambda",
+                "Handler": "app.main",
+                "Role": "somearn",
+                "Runtime": "python3.9",
+                "Timeout": 3,
+                "MemorySize": 128,
+                "EphemeralStorage": {"Size": 1024},
+                "ReservedConcurrentExecutions": 1,
+                "Environment": {
+                    "Variables": {"env_key_1": "env_value_1", "env_key_2": "env_value2"}
+                },
+                "LoggingConfig": {
+                    "ApplicationLogLevel": "INFO",
+                    "LogFormat": "JSON",
+                    "SystemLogLevel": "WARN",
+                },
             },
-            "Description": "this is a test",
-            "FunctionName": "mypylambda",
-            "Handler": "app.main",
-            "Role": "somearn",
-            "Runtime": "python3.9",
-            "Timeout": 3,
-            "MemorySize": 128,
-            "EphemeralStorage": {"Size": 1024},
-            "ReservedConcurrentExecutions": 1,
-            "Environment": {
-                "Variables": {"env_key_1": "env_value_1", "env_key_2": "env_value2"}
-            },
-            "LoggingConfig": {
-                "ApplicationLogLevel": "INFO",
-                "LogFormat": "JSON",
-                "SystemLogLevel": "WARN",
-            },
+            "Type": "AWS::Lambda::Function",
         },
-        "Type": "AWS::Lambda::Function",
-    },
-    "MypylambdaLogGroup": {
-        "DeletionPolicy": "Retain",
-        "Properties": {
-            "LogGroupName": "/aws/lambda/mypylambda",
-            "RetentionInDays": 7,
+        "MypylambdaLogGroup": {
+            "DeletionPolicy": "Retain",
+            "Properties": {
+                "LogGroupName": "/aws/lambda/mypylambda",
+                "RetentionInDays": 7,
+            },
+            "Type": "AWS::Logs::LogGroup",
         },
-        "Type": "AWS::Logs::LogGroup",
-    },
+    }
 }
 
 
-EXPECTED_PYFUNCTION_WITH_DLQ_TEMPLATE = {
-    "Mypylambda": {
-        "Properties": {
-            "Code": {
-                "S3Bucket": "cfn_bucket",
-                "S3Key": "assets/MypylambdaSources/MypylambdaSources_dummychecksum.zip",
+EXPECTED_PYFUNCTION_WITH_DLQ_TEMPLATE = EXPECTED_STACK_TEMPLATE | {
+    "Resources": {
+        "Mypylambda": {
+            "Properties": {
+                "Code": {
+                    "S3Bucket": "cfn_bucket",
+                    "S3Key": {
+                        "Fn::Sub": "assets/${MypylambdaSourcesS3Key}",
+                    },
+                },
+                "DeadLetterConfig": {
+                    "TargetArn": {"Fn::GetAtt": ["PyFunctionDLQ", "Arn"]},
+                },
+                "Description": "this is a test with dlconfig",
+                "FunctionName": "mypylambda",
+                "Handler": "app.main",
+                "Role": "somearn",
+                "Runtime": "python3.12",
+                "Timeout": 3,
+                "MemorySize": 128,
+                "EphemeralStorage": {"Size": 1024},
+                "ReservedConcurrentExecutions": 1,
+                "Environment": {
+                    "Variables": {"env_key_1": "env_value_1", "env_key_2": "env_value2"}
+                },
+                "LoggingConfig": {
+                    "ApplicationLogLevel": "INFO",
+                    "LogFormat": "JSON",
+                    "SystemLogLevel": "WARN",
+                },
             },
-            "DeadLetterConfig": {
-                "TargetArn": {"Fn::GetAtt": ["PyFunctionDLQ", "Arn"]},
-            },
-            "Description": "this is a test with dlconfig",
-            "FunctionName": "mypylambda",
-            "Handler": "app.main",
-            "Role": "somearn",
-            "Runtime": "python3.12",
-            "Timeout": 3,
-            "MemorySize": 128,
-            "EphemeralStorage": {"Size": 1024},
-            "ReservedConcurrentExecutions": 1,
-            "Environment": {
-                "Variables": {"env_key_1": "env_value_1", "env_key_2": "env_value2"}
-            },
-            "LoggingConfig": {
-                "ApplicationLogLevel": "INFO",
-                "LogFormat": "JSON",
-                "SystemLogLevel": "WARN",
-            },
+            "Type": "AWS::Lambda::Function",
         },
-        "Type": "AWS::Lambda::Function",
-    },
-    "MypylambdaLogGroup": {
-        "DeletionPolicy": "Retain",
-        "Properties": {
-            "LogGroupName": "/aws/lambda/mypylambda",
-            "RetentionInDays": 7,
+        "MypylambdaLogGroup": {
+            "DeletionPolicy": "Retain",
+            "Properties": {
+                "LogGroupName": "/aws/lambda/mypylambda",
+                "RetentionInDays": 7,
+            },
+            "Type": "AWS::Logs::LogGroup",
         },
-        "Type": "AWS::Logs::LogGroup",
-    },
-    "PyFunctionDLQ": {
-        "Properties": {
-            "QueueName": "PyFunctionDLQ",
-            "VisibilityTimeout": 30,
+        "PyFunctionDLQ": {
+            "Properties": {
+                "QueueName": "PyFunctionDLQ",
+                "VisibilityTimeout": 30,
+            },
+            "Type": "AWS::SQS::Queue",
         },
-        "Type": "AWS::SQS::Queue",
-    },
+    }
 }
 
-EXPECTED_PYFUNCTION_WITH_VPC_TEMPLATE = {
-    "Mypylambda": {
-        "Properties": {
-            "Code": {
-                "S3Bucket": "cfn_bucket",
-                "S3Key": "assets/MypylambdaSources/MypylambdaSources_dummychecksum.zip",
+EXPECTED_PYFUNCTION_WITH_VPC_TEMPLATE = EXPECTED_STACK_TEMPLATE | {
+    "Resources": {
+        "Mypylambda": {
+            "Properties": {
+                "Code": {
+                    "S3Bucket": "cfn_bucket",
+                    "S3Key": {
+                        "Fn::Sub": "assets/${MypylambdaSourcesS3Key}",
+                    },
+                },
+                "Description": "this is a test with vpcconfig",
+                "FunctionName": "mypylambda",
+                "Handler": "app.main",
+                "Role": "somearn",
+                "Runtime": "python3.12",
+                "Timeout": 3,
+                "VpcConfig": {
+                    "SecurityGroupIds": [
+                        "sg-085912345678492fb",
+                    ],
+                    "SubnetIds": [
+                        "subnet-071f712345678e7c8",
+                        "subnet-07fd123456788a036",
+                    ],
+                },
+                "MemorySize": 128,
+                "EphemeralStorage": {"Size": 1024},
+                "ReservedConcurrentExecutions": 1,
+                "Environment": {
+                    "Variables": {"env_key_1": "env_value_1", "env_key_2": "env_value2"}
+                },
+                "LoggingConfig": {
+                    "ApplicationLogLevel": "INFO",
+                    "LogFormat": "JSON",
+                    "SystemLogLevel": "WARN",
+                },
             },
-            "Description": "this is a test with vpcconfig",
-            "FunctionName": "mypylambda",
-            "Handler": "app.main",
-            "Role": "somearn",
-            "Runtime": "python3.12",
-            "Timeout": 3,
-            "VpcConfig": {
-                "SecurityGroupIds": [
-                    "sg-085912345678492fb",
-                ],
-                "SubnetIds": [
-                    "subnet-071f712345678e7c8",
-                    "subnet-07fd123456788a036",
-                ],
-            },
-            "MemorySize": 128,
-            "EphemeralStorage": {"Size": 1024},
-            "ReservedConcurrentExecutions": 1,
-            "Environment": {
-                "Variables": {"env_key_1": "env_value_1", "env_key_2": "env_value2"}
-            },
-            "LoggingConfig": {
-                "ApplicationLogLevel": "INFO",
-                "LogFormat": "JSON",
-                "SystemLogLevel": "WARN",
-            },
+            "Type": "AWS::Lambda::Function",
         },
-        "Type": "AWS::Lambda::Function",
-    },
-    "MypylambdaLogGroup": {
-        "DeletionPolicy": "Retain",
-        "Properties": {
-            "LogGroupName": "/aws/lambda/mypylambda",
-            "RetentionInDays": 7,
+        "MypylambdaLogGroup": {
+            "DeletionPolicy": "Retain",
+            "Properties": {
+                "LogGroupName": "/aws/lambda/mypylambda",
+                "RetentionInDays": 7,
+            },
+            "Type": "AWS::Logs::LogGroup",
         },
-        "Type": "AWS::Logs::LogGroup",
-    },
+    }
 }
 
 EXPECTED_PYFUNCTION_POLICY_DOCUMENT = {
@@ -485,7 +517,7 @@ def test_py38function(stack: Stack) -> None:
             handler="app.main",
         )
     )
-    assert stack.export()["Resources"] == EXPECTED_PY38FUNCTION_TEMPLATE
+    assert stack.export() == EXPECTED_PY38FUNCTION_TEMPLATE
 
 
 def test_pyfunction_default(stack: Stack) -> None:
@@ -502,8 +534,8 @@ def test_pyfunction_default(stack: Stack) -> None:
             environment={"env_key_1": "env_value_1", "env_key_2": "env_value2"},
         )
     )
-    print(stack.export()["Resources"])
-    assert stack.export()["Resources"] == EXPECTED_PYFUNCTION_DEFAULT_TEMPLATE
+    print(stack.export())
+    assert stack.export() == EXPECTED_PYFUNCTION_DEFAULT_TEMPLATE
 
 
 def test_pyfunction(stack: Stack) -> None:
@@ -528,8 +560,8 @@ def test_pyfunction(stack: Stack) -> None:
             ),
         )
     )
-    print(stack.export()["Resources"])
-    assert stack.export()["Resources"] == EXPECTED_PYFUNCTION_TEMPLATE
+    print(stack.export())
+    assert stack.export() == EXPECTED_PYFUNCTION_TEMPLATE
 
 
 def test_pyfunction_with_dlconfig(stack: Stack) -> None:
@@ -556,8 +588,8 @@ def test_pyfunction_with_dlconfig(stack: Stack) -> None:
             dl_config=DeadLetterConfig(TargetArn=dlq.arn),
         )
     )
-    print(stack.export()["Resources"])
-    assert stack.export()["Resources"] == EXPECTED_PYFUNCTION_WITH_DLQ_TEMPLATE
+    print(stack.export())
+    assert stack.export() == EXPECTED_PYFUNCTION_WITH_DLQ_TEMPLATE
 
 
 def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
@@ -586,8 +618,8 @@ def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
             ),
         )
     )
-    print(stack.export()["Resources"])
-    assert stack.export()["Resources"] == EXPECTED_PYFUNCTION_WITH_VPC_TEMPLATE
+    print(stack.export())
+    assert stack.export() == EXPECTED_PYFUNCTION_WITH_VPC_TEMPLATE
 
 
 @pytest.mark.parametrize(
@@ -622,17 +654,19 @@ def test_pyfunction_with_requirements(
     """Test PyFunction creation."""
     code_dir = tmp_path
 
+    my_lambda = PyFunction(
+        name="mypylambda",
+        description="this is a test",
+        role="somearn",
+        runtime=f"python{python_version}",
+        code_dir=str(code_dir),
+        handler="app.main",
+        requirement_file="requirements.txt",
+    )
+
     with patch("e3.aws.troposphere.awslambda.Run") as mock_run:
         mock_run.return_value.status = 0
-        PyFunction(
-            name="mypylambda",
-            description="this is a test",
-            role="somearn",
-            runtime=f"python{python_version}",
-            code_dir=str(code_dir),
-            handler="app.main",
-            requirement_file="requirements.txt",
-        ).create_assets_dir("dummy")
+        my_lambda.code_asset.create_assets_dir("dummy")
     # Ensure the right pip command is called
     mock_run.assert_called_once_with(
         [
@@ -649,6 +683,13 @@ def test_pyfunction_with_requirements(
             "requirements.txt",
         ],
         output=None,
+    )
+
+    # Check the S3 key is correctly determined with the checksum of an
+    # empty directory
+    assert (
+        my_lambda.code_asset.s3_key == "MypylambdaSources/MypylambdaSources_"
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.zip"
     )
 
 

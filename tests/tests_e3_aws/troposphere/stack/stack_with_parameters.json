@@ -1,0 +1,17 @@
+{
+    "MyParameter1": {
+        "Description": "My first parameter",
+        "Type": "String"
+    },
+    "MyParameter2": {
+        "Default": "Parameter2",
+        "Description": "My second parameter",
+        "MaxValue": 10,
+        "MinValue": 0,
+        "Type": "int"
+    },
+    "MyParameter3": {
+        "Description": "My third parameter",
+        "Type": "String"
+    }
+}

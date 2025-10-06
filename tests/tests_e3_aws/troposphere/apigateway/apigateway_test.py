@@ -30,7 +30,9 @@ COMMON_TEMPLATE = {
         "Properties": {
             "Code": {
                 "S3Bucket": "cfn_bucket",
-                "S3Key": "assets/MypylambdaSources/MypylambdaSources_dummychecksum.zip",
+                "S3Key": {
+                    "Fn::Sub": "assets/${MypylambdaSourcesS3Key}",
+                },
             },
             "Timeout": 3,
             "Description": "this is a test",

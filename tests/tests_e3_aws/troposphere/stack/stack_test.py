@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from troposphere import Output, Export
+from troposphere import Parameter, Output, Export
 
 from e3.aws.troposphere.s3.bucket import Bucket
 from e3.aws.troposphere import Stack
@@ -23,6 +23,40 @@ def test_add_and_get_item() -> None:
     stack.add(Bucket("my-bucket"))
     my_bucket = stack["my-bucket"]
     assert my_bucket
+
+
+def test_add_parameters() -> None:
+    """Test adding parameters to a stack."""
+    stack = Stack("test-stack", "this is a test stack")
+    stack.add_parameter(
+        Parameter(
+            "MyParameter1",
+            Description="My first parameter",
+            Type="String",
+        )
+    )
+    stack.add_parameter(
+        [
+            Parameter(
+                "MyParameter2",
+                Description="My second parameter",
+                Type="int",
+                Default="Parameter2",
+                MinValue=0,
+                MaxValue=10,
+            ),
+            Parameter(
+                "MyParameter3",
+                Description="My third parameter",
+                Type="String",
+            ),
+        ]
+    )
+
+    with open(TEST_DIR / "stack_with_parameters.json") as fd:
+        expected_template = json.load(fd)
+
+    assert stack.export()["Parameters"] == expected_template
 
 
 def test_add_outputs() -> None:

@@ -3,7 +3,9 @@
         "Properties": {
             "Code": {
                 "S3Bucket": "cfn_bucket",
-                "S3Key": "assets/AccountslambdaSources/AccountslambdaSources_dummychecksum.zip"
+                "S3Key": {
+                    "Fn::Sub": "assets/${AccountslambdaSourcesS3Key}"
+                }
             },
             "Timeout": 3,
             "Description": "this is a test",
@@ -18,7 +20,9 @@
         "Properties": {
             "Code": {
                 "S3Bucket": "cfn_bucket",
-                "S3Key": "assets/ProductslambdaSources/ProductslambdaSources_dummychecksum.zip"
+                "S3Key": {
+                    "Fn::Sub": "assets/${ProductslambdaSourcesS3Key}"
+                }
             },
             "Timeout": 3,
             "Description": "this is a test",
