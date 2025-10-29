@@ -41,7 +41,6 @@ from e3.fs import cp
 from . import PyFunction, PyFunctionAsset
 
 if TYPE_CHECKING:
-    from e3.aws.troposphere import Asset
     from e3.aws.troposphere.awslambda import (
         Version,
         AutoVersion,
@@ -131,7 +130,7 @@ class PyFlaskFunction(PyFunction):
         version: int | Version | AutoVersion | None = None,
         min_version: int | None = None,
         alias: str | Alias | BlueGreenAliases | None = None,
-        code_asset: Asset | None = None,
+        code_asset: PyFunctionAsset | None = None,
         code_dir: str | None = None,
         requirement_file: str | None = None,
         code_version: int | None = None,

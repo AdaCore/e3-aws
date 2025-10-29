@@ -54,9 +54,8 @@ EXPECTED_STACK_TEMPLATE = {
     "AWSTemplateFormatVersion": "2010-09-09",
     "Description": "this is a test stack",
     "Parameters": {
-        # The default value for the parameter of a PyFunctionAsset is determined
-        # only after packaging the source code during the push or update command
         "MypylambdaSourcesS3Key": {
+            "Default": "MypylambdaSources/MypylambdaSources_dummychecksum.zip",
             "Description": "S3 key of asset MypylambdaSources",
             "Type": "String",
         }
@@ -710,9 +709,19 @@ def test_pyfunction_with_requirements(
         requirement_file="requirements.txt",
     )
 
+    # Fix the archive directory to not have a temporary directory
+    my_lambda.code_asset._archive_dir = "MypylambdaSources"
+
     with patch("e3.aws.troposphere.awslambda.Run") as mock_run:
         mock_run.return_value.status = 0
-        my_lambda.code_asset.create_assets_dir("dummy")
+
+        # Check the S3 key is correctly determined with the checksum of an
+        # empty directory
+        assert my_lambda.code_asset.s3_key == (
+            "MypylambdaSources/MypylambdaSources_"
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.zip"
+        )
+
     # Ensure the right pip command is called
     mock_run.assert_called_once_with(
         [
@@ -724,18 +733,11 @@ def test_pyfunction_with_requirements(
             *(f"--platform={platform}" for platform in platform_list),
             "--implementation=cp",
             "--only-binary=:all:",
-            "--target=dummy/MypylambdaSources/package",
+            "--target=MypylambdaSources/package",
             "-r",
             "requirements.txt",
         ],
         output=None,
-    )
-
-    # Check the S3 key is correctly determined with the checksum of an
-    # empty directory
-    assert (
-        my_lambda.code_asset.s3_key == "MypylambdaSources/MypylambdaSources_"
-        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.zip"
     )
 
 

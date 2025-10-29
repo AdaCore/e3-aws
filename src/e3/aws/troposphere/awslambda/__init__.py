@@ -4,9 +4,11 @@ from datetime import datetime
 import logging
 import os
 import sys
+from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 from zipfile import ZipFile
 from hashlib import sha256
+from functools import cached_property
 
 from e3.archive import create_archive
 from e3.fs import sync_tree, rm, mv
@@ -23,6 +25,7 @@ from e3.aws.util.ecr import build_and_push_image
 if TYPE_CHECKING:
     from typing import Any, Callable
     from troposphere import AWSObject
+    import botocore.client
     from e3.aws.troposphere import Stack
 
 logger = logging.getLogger("e3.aws.troposphere.awslambda")
@@ -86,7 +89,7 @@ def package_pyfunction_code(
 
 
 class PyFunctionAsset(Asset):
-    """PyFunction code packaged with dependencies."""
+    """PyFunction code packaged with dependencies in a ZIP archive."""
 
     def __init__(
         self,
@@ -107,16 +110,99 @@ class PyFunctionAsset(Asset):
         self.code_dir = code_dir
         self.runtime = runtime
         self.requirement_file = requirement_file
-        self.checksum: str | None = None
 
-    @property
-    def s3_key(self) -> str | None:
-        """Return a unique S3 key with the checksum of the package."""
-        return (
-            f"{self.name}/{self.name}_{self.checksum}.zip"
-            if self.checksum is not None
-            else None
+        # Temporary directory where the archive is created
+        self._archive_tmpd: TemporaryDirectory | None = None
+        self._archive_dir: str | None = None
+
+    def __enter__(self) -> PyFunctionAsset:
+        """Create a temporary archive directory."""
+        if self._archive_dir is None:
+            self._archive_tmpd = TemporaryDirectory()
+            self._archive_dir = self._archive_tmpd.__enter__()
+
+        return self
+
+    def __exit__(self, *args: Any, **kwargs: Any) -> None:
+        """Delete the temporary archive directory."""
+        if self._archive_tmpd is not None:
+            self._archive_tmpd.__exit__(*args, **kwargs)
+
+        self._archive_dir = None
+        self._archive_tmpd = None
+
+    @cached_property
+    def checksum(self) -> str:
+        """Package the asset and return the checksum of the archive.
+
+        All .pyc files are excluded as they are not reproducible.
+
+        :return: the checksum
+        """
+        # Ensure the temporary directory exists
+        if self._archive_dir is None:
+            self.__enter__()
+
+        assert self._archive_dir is not None
+
+        # Create a temporary packaging directory
+        package_dir = os.path.join(self._archive_dir, "package")
+
+        # Package the code with dependencies
+        raw_archive_name = f"{self.name}.zip"
+        package_pyfunction_code(
+            raw_archive_name,
+            package_dir=package_dir,
+            root_dir=self._archive_dir,
+            populate_package_dir=self.populate_package_dir,
+            runtime=self.runtime,
+            requirement_file=self.requirement_file,
         )
+
+        raw_archive_path = os.path.abspath(
+            os.path.join(self._archive_dir, raw_archive_name)
+        )
+
+        # Compute the checksum
+        sha = sha256()
+        with ZipFile(raw_archive_path) as zipfd:
+            for zip_info in sorted(
+                zipfd.infolist(), key=lambda zip_info: zip_info.filename
+            ):
+                if zip_info.is_dir():
+                    content = b""
+                elif not zip_info.filename.endswith(".pyc"):
+                    with zipfd.open(zip_info) as f:
+                        content = f.read()
+                else:
+                    continue
+
+                sha.update(zip_info.filename.encode())
+                sha.update(content)
+
+        checksum = sha.hexdigest()
+
+        # Rename the archive with the checksum
+        archive_path = os.path.join(self._archive_dir, f"{self.name}_{checksum}.zip")
+        mv(raw_archive_path, archive_path)
+
+        return checksum
+
+    @cached_property
+    def archive_path(self) -> str:
+        """Return the path of the archive with the checksum."""
+        assert self._archive_dir is not None
+        return os.path.join(self._archive_dir, self.archive_name)
+
+    @cached_property
+    def archive_name(self) -> str:
+        """Return the name of the archive with the checksum."""
+        return f"{self.name}_{self.checksum}.zip"
+
+    @cached_property
+    def s3_key(self) -> str:
+        """Return a unique S3 key with the checksum of the package."""
+        return f"{self.name}/{self.archive_name}"
 
     def populate_package_dir(self, package_dir: str) -> None:
         """Copy user code into package directory.
@@ -126,59 +212,23 @@ class PyFunctionAsset(Asset):
         # Add lambda code
         sync_tree(self.code_dir, package_dir, delete=False)
 
-    def compute_checksum(self, archive_path: str) -> str:
-        """Compute the checksum of the archive.
-
-        All .pyc files are excluded as they are not reproducible.
-
-        :param archive_path: path of the archive
-        :return: the checksum
-        """
-        checksum = sha256()
-        with ZipFile(archive_path) as zip:
-            for zip_info in zip.infolist():
-                if zip_info.is_dir():
-                    content = b""
-                elif not zip_info.filename.endswith(".pyc"):
-                    with zip.open(zip_info) as f:
-                        content = f.read()
-                else:
-                    continue
-
-                checksum.update(zip_info.filename.encode())
-                checksum.update(content)
-
-        return checksum.hexdigest()
-
-    def create_assets_dir(self, root_dir: str) -> None:
-        """Populate the assets dir.
-
-        :param root_dir: directory where to put assets
-        """
-        # Directory where the archive is generated
-        archive_dir = os.path.join(root_dir, self.name)
-
-        # Create a temporary packaging directory
-        package_dir = os.path.join(archive_dir, "package")
-
-        # Package the code with dependencies
-        archive_name = f"{self.name}.zip"
-        package_pyfunction_code(
-            archive_name,
-            package_dir=package_dir,
-            root_dir=archive_dir,
-            populate_package_dir=self.populate_package_dir,
-            runtime=self.runtime,
-            requirement_file=self.requirement_file,
-        )
-
-        archive_path = os.path.abspath(os.path.join(archive_dir, archive_name))
-        self.checksum = self.compute_checksum(archive_path)
-
-        # Rename the archive with the checksum
-        checksum_archive_name = f"{self.name}_{self.checksum}.zip"
-        checksum_archive_path = os.path.join(archive_dir, checksum_archive_name)
-        mv(archive_path, checksum_archive_path)
+    def upload(
+        self,
+        s3_bucket: str,
+        s3_root_key: str,
+        client: botocore.client.S3 | None = None,
+        dry_run: bool | None = None,
+    ) -> None:
+        if self._archive_dir is not None:
+            self._upload_file(
+                s3_bucket=s3_bucket,
+                s3_key=f"{s3_root_key}{self.s3_key}",
+                root_dir=self._archive_dir,
+                file=self.archive_path,
+                client=client,
+                check_exists=True,
+                dry_run=dry_run,
+            )
 
 
 class Function(Construct):
@@ -593,7 +643,7 @@ class PyFunction(Function):
         version: int | Version | AutoVersion | None = None,
         min_version: int | None = None,
         alias: str | Alias | BlueGreenAliases | None = None,
-        code_asset: Asset | None = None,
+        code_asset: PyFunctionAsset | None = None,
         code_dir: str | None = None,
         requirement_file: str | None = None,
         code_version: int | None = None,
