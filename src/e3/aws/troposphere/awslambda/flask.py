@@ -42,6 +42,12 @@ from . import PyFunction, PyFunctionAsset
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Asset
+    from e3.aws.troposphere.awslambda import (
+        Version,
+        AutoVersion,
+        Alias,
+        BlueGreenAliases,
+    )
 
 
 STARTUP_CODE = """
@@ -122,6 +128,9 @@ class PyFlaskFunction(PyFunction):
         role: str | GetAtt | Role,
         app: str,
         runtime: str,
+        version: int | Version | AutoVersion | None = None,
+        min_version: int | None = None,
+        alias: str | Alias | BlueGreenAliases | None = None,
         code_asset: Asset | None = None,
         code_dir: str | None = None,
         requirement_file: str | None = None,
@@ -141,6 +150,9 @@ class PyFlaskFunction(PyFunction):
         :param role: role to be asssumed during lambda execution
         :param app: Flask app symbol name
         :param runtime: lambda runtime. It must be a Python runtime.
+        :param version: the latest deployed version
+        :param min_version: minimum deployed version (default 1)
+        :param alias: alias for the latest version
         :param code_asset: asset containing the python code
         :param code_dir: directory containing the python code
         :param requirement_file: requirement file for the application code.
@@ -181,6 +193,9 @@ class PyFlaskFunction(PyFunction):
             role=role,
             handler="lambda_handler_module.lambda_handler_fun",
             runtime=runtime,
+            version=version,
+            min_version=min_version,
+            alias=alias,
             code_asset=code_asset,
             code_dir=code_dir,
             requirement_file=requirement_file,

@@ -157,6 +157,49 @@ EXPECTED_PYFUNCTION_TEMPLATE = EXPECTED_STACK_TEMPLATE | {
             },
             "Type": "AWS::Logs::LogGroup",
         },
+        "MypylambdaProd": {
+            "Properties": {
+                "Description": "Prod version of mypylambda",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "Mypylambda",
+                        "Arn",
+                    ],
+                },
+                "FunctionVersion": {
+                    "Fn::GetAtt": [
+                        "MypylambdaVersion3",
+                        "Version",
+                    ],
+                },
+                "Name": "prod",
+            },
+            "Type": "AWS::Lambda::Alias",
+        },
+        "MypylambdaVersion2": {
+            "Properties": {
+                "Description": "version 2 of mypylambda lambda",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "Mypylambda",
+                        "Arn",
+                    ],
+                },
+            },
+            "Type": "AWS::Lambda::Version",
+        },
+        "MypylambdaVersion3": {
+            "Properties": {
+                "Description": "version 3 of mypylambda lambda",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "Mypylambda",
+                        "Arn",
+                    ],
+                },
+            },
+            "Type": "AWS::Lambda::Version",
+        },
     }
 }
 
@@ -545,6 +588,9 @@ def test_pyfunction(stack: Stack) -> None:
             name="mypylambda",
             description="this is a test",
             role="somearn",
+            version=3,
+            min_version=2,
+            alias="prod",
             runtime="python3.9",
             code_dir="my_code_dir",
             handler="app.main",
@@ -758,19 +804,6 @@ def test_docker_function(stack: Stack, has_docker: Callable) -> None:
     assert stack.export()["Resources"] == EXPECTED_DOCKER_FUNCTION
 
 
-def test_version_default(stack: Stack, simple_lambda_function: PyFunction) -> None:
-    """Test Version creation with default settings."""
-    stack.add(
-        Version(
-            name="prod",
-            description="this is the prod version",
-            lambda_arn=simple_lambda_function.arn,
-        )
-    )
-    print(stack.export()["Resources"])
-    assert stack.export()["Resources"] == EXPECTED_VERSION_DEFAULT_TEMPLATE
-
-
 def test_version(stack: Stack, simple_lambda_function: PyFunction) -> None:
     """Test Version creation."""
     stack.add(
@@ -786,20 +819,6 @@ def test_version(stack: Stack, simple_lambda_function: PyFunction) -> None:
     )
     print(stack.export()["Resources"])
     assert stack.export()["Resources"] == EXPECTED_VERSION_TEMPLATE
-
-
-def test_alias_default(stack: Stack, simple_lambda_function: PyFunction) -> None:
-    """Test Alias creation with default settings."""
-    stack.add(
-        Alias(
-            name="myalias",
-            description="this is a test",
-            lambda_arn=simple_lambda_function.arn,
-            lambda_version="1",
-        )
-    )
-    print(stack.export()["Resources"])
-    assert stack.export()["Resources"] == EXPECTED_ALIAS_DEFAULT_TEMPLATE
 
 
 def test_alias(stack: Stack, simple_lambda_function: PyFunction) -> None:

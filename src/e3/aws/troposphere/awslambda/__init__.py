@@ -189,6 +189,9 @@ class Function(Construct):
         name: str,
         description: str,
         role: str | GetAtt | Role,
+        version: int | Version | AutoVersion | None = None,
+        min_version: int | None = None,
+        alias: str | Alias | BlueGreenAliases | None = None,
         code_bucket: str | None = None,
         code_key: str | None = None,
         code_zipfile: str | None = None,
@@ -210,6 +213,9 @@ class Function(Construct):
         :param name: function name
         :param description: a description of the function
         :param role: role to be asssumed during lambda execution
+        :param version: the latest deployed version
+        :param min_version: minimum deployed version (default 1)
+        :param alias: alias for the latest version
         :param code_bucket: bucket in which code for the function is found
         :param code_key: key in the previous bucket where the code is stored
         :param code_zipfile: inline code. it is needed when lambda code depends
@@ -255,6 +261,35 @@ class Function(Construct):
         self.logging_config = logging_config
         self.dl_config = dl_config
         self.vpc_config = vpc_config
+
+        self.version: Version | AutoVersion | None = None
+        self.alias: Alias | BlueGreenAliases | None = None
+        if version is not None:
+            if isinstance(version, (Version, AutoVersion)):
+                self.version = version
+            else:
+                self.version = AutoVersion(
+                    version=version,
+                    min_version=min_version,
+                    lambda_name=name,
+                    lambda_arn=self.arn,
+                )
+
+            if alias is not None:
+                if isinstance(alias, (Alias, BlueGreenAliases)):
+                    self.alias = alias
+                else:
+                    self.alias = Alias(
+                        name_to_id(f"{name}-{alias}"),
+                        description=f"{name_to_id(alias)} version of {name}",
+                        lambda_arn=self.arn,
+                        lambda_version=(
+                            self.version
+                            if isinstance(self.version, Version)
+                            else self.version.latest
+                        ),
+                        alias_name=alias,
+                    )
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         statements = [
@@ -385,6 +420,12 @@ class Function(Construct):
                 RetentionInDays=self.logs_retention_in_days,
             )
             result.append(log_group)
+
+        if self.version is not None:
+            result.append(self.version)
+
+        if self.alias is not None:
+            result.append(self.alias)
 
         return result
 
@@ -549,6 +590,9 @@ class PyFunction(Function):
         role: str | GetAtt | Role,
         handler: str,
         runtime: str,
+        version: int | Version | AutoVersion | None = None,
+        min_version: int | None = None,
+        alias: str | Alias | BlueGreenAliases | None = None,
         code_asset: Asset | None = None,
         code_dir: str | None = None,
         requirement_file: str | None = None,
@@ -570,6 +614,9 @@ class PyFunction(Function):
         :param role: role to be asssumed during lambda execution
         :param handler: name of the function to be invoked on lambda execution
         :param runtime: lambda runtime. It must be a Python runtime.
+        :param version: the latest deployed version
+        :param min_version: minimum deployed version (default 1)
+        :param alias: alias for the latest version
         :param code_asset: asset containing the python code
         :param code_dir: directory containing the python code
         :param requirement_file: requirement file for the application code.
@@ -603,6 +650,9 @@ class PyFunction(Function):
             code_bucket=None,
             code_key=None,
             role=role,
+            version=version,
+            min_version=min_version,
+            alias=alias,
             handler=handler,
             code_version=code_version,
             timeout=timeout,
@@ -654,6 +704,9 @@ class Py38Function(PyFunction):
         role: str | GetAtt | Role,
         code_dir: str,
         handler: str,
+        version: int | Version | AutoVersion | None = None,
+        min_version: int | None = None,
+        alias: str | Alias | BlueGreenAliases | None = None,
         requirement_file: str | None = None,
         code_version: int | None = None,
         timeout: int = 3,
@@ -674,6 +727,9 @@ class Py38Function(PyFunction):
             role=role,
             code_dir=code_dir,
             handler=handler,
+            version=version,
+            min_version=min_version,
+            alias=alias,
             requirement_file=requirement_file,
             code_version=code_version,
             timeout=timeout,
