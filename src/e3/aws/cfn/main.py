@@ -589,8 +589,6 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     self.aws_env = main_session.assume_role(
                         assume_role[0], assume_role[1]
                     )
-                    # ??? needed since we still use a global variable for AWSEnv
-                    Env().aws_env = self.aws_env
                 except botocore.exceptions.NoCredentialsError:
                     # Don't force assume the role for the show command. The stacks
                     # that require AWS API calls to generate the template can display
@@ -604,3 +602,5 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 self.aws_env.default_region = (
                     self.regions[0] if region is None else region
                 )
+
+        Env().aws_env = self.aws_env
