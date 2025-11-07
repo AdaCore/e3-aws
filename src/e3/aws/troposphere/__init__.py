@@ -1,21 +1,23 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
-from tempfile import TemporaryDirectory
 from itertools import chain
 from troposphere import AWSObject, Output, Template, Parameter
 from collections import deque
 import logging
+import os
 
 from e3.aws import cfn, name_to_id, Session
+from e3.aws.s3 import S3
 from e3.aws.cfn.main import CFNMain
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:  # all: no cover
-    from typing import Union, Any
+    from typing import Union
     from collections.abc import Iterable
     from troposphere import And, Condition, Equals, If, Not, Or
+    import botocore.client
 
     ConditionFunction = Union[And, Condition, Equals, If, Not, Or]
 
@@ -54,6 +56,24 @@ class Construct(ABC):
         """
         pass
 
+    def diff(self, stack: Stack) -> None:
+        """Compare this construct with the currently deployed one.
+
+        :param stack: the stack that contains the construct
+        """
+        for resource in self.resources(stack=stack):
+            if isinstance(resource, Construct):
+                resource.diff(stack=stack)
+
+    def show(self, stack: Stack) -> None:
+        """Output this construct.
+
+        :param stack: the stack that contains the construct
+        """
+        for resource in self.resources(stack=stack):
+            if isinstance(resource, Construct):
+                resource.show(stack=stack)
+
 
 class Asset(Construct):
     """Generic asset.
@@ -78,29 +98,18 @@ class Asset(Construct):
 
     @property
     @abstractmethod
-    def s3_key(self) -> str | None:
-        """Return the S3 key of this asset.
-
-        It may return None if the S3 key is not yet known.
-        """
+    def s3_key(self) -> str:
+        """Return the S3 key of this asset."""
         ...
 
     @property
     def s3_key_parameter(self) -> str:
-        """Return the parameter that stores the S3 key.
-
-        The Default value is omitted if the S3 key is not yet known.
-        """
-        params: dict[str, Any] = {}
-        s3_key = self.s3_key
-        if s3_key is not None:
-            params["Default"] = s3_key
-
+        """Return the parameter that stores the S3 key."""
         return Parameter(
             self.s3_key_parameter_name,
             Type="String",
             Description=f"S3 key of asset {self.name}",
-            **params,
+            Default=self.s3_key,
         )
 
     def resources(self, stack: Stack) -> list[AWSObject | Construct]:
@@ -111,16 +120,60 @@ class Asset(Construct):
         stack.add_parameter(self.s3_key_parameter)
         return []
 
-    @abstractmethod
-    def create_assets_dir(self, root_dir: str) -> None:  # noqa: B027
-        """Put assets in root_dir before export to S3 bucket referenced by the stack.
+    def _upload_file(
+        self,
+        s3_bucket: str,
+        s3_key: str,
+        root_dir: str,
+        file: str,
+        client: botocore.client.S3 | None = None,
+        check_exists: bool | None = None,
+        dry_run: bool | None = None,
+    ) -> None:
+        """Upload a file to the S3 bucket.
 
-        :param root_dir: local directory in which assets should be stored. Assets will
-            be then uploaded to an S3 bucket accessible from the template. The
-            target location is the one received by resources method. Note that
-            the same root_dir is shared by all resources in your stack.
+        :param s3_bucket: the S3 bucket
+        :param s3_key: the S3 key
+        :param root_dir: the directory of the file
+        :param file: the path of the file
+        :param client: an S3 client (may be None in dry-run mode)
+        :param check_exists: check if an S3 object exists before uploading it
+        :param dry_run: don't upload the file if set
         """
-        pass
+        logging.info(
+            "Upload {} to {}:{}".format(
+                os.path.relpath(file, root_dir).replace("\\", "/"), s3_bucket, s3_key
+            )
+        )
+
+        if client is None:
+            return
+
+        s3 = S3(client=client, bucket=s3_bucket)
+        if check_exists and s3.object_exists(s3_key, ignore_error_403=True):
+            logging.info("Skip already existing %s", s3_key)
+            return
+
+        if not dry_run:
+            with open(file, "rb") as f:
+                s3.push(key=s3_key, content=f, exist_ok=True)
+
+    @abstractmethod
+    def upload(
+        self,
+        s3_bucket: str,
+        s3_root_key: str,
+        client: botocore.client.S3 | None = None,
+        dry_run: bool | None = None,
+    ) -> None:
+        """Upload this asset to the S3 bucket referenced by the stack.
+
+        :param s3_bucket: the S3 bucket
+        :param s3_root_key: the root key for the S3 object
+        :param client: an S3 client (may be None in dry-run mode)
+        :param dry_run: don't upload the asset if set
+        """
+        ...
 
 
 class Stack(cfn.Stack):
@@ -347,7 +400,6 @@ class CFNProjectMain(CFNMain):
             s3_key=self.s3_data_key,
             s3_assets_key=self.s3_assets_key,
         )
-        self.gen_assets_dir: str | None = None
 
     def add(self, element: AWSObject | Construct | Stack) -> Stack:
         """Add resource to project's stack.
@@ -365,56 +417,38 @@ class CFNProjectMain(CFNMain):
 
     def _upload_stack(self, stack: cfn.Stack) -> None:
         """See CFNMain."""
-        # Nothing to upload if there is no S3 bucket or S3 assets key set
-        if self.s3_bucket is not None and self.s3_assets_key is not None:
-            # Upload assets to S3 first
-            if self.aws_env:
-                s3 = self.aws_env.client("s3")
-            else:
-                s3 = None
-                logging.warning(
-                    "no aws session, won't be able to check if assets exist "
-                    "in the bucket"
-                )
+        # Upload assets to S3 first
+        if (
+            isinstance(stack, Stack)
+            and self.s3_bucket is not None
+            and self.s3_assets_key is not None
+        ):
+            assert self.args is not None
+            s3_client = self.aws_env.client("s3") if self.aws_env else None
 
-            assert self.gen_assets_dir is not None
-            self._upload_dir(
-                root_dir=self.gen_assets_dir,
-                s3_bucket=self.s3_bucket,
-                s3_key=self.s3_assets_key,
-                s3_client=s3,
-                check_exists=True,
-            )
+            for asset in stack.assets.values():
+                asset.upload(
+                    s3_bucket=self.s3_bucket,
+                    s3_root_key=self.s3_assets_key,
+                    client=s3_client,
+                    dry_run=self.args.dry_run,
+                )
 
         # Upload the rest
         super()._upload_stack(stack)
 
-    def execute_for_stack(
-        self, stack: cfn.Stack, aws_env: Session | None = None
-    ) -> int:
-        """See CFNMain."""
-        # Set the directory where to generate assets
-        with TemporaryDirectory() as tmpd:
-            self.gen_assets_dir = tmpd
+    def _show(self, stack: cfn.Stack) -> None:
+        assert self.args is not None
+        if self.args.assets and isinstance(stack, Stack):
+            # While we want to output assets, this must be done via the constructs.
+            # For example, the PyFunctionAsset itself may be used by multiple functions,
+            # and so is not able to diff itself. This must be done via the PyFunction
+            # construct
+            for construct in stack.constructs:
+                if self.args.diff:
+                    construct.diff(stack=stack)
+                else:
+                    construct.show(stack=stack)
 
-            # Create the assets directory
-            assert self.args is not None
-            if isinstance(stack, Stack) and self.args.command in [
-                "show",
-                "push",
-                "update",
-            ]:
-                for asset in stack.assets.values():
-                    # Populate the assets directory
-                    asset.create_assets_dir(root_dir=tmpd)
-
-                    # Add a parameter to the stack with the known S3 key of the
-                    # asset
-                    stack.add_parameter(asset.s3_key_parameter)
-
-            try:
-                # Execute the command for the stack
-                return super().execute_for_stack(stack=stack, aws_env=aws_env)
-            finally:
-                # Unset the assets directory
-                self.gen_assets_dir = None
+        # Output the rest of the stack
+        super()._show(stack=stack)

@@ -4,25 +4,34 @@ from datetime import datetime
 import logging
 import os
 import sys
+from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 from zipfile import ZipFile
 from hashlib import sha256
+import difflib
+import zipfile
+from functools import cached_property
+import botocore.exceptions
 
 from e3.archive import create_archive
 from e3.fs import sync_tree, rm, mv
 from e3.os.process import Run
+from e3.net.http import HTTPSession
 from troposphere import awslambda, logs, GetAtt, Ref, Sub
 
 from e3.aws import name_to_id
+from e3.aws.cfn import client
 from e3.aws.troposphere import Construct, Asset
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 from e3.aws.troposphere.iam.role import Role
 from e3.aws.util.ecr import build_and_push_image
+from e3.aws.util import color_diff, modified_diff_lines
 
 if TYPE_CHECKING:
     from typing import Any, Callable
     from troposphere import AWSObject
+    import botocore.client
     from e3.aws.troposphere import Stack
 
 logger = logging.getLogger("e3.aws.troposphere.awslambda")
@@ -86,7 +95,7 @@ def package_pyfunction_code(
 
 
 class PyFunctionAsset(Asset):
-    """PyFunction code packaged with dependencies."""
+    """PyFunction code packaged with dependencies in a ZIP archive."""
 
     def __init__(
         self,
@@ -107,16 +116,99 @@ class PyFunctionAsset(Asset):
         self.code_dir = code_dir
         self.runtime = runtime
         self.requirement_file = requirement_file
-        self.checksum: str | None = None
 
-    @property
-    def s3_key(self) -> str | None:
-        """Return a unique S3 key with the checksum of the package."""
-        return (
-            f"{self.name}/{self.name}_{self.checksum}.zip"
-            if self.checksum is not None
-            else None
+        # Temporary directory where the archive is created
+        self._archive_tmpd: TemporaryDirectory | None = None
+        self._archive_dir: str | None = None
+
+    def __enter__(self) -> PyFunctionAsset:
+        """Create a temporary archive directory."""
+        if self._archive_dir is None:
+            self._archive_tmpd = TemporaryDirectory()
+            self._archive_dir = self._archive_tmpd.__enter__()
+
+        return self
+
+    def __exit__(self, *args: Any, **kwargs: Any) -> None:
+        """Delete the temporary archive directory."""
+        if self._archive_tmpd is not None:
+            self._archive_tmpd.__exit__(*args, **kwargs)
+
+        self._archive_dir = None
+        self._archive_tmpd = None
+
+    @cached_property
+    def checksum(self) -> str:
+        """Package the asset and return the checksum of the archive.
+
+        All .pyc files are excluded as they are not reproducible.
+
+        :return: the checksum
+        """
+        # Ensure the temporary directory exists
+        if self._archive_dir is None:
+            self.__enter__()
+
+        assert self._archive_dir is not None
+
+        # Create a temporary packaging directory
+        package_dir = os.path.join(self._archive_dir, "package")
+
+        # Package the code with dependencies
+        raw_archive_name = f"{self.name}.zip"
+        package_pyfunction_code(
+            raw_archive_name,
+            package_dir=package_dir,
+            root_dir=self._archive_dir,
+            populate_package_dir=self.populate_package_dir,
+            runtime=self.runtime,
+            requirement_file=self.requirement_file,
         )
+
+        raw_archive_path = os.path.abspath(
+            os.path.join(self._archive_dir, raw_archive_name)
+        )
+
+        # Compute the checksum
+        sha = sha256()
+        with ZipFile(raw_archive_path) as zipfd:
+            for zip_info in sorted(
+                zipfd.infolist(), key=lambda zip_info: zip_info.filename
+            ):
+                if zip_info.is_dir():
+                    content = b""
+                elif not zip_info.filename.endswith(".pyc"):
+                    with zipfd.open(zip_info) as f:
+                        content = f.read()
+                else:
+                    continue
+
+                sha.update(zip_info.filename.encode())
+                sha.update(content)
+
+        checksum = sha.hexdigest()
+
+        # Rename the archive with the checksum
+        archive_path = os.path.join(self._archive_dir, f"{self.name}_{checksum}.zip")
+        mv(raw_archive_path, archive_path)
+
+        return checksum
+
+    @cached_property
+    def archive_path(self) -> str:
+        """Return the path of the archive with the checksum."""
+        assert self._archive_dir is not None
+        return os.path.join(self._archive_dir, self.archive_name)
+
+    @cached_property
+    def archive_name(self) -> str:
+        """Return the name of the archive with the checksum."""
+        return f"{self.name}_{self.checksum}.zip"
+
+    @cached_property
+    def s3_key(self) -> str:
+        """Return a unique S3 key with the checksum of the package."""
+        return f"{self.name}/{self.archive_name}"
 
     def populate_package_dir(self, package_dir: str) -> None:
         """Copy user code into package directory.
@@ -126,59 +218,23 @@ class PyFunctionAsset(Asset):
         # Add lambda code
         sync_tree(self.code_dir, package_dir, delete=False)
 
-    def compute_checksum(self, archive_path: str) -> str:
-        """Compute the checksum of the archive.
-
-        All .pyc files are excluded as they are not reproducible.
-
-        :param archive_path: path of the archive
-        :return: the checksum
-        """
-        checksum = sha256()
-        with ZipFile(archive_path) as zip:
-            for zip_info in zip.infolist():
-                if zip_info.is_dir():
-                    content = b""
-                elif not zip_info.filename.endswith(".pyc"):
-                    with zip.open(zip_info) as f:
-                        content = f.read()
-                else:
-                    continue
-
-                checksum.update(zip_info.filename.encode())
-                checksum.update(content)
-
-        return checksum.hexdigest()
-
-    def create_assets_dir(self, root_dir: str) -> None:
-        """Populate the assets dir.
-
-        :param root_dir: directory where to put assets
-        """
-        # Directory where the archive is generated
-        archive_dir = os.path.join(root_dir, self.name)
-
-        # Create a temporary packaging directory
-        package_dir = os.path.join(archive_dir, "package")
-
-        # Package the code with dependencies
-        archive_name = f"{self.name}.zip"
-        package_pyfunction_code(
-            archive_name,
-            package_dir=package_dir,
-            root_dir=archive_dir,
-            populate_package_dir=self.populate_package_dir,
-            runtime=self.runtime,
-            requirement_file=self.requirement_file,
-        )
-
-        archive_path = os.path.abspath(os.path.join(archive_dir, archive_name))
-        self.checksum = self.compute_checksum(archive_path)
-
-        # Rename the archive with the checksum
-        checksum_archive_name = f"{self.name}_{self.checksum}.zip"
-        checksum_archive_path = os.path.join(archive_dir, checksum_archive_name)
-        mv(archive_path, checksum_archive_path)
+    def upload(
+        self,
+        s3_bucket: str,
+        s3_root_key: str,
+        client: botocore.client.S3 | None = None,
+        dry_run: bool | None = None,
+    ) -> None:
+        if self._archive_dir is not None:
+            self._upload_file(
+                s3_bucket=s3_bucket,
+                s3_key=f"{s3_root_key}{self.s3_key}",
+                root_dir=self._archive_dir,
+                file=self.archive_path,
+                client=client,
+                check_exists=True,
+                dry_run=dry_run,
+            )
 
 
 class Function(Construct):
@@ -189,6 +245,9 @@ class Function(Construct):
         name: str,
         description: str,
         role: str | GetAtt | Role,
+        version: int | Version | AutoVersion | None = None,
+        min_version: int | None = None,
+        alias: str | Alias | BlueGreenAliases | None = None,
         code_bucket: str | None = None,
         code_key: str | None = None,
         code_zipfile: str | None = None,
@@ -210,6 +269,9 @@ class Function(Construct):
         :param name: function name
         :param description: a description of the function
         :param role: role to be asssumed during lambda execution
+        :param version: the latest deployed version
+        :param min_version: minimum deployed version (default 1)
+        :param alias: alias for the latest version
         :param code_bucket: bucket in which code for the function is found
         :param code_key: key in the previous bucket where the code is stored
         :param code_zipfile: inline code. it is needed when lambda code depends
@@ -255,6 +317,35 @@ class Function(Construct):
         self.logging_config = logging_config
         self.dl_config = dl_config
         self.vpc_config = vpc_config
+
+        self.version: Version | AutoVersion | None = None
+        self.alias: Alias | BlueGreenAliases | None = None
+        if version is not None:
+            if isinstance(version, (Version, AutoVersion)):
+                self.version = version
+            else:
+                self.version = AutoVersion(
+                    version=version,
+                    min_version=min_version,
+                    lambda_name=name,
+                    lambda_arn=self.arn,
+                )
+
+            if alias is not None:
+                if isinstance(alias, (Alias, BlueGreenAliases)):
+                    self.alias = alias
+                else:
+                    self.alias = Alias(
+                        name_to_id(f"{name}-{alias}"),
+                        description=f"{name_to_id(alias)} version of {name}",
+                        lambda_arn=self.arn,
+                        lambda_version=(
+                            self.version
+                            if isinstance(self.version, Version)
+                            else self.version.latest
+                        ),
+                        alias_name=alias,
+                    )
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         statements = [
@@ -385,6 +476,12 @@ class Function(Construct):
                 RetentionInDays=self.logs_retention_in_days,
             )
             result.append(log_group)
+
+        if self.version is not None:
+            result.append(self.version)
+
+        if self.alias is not None:
+            result.append(self.alias)
 
         return result
 
@@ -549,7 +646,10 @@ class PyFunction(Function):
         role: str | GetAtt | Role,
         handler: str,
         runtime: str,
-        code_asset: Asset | None = None,
+        version: int | Version | AutoVersion | None = None,
+        min_version: int | None = None,
+        alias: str | Alias | BlueGreenAliases | None = None,
+        code_asset: PyFunctionAsset | None = None,
         code_dir: str | None = None,
         requirement_file: str | None = None,
         code_version: int | None = None,
@@ -570,6 +670,9 @@ class PyFunction(Function):
         :param role: role to be asssumed during lambda execution
         :param handler: name of the function to be invoked on lambda execution
         :param runtime: lambda runtime. It must be a Python runtime.
+        :param version: the latest deployed version
+        :param min_version: minimum deployed version (default 1)
+        :param alias: alias for the latest version
         :param code_asset: asset containing the python code
         :param code_dir: directory containing the python code
         :param requirement_file: requirement file for the application code.
@@ -603,6 +706,9 @@ class PyFunction(Function):
             code_bucket=None,
             code_key=None,
             role=role,
+            version=version,
+            min_version=min_version,
+            alias=alias,
             handler=handler,
             code_version=code_version,
             timeout=timeout,
@@ -643,6 +749,145 @@ class PyFunction(Function):
             ),
         )
 
+    @client("lambda")
+    def _exist_version(
+        self, version: Version, client: botocore.client.BaseClient
+    ) -> bool:
+        """Check if a version of the function exists.
+
+        The check works by listing all the versions and checking the descriptions
+        as there is no way to get the number of a version by its logical id.
+
+        :param version: the version
+        :param client: an AWS client
+        :return: if it exists
+        """
+        paginator = client.get_paginator("list_versions_by_function")
+        for results in paginator.paginate(FunctionName=self.name):
+            for item in results["Versions"]:
+                if item["Description"] == version.description:
+                    return True
+
+        return False
+
+    @client("lambda")
+    def download_code_asset(
+        self,
+        dest: str,
+        client: botocore.client.BaseClient,
+        filename: str | None = None,
+        qualifier: str | None = None,
+    ) -> None:
+        """Download the code asset of this function.
+
+        :param dest: destination directory
+        :param client: an AWS client
+        :param filename: destination file
+        :param qualifier: an alias or version of the function
+        """
+        params: dict[str, Any] = {}
+        if qualifier is not None:
+            params["Qualifier"] = qualifier
+
+        resp = client.get_function(FunctionName=self.name, **params)
+
+        HTTPSession().download_file(
+            url=resp["Code"]["Location"], dest=dest, filename=filename
+        )
+
+    def _show_archive_files(self, archive_path: str) -> list[str]:
+        """Output the newline separated list of files of an archive.
+
+        The .pyc files are omitted to reduce the size of the output.
+
+        :param archive_path: path to the archive
+        :return: the list of files in the archive
+        """
+        with zipfile.ZipFile(archive_path) as zip:
+            return [
+                f"{line}\n"
+                for line in sorted(zip.namelist())
+                if not line.endswith(".pyc")
+            ]
+
+    def diff(self, stack: Stack, qualifier: str | None = None) -> None:
+        """Compare this function with the currently deployed one.
+
+        :param stack: the stack that contains the function
+        :param qualifier: an alias or version to compare with
+        """
+        if qualifier is None:
+            # In case of blue/green aliases, perform the diff on both aliases
+            if isinstance(self.alias, BlueGreenAliases):
+                for alias in [self.alias.blue, self.alias.green]:
+                    self.diff(stack=stack, qualifier=alias.alias_name)
+                return
+
+            # Perform the diff on the alias if set
+            if self.alias is not None:
+                qualifier = self.alias.alias_name
+
+        name_with_qualifier = "{}{}".format(
+            self.name, f":{qualifier}" if qualifier is not None else ""
+        )
+
+        # If the function is versioned, then check if the latest version
+        # is already deployed
+        if self.version is not None:
+            version = (
+                self.version
+                if isinstance(self.version, Version)
+                else self.version.latest
+            )
+
+            # If the version already exist then we are not deploying anything
+            # as a version is immutable. So there are no changes in that case
+            if self._exist_version(version=version):
+                print(f"No new version for function {name_with_qualifier}")
+                return
+
+        # Otherwise we are redeploying the function, so we get the list of files
+        # from the local code asset
+        archive_files = self._show_archive_files(self.code_asset.archive_path)
+
+        # Download the code archive of the deployed function by pointing either
+        # at the alias or at None ($LATEST)
+        active_archive_files: list[str] = []
+        try:
+            with TemporaryDirectory() as tmpd:
+                archive_name = "archive.zip"
+                self.download_code_asset(
+                    dest=tmpd,
+                    filename=archive_name,
+                    qualifier=qualifier,
+                )
+
+                # Output lines of the code archive
+                active_archive_files = self._show_archive_files(
+                    os.path.join(tmpd, archive_name)
+                )
+        except botocore.exceptions.ClientError as e:
+            # In this case the function has not yet been deployed
+            if e.response["Error"]["Code"] != "ResourceNotFoundException":
+                raise e
+
+        diff = modified_diff_lines(
+            list(difflib.ndiff(active_archive_files, archive_files))
+        )
+        if diff:
+            print(f"Diff for the new version of function {name_with_qualifier}:")
+            print("".join(color_diff(diff)))
+        else:
+            print(f"No diff for the new version of function {name_with_qualifier}")
+
+    def show(self, stack: Stack) -> None:
+        files = self._show_archive_files(self.code_asset.archive_path)
+        print(f"List of files for function {self.name}:")
+        if files:
+            print("".join(files))
+        else:
+            print("No files")
+
 
 class Py38Function(PyFunction):
     """Lambda using the Python 3.8 runtime."""
@@ -654,6 +899,9 @@ class Py38Function(PyFunction):
         role: str | GetAtt | Role,
         code_dir: str,
         handler: str,
+        version: int | Version | AutoVersion | None = None,
+        min_version: int | None = None,
+        alias: str | Alias | BlueGreenAliases | None = None,
         requirement_file: str | None = None,
         code_version: int | None = None,
         timeout: int = 3,
@@ -674,6 +922,9 @@ class Py38Function(PyFunction):
             role=role,
             code_dir=code_dir,
             handler=handler,
+            version=version,
+            min_version=min_version,
+            alias=alias,
             requirement_file=requirement_file,
             code_version=code_version,
             timeout=timeout,
