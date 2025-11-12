@@ -1,0 +1,139 @@
+{
+    "TestVPCInternetGW": {
+        "Type": "AWS::EC2::InternetGateway"
+    },
+    "TestVPCInternetGWAttachment": {
+        "Properties": {
+            "InternetGatewayId": {
+                "Ref": "TestVPCInternetGW"
+            },
+            "VpcId": {
+                "Ref": "TestVPCVPC"
+            }
+        },
+        "Type": "AWS::EC2::VPCGatewayAttachment"
+    },
+    "TestVPCPublicRouteTable": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPCVPC"
+            }
+        },
+        "Type": "AWS::EC2::RouteTable"
+    },
+    "TestVPCPublicRouteToInternet": {
+        "Properties": {
+            "RouteTableId": {
+                "Ref": "TestVPCPublicRouteTable"
+            },
+            "DestinationCidrBlock": "0.0.0.0/0",
+            "GatewayId": {
+                "Ref": "TestVPCInternetGW"
+            }
+        },
+        "Type": "AWS::EC2::Route"
+    },
+    "TestVPCPublicSubnetA": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPCVPC"
+            },
+            "CidrBlock": "10.10.0.0/19",
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestVPCPublicSubnetA"
+                }
+            ],
+            "AvailabilityZone": "eu-west-1a"
+        },
+        "Type": "AWS::EC2::Subnet"
+    },
+    "TestVPCPublicSubnetB": {
+        "Properties": {
+            "VpcId": {
+                "Ref": "TestVPCVPC"
+            },
+            "CidrBlock": "10.10.32.0/19",
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestVPCPublicSubnetB"
+                }
+            ],
+            "AvailabilityZone": "eu-west-1b"
+        },
+        "Type": "AWS::EC2::Subnet"
+    },
+    "TestVPCPublicRouteTableAssocA": {
+        "Properties": {
+            "RouteTableId": {
+                "Ref": "TestVPCPublicRouteTable"
+            },
+            "SubnetId": {
+                "Ref": "TestVPCPublicSubnetA"
+            }
+        },
+        "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "TestVPCPublicRouteTableAssocB": {
+        "Properties": {
+            "RouteTableId": {
+                "Ref": "TestVPCPublicRouteTable"
+            },
+            "SubnetId": {
+                "Ref": "TestVPCPublicSubnetB"
+            }
+        },
+        "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "TestVPCVPC": {
+        "Properties": {
+            "CidrBlock": "10.10.0.0/16",
+            "EnableDnsHostnames": true,
+            "EnableDnsSupport": true,
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TestVPCVPC"
+                }
+            ]
+        },
+        "Type": "AWS::EC2::VPC"
+    },
+    "TestVPCS3Endpoint": {
+        "Properties": {
+            "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Principal": "*",
+                        "Action": [
+                            "s3:PutObject",
+                            "s3:GetObject"
+                        ],
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Principal": "*",
+                        "Action": "s3:ListBucket",
+                        "Resource": "*"
+                    }
+                ]
+            },
+            "RouteTableIds": [
+                {
+                    "Ref": "TestVPCPublicRouteTable"
+                }
+            ],
+            "ServiceName": "com.amazonaws.eu-west-1.s3",
+            "VpcEndpointType": "Gateway",
+            "VpcId": {
+                "Ref": "TestVPCVPC"
+            }
+        },
+        "Type": "AWS::EC2::VPCEndpoint"
+    }
+}
