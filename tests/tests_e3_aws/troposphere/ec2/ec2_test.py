@@ -205,3 +205,26 @@ def test_vpc_v2_with_endpoints(stack: Stack) -> None:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
+
+
+def test_vpc_v2_without_priv_subnets(stack: Stack) -> None:
+    """Test VPCv2 without private subnets."""
+    s3_endpoint_pd = PolicyDocument(
+        statements=[
+            Allow(action=["s3:PutObject", "s3:GetObject"], resource="*", principal="*"),
+            Allow(action="s3:ListBucket", resource="*", principal="*"),
+        ]
+    )
+    vpc = VPCv2(
+        name_prefix="TestVPC",
+        availability_zones=["eu-west-1a", "eu-west-1b"],
+        # When there is no private subnet, we expect the route to the gateway endpoint
+        # to be added to the public subnet route table instead of the private route
+        # tables
+        s3_endpoint_policy_document=s3_endpoint_pd,
+        with_private_subnets=False,
+    )
+    stack.add(vpc)
+    with open(os.path.join(TEST_DIR, "vpc_v2_without_priv_subnets.json")) as fd:
+        expected_template = json.load(fd)
+    assert stack.export()["Resources"] == expected_template

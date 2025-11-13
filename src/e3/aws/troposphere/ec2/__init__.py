@@ -679,6 +679,7 @@ class VPCv2(Construct):
         cidr_block: str | None = None,
         interface_endpoints: list[tuple[str, PolicyDocument | None]] | None = None,
         s3_endpoint_policy_document: PolicyDocument | None = None,
+        with_private_subnets: bool = True,
     ) -> None:
         """Initialize an VPCv2 instance.
 
@@ -691,6 +692,8 @@ class VPCv2(Construct):
             tuples for each interface endpoint to create in the VPC endpoints subnet.
         :param s3_endpoint_policy_document: policy for the s3 endpoint. If none is
             given no s3 endpoint is created.
+        :param with_private_subnets: If True create a private subnet and a NAT
+            gateway per AZ.
         """
         self.name_prefix = name_prefix
         self.availability_zones = availability_zones
@@ -712,9 +715,11 @@ class VPCv2(Construct):
             prefixlen_diff=int.bit_length(number_of_subnet_slots)
         )
         # Assign networks to private and public subnets
-        self.private_subnet_ip_networks = {
-            az: next(self.subnet_ip_networks) for az in availability_zones
-        }
+        self.private_subnet_ip_networks = (
+            {az: next(self.subnet_ip_networks) for az in availability_zones}
+            if with_private_subnets
+            else {}
+        )
         self.public_subnet_ip_networks = {
             az: next(self.subnet_ip_networks) for az in availability_zones
         }
@@ -916,15 +921,19 @@ class VPCv2(Construct):
         Note that this endpoint is also needed when using ECR as ECR stores
         images on S3.
         """
+        # Compute resources requiring access to the Gateway endpoint
+        # are expected to run in the private subnets if they exist.
+        route_tables: ec2.RouteTable
+        if self.private_subnets:
+            route_tables = self.private_subnet_route_tables.values()
+        else:
+            route_tables = [self.public_subnets_route_table]
         return (
             ec2.VPCEndpoint(
                 name_to_id(f"{self.name_prefix}S3Endpoint"),
                 PolicyDocument=self.s3_endpoint_policy_document.as_dict,
                 # Attach the endpoints to all private subnets
-                RouteTableIds=[
-                    Ref(private_subnet_rt)
-                    for private_subnet_rt in self.private_subnet_route_tables.values()
-                ],
+                RouteTableIds=[Ref(subnet_rt) for subnet_rt in route_tables],
                 ServiceName=f"com.amazonaws.{self.region}.s3",
                 VpcEndpointType="Gateway",
                 VpcId=Ref(self.vpc),
@@ -1012,16 +1021,21 @@ class VPCv2(Construct):
             self.internet_gateway_attachment,
             self.public_subnets_route_table,
             self.public_route_to_internet,
-            *self.private_subnets.values(),
             *self.public_subnets.values(),
-            *self.nat_eips.values(),
-            *self.nat_gateways.values(),
-            *self.private_subnet_route_tables.values(),
-            *self.private_routes_to_internet.values(),
-            *self.private_route_table_assocs.values(),
             *self.public_route_table_assocs.values(),
             self.vpc,
         ]
+        if self.private_subnets:
+            res.extend(
+                [
+                    *self.private_subnets.values(),
+                    *self.nat_eips.values(),
+                    *self.nat_gateways.values(),
+                    *self.private_subnet_route_tables.values(),
+                    *self.private_routes_to_internet.values(),
+                    *self.private_route_table_assocs.values(),
+                ]
+            )
         if self.interface_endpoints_subnet:
             res.append(self.interface_endpoints_subnet)
         if self.s3_gateway_endpoint:
