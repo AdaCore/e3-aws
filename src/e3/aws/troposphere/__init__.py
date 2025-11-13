@@ -445,10 +445,11 @@ class CFNProjectMain(CFNMain):
             # and so is not able to diff itself. This must be done via the PyFunction
             # construct
             for construct in stack.constructs:
-                if self.args.diff:
-                    construct.diff(stack=stack)
-                else:
-                    construct.show(stack=stack)
+                if isinstance(construct, Construct):
+                    if self.args.diff:
+                        construct.diff(stack=stack)
+                    else:
+                        construct.show(stack=stack)
 
         # Output the rest of the stack
         super()._show(stack=stack)
