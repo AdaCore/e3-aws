@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import TYPE_CHECKING
 
-from troposphere import AWSObject, iam, Tags, GetAtt
+from troposphere import AWSObject, iam, Tags, GetAtt, Ref
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -92,6 +93,11 @@ class Role(Construct):
     @property
     def arn(self):
         return GetAtt(name_to_id(self.name), "Arn")
+
+    @cached_property
+    def ref(self) -> Ref:
+        """Return a Ref on the role, the Ref on an iam Role returns its name."""
+        return Ref(name_to_id(self.name))
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return troposphere objects defining the role."""
