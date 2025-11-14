@@ -478,10 +478,38 @@ class Function(Construct):
             result.append(log_group)
 
         if self.version is not None:
-            result.append(self.version)
+            versions = (
+                self.version.versions
+                if isinstance(self.version, AutoVersion)
+                else [self.version]
+            )
+            result.extend(
+                [
+                    awslambda.Version(
+                        name_to_id(version.name),
+                        **version.as_dict,
+                        FunctionName=self.arn,
+                    )
+                    for version in versions
+                ]
+            )
 
         if self.alias is not None:
-            result.append(self.alias)
+            aliases = (
+                self.alias.aliases
+                if isinstance(self.alias, BlueGreenAliases)
+                else [self.alias]
+            )
+            result.extend(
+                [
+                    awslambda.Alias(
+                        name_to_id(alias.name),
+                        **alias.as_dict,
+                        FunctionName=self.arn,
+                    )
+                    for alias in aliases
+                ]
+            )
 
         return result
 
@@ -944,9 +972,9 @@ class Alias(Construct):
     def __init__(
         self,
         name: str,
-        description: str,
-        lambda_arn: str | GetAtt | Ref,
         lambda_version: str | GetAtt | Version,
+        description: str | None = None,
+        lambda_arn: str | GetAtt | Ref | None = None,
         alias_name: str | None = None,
         provisioned_concurrency_config: (
             awslambda.ProvisionedConcurrencyConfiguration | None
@@ -956,9 +984,9 @@ class Alias(Construct):
         """Initialize an AWS lambda alias.
 
         :param name: name of the resource
+        :param lambda_version: the function version that the alias invokes
         :param description: a description of the alias
         :param lambda_arn: the name of the Lambda function
-        :param lambda_version: the function version that the alias invokes
         :param alias_name: name of the alias. By default the parameter
             name will be used as both the name of the resource and the name
             of the alias, so this allows for a different alias name. For
@@ -968,6 +996,8 @@ class Alias(Construct):
             concurrency configuration for a function's alias
         :param routing_config: the routing configuration of the alias
         """
+        if lambda_arn is not None:
+            logger.warning("lambda_arn is deprecated, do not use Alias as a Construct")
         self.name = name
         self.description = description
         self.alias_name = alias_name
@@ -980,28 +1010,38 @@ class Alias(Construct):
     def ref(self) -> Ref:
         return Ref(name_to_id(self.name))
 
-    def resources(self, stack: Stack) -> list[AWSObject]:
-        """Return list of AWSObject associated with the construct."""
+    @property
+    def as_dict(self) -> dict:
+        """Return dictionary representation of the lambda alias."""
         lambda_version = (
             self.lambda_version.version
             if isinstance(self.lambda_version, Version)
             else self.lambda_version
         )
 
-        params = {
+        result: dict[str, Any] = {
             "Name": self.alias_name if self.alias_name is not None else self.name,
-            "Description": self.description,
-            "FunctionName": self.lambda_arn,
             "FunctionVersion": lambda_version,
         }
 
+        if self.description is not None:
+            result["Description"] = self.description
+
         if self.provisioned_concurrency_config is not None:
-            params["ProvisionedConcurrencyConfig"] = self.provisioned_concurrency_config
+            result["ProvisionedConcurrencyConfig"] = self.provisioned_concurrency_config
 
         if self.routing_config is not None:
-            params["RoutingConfig"] = self.routing_config
+            result["RoutingConfig"] = self.routing_config
 
-        return [awslambda.Alias(name_to_id(self.name), **params)]
+        return result
+
+    def resources(self, stack: Stack) -> list[AWSObject]:
+        """Return list of AWSObject associated with the construct."""
+        return [
+            awslambda.Alias(
+                name_to_id(self.name), **self.as_dict, FunctionName=self.lambda_arn
+            )
+        ]
 
 
 class Version(Construct):
@@ -1010,8 +1050,8 @@ class Version(Construct):
     def __init__(
         self,
         name: str,
-        description: str,
-        lambda_arn: str | GetAtt | Ref,
+        description: str | None = None,
+        lambda_arn: str | GetAtt | Ref | None = None,
         provisioned_concurrency_config: (
             awslambda.ProvisionedConcurrencyConfiguration | None
         ) = None,
@@ -1022,7 +1062,7 @@ class Version(Construct):
         :param name: version name
         :param description: a description for the version to override the description
             in the function configuration. Updates are not supported for this property
-        :param lambda_arn: the name of the Lambda function
+        :param lambda_arn: the name of the Lambda function (deprecated)
         :param provisioned_concurrency_config: specifies a provisioned concurrency
             configuration for a function's version. Updates are not supported for this
             property.
@@ -1046,20 +1086,29 @@ class Version(Construct):
         """Version of the lambda version."""
         return GetAtt(name_to_id(self.name), "Version")
 
-    def resources(self, stack: Stack) -> list[AWSObject]:
-        """Return list of AWSObject associated with the construct."""
-        params = {
-            "Description": self.description,
-            "FunctionName": self.lambda_arn,
-        }
+    @property
+    def as_dict(self) -> dict:
+        """Return dictionary representation of the lambda version."""
+        result: dict[str, Any] = {}
+
+        if self.description is not None:
+            result["Description"] = self.description
 
         if self.provisioned_concurrency_config is not None:
-            params["ProvisionedConcurrencyConfig"] = self.provisioned_concurrency_config
+            result["ProvisionedConcurrencyConfig"] = self.provisioned_concurrency_config
 
         if self.code_sha256 is not None:
-            params["CodeSha256"] = self.code_sha256
+            result["CodeSha256"] = self.code_sha256
 
-        return [awslambda.Version(name_to_id(self.name), **params)]
+        return result
+
+    def resources(self, stack: Stack) -> list[AWSObject]:
+        """Return list of AWSObject associated with the construct."""
+        return [
+            awslambda.Version(
+                name_to_id(self.name), **self.as_dict, FunctionName=self.lambda_arn
+            )
+        ]
 
 
 class AutoVersion(Construct):
@@ -1087,9 +1136,10 @@ class AutoVersion(Construct):
 
         :param version: number of the latest version
         :param min_version: minimum deployed version (default 1)
-        :param lambda_name: the name of the Lambda function
-        :param lambda_arn: the arn of the Lambda function
-        :param lambda_function: the Lambda function
+        :param lambda_name: the name of the Lambda function (used as a prefix for
+            the name of each versions, and in the descriptions)
+        :param lambda_arn: the arn of the Lambda function (deprecated)
+        :param lambda_function: the Lambda function (deprecated)
         :param provisioned_concurrency_config: specifies a provisioned concurrency
             configuration for a function's version. Updates are not supported for this
             property.
@@ -1105,9 +1155,10 @@ class AutoVersion(Construct):
         assert (
             min_version is None or min_version <= version
         ), "min_version can't be greater than version"
-        assert lambda_function or (
-            lambda_name is not None and lambda_arn is not None
-        ), "either lambda_function or lambda_name plus lambda_arn should be provided"
+        if lambda_function is not None:
+            logger.warning("lambda_function is deprecated, use lambda_name instead")
+        if lambda_arn is not None:
+            logger.warning("lambda_arn is deprecated, use lambda_name instead")
         self.version = version
         self.min_version = min_version if min_version is not None else 1
         self.lambda_function = lambda_function
@@ -1181,9 +1232,10 @@ class BlueGreenVersions(AutoVersion):
         :param blue_version: number of the blue version
         :param green_version: number of the green version
         :param min_version: minimum deployed version (default 1)
-        :param lambda_name: the name of the Lambda function
-        :param lambda_arn: the arn of the Lambda function
-        :param lambda_function: the Lambda function
+        :param lambda_name: the name of the Lambda function (used as a prefix for
+            the name of each versions, and in the descriptions)
+        :param lambda_arn: the arn of the Lambda function (deprecated)
+        :param lambda_function: the Lambda function (deprecated)
         :param provisioned_concurrency_config: specifies a provisioned concurrency
             configuration for a function's version. Updates are not supported for this
             property.
@@ -1259,13 +1311,15 @@ class BlueGreenAliases(Construct):
 
         :param blue_config: configuration for the blue alias
         :param green_config: configuration for the green alias
-        :param lambda_name: the name of the Lambda function
-        :param lambda_arn: the arn of the Lambda function
-        :param lambda_function: the Lambda function
+        :param lambda_name: the name of the Lambda function (used as a prefix
+            in the name of each aliases, and in the descriptions)
+        :param lambda_arn: the arn of the Lambda function (deprecated)
+        :param lambda_function: the Lambda function (deprecated)
         """
-        assert lambda_function or (
-            lambda_name is not None and lambda_arn is not None
-        ), "either lambda_function or lambda_name plus lambda_arn should be provided"
+        if lambda_function is not None:
+            logger.warning("lambda_function is deprecated, use lambda_name instead")
+        if lambda_arn is not None:
+            logger.warning("lambda_arn is deprecated, use lambda_name instead")
         self.blue_config = blue_config
         self.green_config = green_config
         self.lambda_function = lambda_function
