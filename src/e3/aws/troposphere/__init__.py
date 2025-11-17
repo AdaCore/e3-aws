@@ -408,7 +408,7 @@ class CFNProjectMain(CFNMain):
         """
         return self.stack.add(element)
 
-    def extend(self, elements: list[AWSObject | Construct | Stack]) -> Stack:
+    def extend(self, elements: Iterable[AWSObject | Construct | Stack]) -> Stack:
         """Add resources to project's stack.
 
         :param elements: resources to add to the stack.
