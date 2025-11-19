@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from typing import Any
     from troposphere import AWSObject
     from e3.aws.troposphere import Stack
-    from e3.aws.troposphere.awslambda import Function
+    from e3.aws.troposphere.awslambda import Function, Version, Alias
     from e3.aws.troposphere.iam.policy_statement import ConditionType
 
 
@@ -36,15 +36,19 @@ class Topic(Construct):
         return name_to_id(f"{self.name}Policy")
 
     def add_lambda_subscription(
-        self, function: Function, delivery_policy: dict | None = None
+        self,
+        function: Function,
+        delivery_policy: dict | None = None,
+        version: Version | Alias | None = None,
     ) -> None:
         """Add a lambda subscription endpoint to topic.
 
         :param function: lambda function that will be added as endpoint
         :param delivery_policy: The delivery policy to assign to the subscription
+        :param version: specific version or alias to subscribe
         """
         sub_params = {
-            "Endpoint": function.arn,
+            "Endpoint": version.ref if version is not None else function.arn,
             "Protocol": "lambda",
             "TopicArn": self.arn,
         }
@@ -55,10 +59,18 @@ class Topic(Construct):
         self.optional_resources.extend(
             [
                 sns.SubscriptionResource(
-                    name_to_id(f"{function.name}Sub"), **sub_params
+                    name_to_id(
+                        "{}Sub".format(
+                            version.name if version is not None else function.name
+                        )
+                    ),
+                    **sub_params,
                 ),
                 function.invoke_permission(
-                    name_suffix=self.name, service="sns", source_arn=self.arn
+                    name_suffix=self.name,
+                    service="sns",
+                    source_arn=self.arn,
+                    version=version,
                 ),
             ]
         )
