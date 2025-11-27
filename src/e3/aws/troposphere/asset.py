@@ -151,13 +151,8 @@ class FileAsset(Asset):
     @cached_property
     def asset_name(self) -> str:
         """Return the name for the asset with checksum."""
-        file_path = Path(self.file_path)
-        suffix = "".join(file_path.suffixes)
-        return (
-            file_path.name.replace(suffix, "")
-            + (f"_{self.checksum}" if self.checksum else "")
-            + suffix
-        )
+        file_name, dot, suffix = Path(self.file_path).name.partition(".")
+        return file_name + (f"_{self.checksum}" if self.checksum else "") + dot + suffix
 
     @property
     def s3_key(self) -> str:
