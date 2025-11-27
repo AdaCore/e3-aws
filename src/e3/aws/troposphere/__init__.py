@@ -103,7 +103,7 @@ class Asset(Construct):
         ...
 
     @property
-    def s3_key_parameter(self) -> str:
+    def s3_key_parameter(self) -> Parameter:
         """Return the parameter that stores the S3 key."""
         return Parameter(
             self.s3_key_parameter_name,
