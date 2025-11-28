@@ -3,6 +3,12 @@ app.py
 
 AWSTemplateFormatVersion: '2010-09-09'
 Description: TestStack
+Outputs:
+  MypylambdaSourcesS3URIOutput:
+    Description: S3 URI for the Asset MypylambdaSources
+    Export:
+      Name: MypylambdaSourcesS3URIOutput
+    Value: s3://cfn-test-deploy-bucket/TestProject/assets/MypylambdaSources/MypylambdaSources_568470d013cd12e4f388206520da39ab9a4e4c3c6b95846cbc281abc1ba3c959.zip
 Parameters:
   MypylambdaSourcesS3Key:
     Default: MypylambdaSources/MypylambdaSources_568470d013cd12e4f388206520da39ab9a4e4c3c6b95846cbc281abc1ba3c959.zip

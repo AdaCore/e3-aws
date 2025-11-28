@@ -53,6 +53,16 @@ has_docker = require_tool("docker")
 EXPECTED_STACK_TEMPLATE = {
     "AWSTemplateFormatVersion": "2010-09-09",
     "Description": "this is a test stack",
+    "Outputs": {
+        "MypylambdaSourcesS3URIOutput": {
+            "Description": "S3 URI for the Asset MypylambdaSources",
+            "Export": {
+                "Name": "MypylambdaSourcesS3URIOutput",
+            },
+            "Value": "s3://cfn_bucket/assets/MypylambdaSources/"
+            "MypylambdaSources_dummychecksum.zip",
+        },
+    },
     "Parameters": {
         "MypylambdaSourcesS3Key": {
             "Default": "MypylambdaSources/MypylambdaSources_dummychecksum.zip",

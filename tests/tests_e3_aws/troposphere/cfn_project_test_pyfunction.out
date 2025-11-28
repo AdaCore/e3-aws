@@ -1,5 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: TestStack
+Outputs:
+  MypylambdaSourcesS3URIOutput:
+    Description: S3 URI for the Asset MypylambdaSources
+    Export:
+      Name: MypylambdaSourcesS3URIOutput
+    Value: s3://cfn-test-deploy-bucket/TestProject/assets/MypylambdaSources/MypylambdaSources_dummychecksum.zip
 Parameters:
   MypylambdaSourcesS3Key:
     Default: MypylambdaSources/MypylambdaSources_dummychecksum.zip
