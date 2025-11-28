@@ -7,13 +7,15 @@ from e3.aws.troposphere.asset import FileAsset, DirectoryAsset
 
 CONFIG_DIR = Path(__file__).parent / "example"
 
+ASSET_URI_PREFIX = "s3://cfn_bucket/assets/"
+
 EXPECTED_FILE_ASSET_OUTPUT = {
-    "MyFileAssetS3KeyOutput": {
-        "Description": "S3 Key for the File Asset MyFileAsset",
+    "MyFileAssetS3URIOutput": {
+        "Description": "S3 URI for the Asset MyFileAsset",
         "Export": {
-            "Name": "MyFileAssetS3KeyOutput",
+            "Name": "MyFileAssetS3URIOutput",
         },
-        "Value": "MyFileAsset/config_file.yaml",
+        "Value": f"{ASSET_URI_PREFIX}MyFileAsset/config_file.yaml",
     }
 }
 
@@ -31,12 +33,12 @@ EXPECTED_FILE_ASSET_VERSIONED = (
 )
 
 EXPECTED_DIRECTORY_ASSET_OUTPUT = {
-    "MyDirectoryAssetS3KeyOutput": {
-        "Description": "S3 Key for the Directory Asset MyDirectoryAsset",
+    "MyDirectoryAssetS3URIOutput": {
+        "Description": "S3 URI for the Asset MyDirectoryAsset",
         "Export": {
-            "Name": "MyDirectoryAssetS3KeyOutput",
+            "Name": "MyDirectoryAssetS3URIOutput",
         },
-        "Value": "MyDirectoryAsset/asset_dir",
+        "Value": f"{ASSET_URI_PREFIX}MyDirectoryAsset/asset_dir",
     }
 }
 
@@ -83,9 +85,9 @@ def test_file_asset_with_versioning(stack: Stack) -> None:
     )
 
     expected_asset_output = dict(EXPECTED_FILE_ASSET_OUTPUT)
-    expected_asset_output["MyFileAssetS3KeyOutput"][
+    expected_asset_output["MyFileAssetS3URIOutput"][
         "Value"
-    ] = EXPECTED_FILE_ASSET_VERSIONED
+    ] = f"{ASSET_URI_PREFIX}{EXPECTED_FILE_ASSET_VERSIONED}"
 
     expected_asset_parameter = dict(EXPECTED_FILE_ASSET_PARAMETER)
     expected_asset_parameter["MyFileAssetS3Key"][
@@ -120,9 +122,9 @@ def test_directory_asset_with_versioning(stack: Stack) -> None:
     )
 
     expected_asset_output = deepcopy(EXPECTED_DIRECTORY_ASSET_OUTPUT)
-    expected_asset_output["MyDirectoryAssetS3KeyOutput"][
+    expected_asset_output["MyDirectoryAssetS3URIOutput"][
         "Value"
-    ] = EXPECTED_DIRECTORY_ASSET_VERSIONED
+    ] = f"{ASSET_URI_PREFIX}{EXPECTED_DIRECTORY_ASSET_VERSIONED}"
 
     expected_asset_parameter = deepcopy(EXPECTED_DIRECTORY_ASSET_PARAMETER)
     expected_asset_parameter["MyDirectoryAssetS3Key"][
@@ -145,9 +147,9 @@ def test_directory_asset_with_ignore(stack: Stack) -> None:
     )
 
     expected_asset_output = deepcopy(EXPECTED_DIRECTORY_ASSET_OUTPUT)
-    expected_asset_output["MyDirectoryAssetS3KeyOutput"][
+    expected_asset_output["MyDirectoryAssetS3URIOutput"][
         "Value"
-    ] = EXPECTED_DIRECTORY_ASSET_IGNORED
+    ] = f"{ASSET_URI_PREFIX}{EXPECTED_DIRECTORY_ASSET_IGNORED}"
 
     expected_asset_parameter = deepcopy(EXPECTED_DIRECTORY_ASSET_PARAMETER)
     expected_asset_parameter["MyDirectoryAssetS3Key"][

@@ -3,16 +3,13 @@ from __future__ import annotations
 from functools import cached_property
 from hashlib import sha256
 from pathlib import Path
-from troposphere import Export, Output
 from typing import TYPE_CHECKING
 
-from e3.aws.troposphere import Asset, Construct
+from e3.aws.troposphere import Asset
 
 if TYPE_CHECKING:
     import botocore.client
     from collections.abc import Sequence
-    from e3.aws.troposphere import Stack
-    from troposphere import AWSObject
 
 
 class DirectoryAsset(Asset):
@@ -104,25 +101,6 @@ class DirectoryAsset(Asset):
                     dry_run=dry_run,
                 )
 
-    @property
-    def s3_key_output(self) -> Output:
-        """Return the output that exports the S3 key to the assets."""
-        output_name = f"{self.name}S3KeyOutput"
-        return Output(
-            output_name,
-            Description=f"S3 Key for the Directory Asset {self.name}",
-            Export=Export(name=output_name),
-            Value=self.s3_key,
-        )
-
-    def resources(self, stack: Stack) -> list[AWSObject | Construct]:
-        """Return list of AWSObject associated with the construct."""
-        # Adding the Output can be useful for Lambda function with versioning
-        # The exported value can be retrieved by the lambda without the need to update
-        # the lambda version.
-        stack.add_output(self.s3_key_output)
-        return super().resources(stack)
-
 
 class FileAsset(Asset):
     """General purpose to create File asset."""
@@ -182,22 +160,3 @@ class FileAsset(Asset):
             check_exists=self.versioning,
             dry_run=dry_run,
         )
-
-    @property
-    def s3_key_output(self) -> Output:
-        """Return the output that exports the S3 key to the assets."""
-        output_name = f"{self.name}S3KeyOutput"
-        return Output(
-            output_name,
-            Description=f"S3 Key for the File Asset {self.name}",
-            Export=Export(name=output_name),
-            Value=self.s3_key,
-        )
-
-    def resources(self, stack: Stack) -> list[AWSObject | Construct]:
-        """Return list of AWSObject associated with the construct."""
-        # Adding the Output can be useful for Lambda function with versioning
-        # The exported value can be retrieved by the lambda without the need to update
-        # the lambda version.
-        stack.add_output(self.s3_key_output)
-        return super().resources(stack)

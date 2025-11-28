@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 from itertools import chain
-from troposphere import AWSObject, Output, Template, Parameter
+from troposphere import AWSObject, Output, Template, Parameter, Export
 from collections import deque
 import logging
 import os
@@ -95,6 +95,7 @@ class Asset(Construct):
         """
         self.name = name
         self.s3_key_parameter_name = f"{self.name}S3Key"
+        self.s3_uri_output_name = f"{self.name}S3URIOutput"
 
     @property
     @abstractmethod
@@ -118,6 +119,17 @@ class Asset(Construct):
         # be known yet. This is useful if creating a stack from code, so that
         # the exported template contains the parameter
         stack.add_parameter(self.s3_key_parameter)
+        # Adding the Output can be useful for Lambda function with versioning.
+        # The exported value can be retrieved by the lambda without the need to update
+        # the lambda version.
+        stack.add_output(
+            Output(
+                self.s3_uri_output_name,
+                Description=f"S3 URI for the Asset {self.name}",
+                Export=Export(name=self.s3_uri_output_name),
+                Value=f"s3://{stack.s3_bucket}/{stack.s3_assets_key}{self.s3_key}",
+            )
+        )
         return []
 
     def _upload_file(
