@@ -3,6 +3,7 @@ from __future__ import annotations
 from functools import cached_property
 from hashlib import sha256
 from pathlib import Path
+from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from e3.aws.troposphere import Asset
@@ -10,6 +11,15 @@ from e3.aws.troposphere import Asset
 if TYPE_CHECKING:
     import botocore.client
     from collections.abc import Sequence
+
+
+class AssetLayout(Enum):
+    """Available layouts when uploading assets to S3."""
+
+    TREE = auto()
+    """Tree structure where S3 objects are put under assets/AssetName/."""
+    FLAT = auto()
+    """Flat structure where S3 objects are put under assets/."""
 
 
 class DirectoryAsset(Asset):
@@ -22,6 +32,7 @@ class DirectoryAsset(Asset):
         data_dir: str,
         ignore: str | Sequence[str] | None = None,
         versioning: bool = True,
+        layout: AssetLayout = AssetLayout.TREE,
     ) -> None:
         """Initialize DirectoryAsset.
 
@@ -30,11 +41,13 @@ class DirectoryAsset(Asset):
         :param ignore: glob pattern or list of files or directories to ignore
         :param versioning: if True, elements are not uploaded if no change has been
           detected
+        :param layout: the layout for this asset
         """
         super().__init__(name)
         self.data_dir = data_dir
         self.ignore = ignore
         self.versioning = versioning
+        self.layout = layout
 
     @cached_property
     def _cached_ignored(self) -> list[Path]:
@@ -73,7 +86,11 @@ class DirectoryAsset(Asset):
     @property
     def s3_key(self) -> str:
         """Return a unique S3 key with the checksum of the folder."""
-        return f"{self.name}/{self.asset_name}"
+        return (
+            f"{self.name}/{self.asset_name}"
+            if self.layout == AssetLayout.TREE
+            else self.asset_name
+        )
 
     def upload(
         self,
@@ -105,17 +122,26 @@ class DirectoryAsset(Asset):
 class FileAsset(Asset):
     """General purpose to create File asset."""
 
-    def __init__(self, name: str, *, file_path: str, versioning: bool = True) -> None:
+    def __init__(
+        self,
+        name: str,
+        *,
+        file_path: str,
+        versioning: bool = True,
+        layout: AssetLayout = AssetLayout.TREE,
+    ) -> None:
         """Initialize FileAsset.
 
         :param name: name of the asset
         :param file_path: file path to add to the asset
         :param versioning: if True, the file is not uploaded if no change has been
           detected
+        :param layout: the layout for this asset
         """
         super().__init__(name)
         self.file_path = file_path
         self.versioning = versioning
+        self.layout = layout
 
     @cached_property
     def checksum(self) -> str:
@@ -135,7 +161,11 @@ class FileAsset(Asset):
     @property
     def s3_key(self) -> str:
         """Return a unique S3 key with the checksum of the file."""
-        return f"{self.name}/{self.asset_name}"
+        return (
+            f"{self.name}/{self.asset_name}"
+            if self.layout == AssetLayout.TREE
+            else self.asset_name
+        )
 
     def upload(
         self,

@@ -22,6 +22,7 @@ from troposphere import awslambda, logs, GetAtt, Ref, Sub
 from e3.aws import name_to_id
 from e3.aws.cfn import client
 from e3.aws.troposphere import Construct, Asset
+from e3.aws.troposphere.asset import AssetLayout
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 from e3.aws.troposphere.iam.role import Role
@@ -104,6 +105,7 @@ class PyFunctionAsset(Asset):
         code_dir: str,
         runtime: str,
         requirement_file: str | None = None,
+        layout: AssetLayout = AssetLayout.TREE,
     ) -> None:
         """Initialize PyFunctionAsset.
 
@@ -111,11 +113,13 @@ class PyFunctionAsset(Asset):
         :param code_dir: directory that contains the Python code
         :param runtime: the Python runtime
         :param requirement_file: the list of Python dependencies
+        :param layout: the layout for this asset
         """
         super().__init__(name)
         self.code_dir = code_dir
         self.runtime = runtime
         self.requirement_file = requirement_file
+        self.layout = layout
 
         # Temporary directory where the archive is created
         self._archive_tmpd: TemporaryDirectory | None = None
@@ -208,7 +212,11 @@ class PyFunctionAsset(Asset):
     @cached_property
     def s3_key(self) -> str:
         """Return a unique S3 key with the checksum of the package."""
-        return f"{self.name}/{self.archive_name}"
+        return (
+            f"{self.name}/{self.archive_name}"
+            if self.layout == AssetLayout.TREE
+            else self.archive_name
+        )
 
     def populate_package_dir(self, package_dir: str) -> None:
         """Copy user code into package directory.
