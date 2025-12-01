@@ -59,6 +59,28 @@ def test_add_parameters() -> None:
     assert stack.export()["Parameters"] == expected_template
 
 
+def test_update_parameter() -> None:
+    """Test updating an already existing parameter."""
+    p = Parameter("Parameter", Description="My parameter", Type="String")
+    stack = Stack("test-stack", "this is a test stack")
+    stack.add_parameter(p)
+
+    # This one should fail because of the duplicate key
+    with pytest.raises(match='duplicate key "Parameter" detected'):
+        stack.add_parameter(p)
+
+    # This one should update the parameter
+    p.Description = "Updated parameter"
+    stack.add_parameter(p, update_if_exist=True)
+
+    assert stack.export()["Parameters"] == {
+        "Parameter": {
+            "Description": "Updated parameter",
+            "Type": "String",
+        },
+    }
+
+
 def test_add_outputs() -> None:
     """Test adding outputs to a stack."""
     stack = Stack("test-stack", "this is a test stack")
