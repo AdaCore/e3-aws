@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-
+import pytest
 from troposphere import Parameter, Output, Export
 
 from e3.aws.troposphere.s3.bucket import Bucket
@@ -83,6 +83,30 @@ def test_add_outputs() -> None:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
+
+
+def test_update_output() -> None:
+    """Test updating an already existing output."""
+    o = Output("Output", Description="My output", Value=Export(name="Output"))
+    stack = Stack("test-stack", "this is a test stack")
+    stack.add_output(o)
+
+    # This one should fail because of the duplicate key
+    with pytest.raises(match='duplicate key "Output" detected'):
+        stack.add_output(o)
+
+    # This one should update the output
+    o.Description = "Updated output"
+    stack.add_output(o, update_if_exist=True)
+
+    assert stack.export()["Outputs"] == {
+        "Output": {
+            "Description": "Updated output",
+            "Value": {
+                "Name": "Output",
+            },
+        },
+    }
 
 
 def test_extend() -> None:
