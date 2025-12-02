@@ -118,7 +118,10 @@ class Asset(Construct):
         # Add the parameter during template creation even if the S3 key may not
         # be known yet. This is useful if creating a stack from code, so that
         # the exported template contains the parameter
-        stack.add_parameter(self.s3_key_parameter)
+        stack.add_parameter(
+            self.s3_key_parameter,
+            update_if_exist=True,
+        )
         # Adding the Output can be useful for Lambda function with versioning.
         # The exported value can be retrieved by the lambda without the need to update
         # the lambda version.
@@ -128,7 +131,8 @@ class Asset(Construct):
                 Description=f"S3 URI for the Asset {self.name}",
                 Export=Export(name=self.s3_uri_output_name),
                 Value=f"s3://{stack.s3_bucket}/{stack.s3_assets_key}{self.s3_key}",
-            )
+            ),
+            update_if_exist=True,
         )
         return []
 
@@ -276,7 +280,7 @@ class Stack(cfn.Stack):
                 # Special case to keep track of Assets and generate parameters
                 # for the S3 keys
                 if isinstance(construct, Asset):
-                    self.add_parameter(construct.s3_key_parameter)
+                    self.add_parameter(construct.s3_key_parameter, update_if_exist=True)
                     self.assets[construct.name] = construct
 
                 constructs_to_objects.extend(construct.resources(stack=self))
@@ -295,26 +299,41 @@ class Stack(cfn.Stack):
 
         return self
 
-    def add_parameter(self, parameter: Parameter | list[Parameter]) -> None:
+    def add_parameter(
+        self, parameter: Parameter | list[Parameter], update_if_exist: bool = False
+    ) -> None:
         """Add parameters to stack template.
 
         :param parameter: parameter to add to the template
+        :param update_if_exist: update the parameter if already exists, avoiding
+            the duplicate key exception
         """
         if not isinstance(parameter, list):
             parameter = [parameter]
 
         for param in parameter:
-            if param.title in self.template.parameters:
+            if update_if_exist and param.title in self.template.parameters:
                 self.template.parameters[param.title] = param
             else:
                 self.template.add_parameter(param)
 
-    def add_output(self, output: Output | list[Output]) -> None:
+    def add_output(
+        self, output: Output | list[Output], update_if_exist: bool = False
+    ) -> None:
         """Add outputs to stack template.
 
         :param output: output to add to the template
+        :param update_if_exist: update the output if already exists, avoiding
+            the duplicate key exception
         """
-        self.template.add_output(output)
+        if not isinstance(output, list):
+            output = [output]
+
+        for out in output:
+            if update_if_exist and out.title in self.template.outputs:
+                self.template.outputs[out.title] = out
+            else:
+                self.template.add_output(out)
 
     def add_condition(self, condition_name: str, condition: ConditionFunction) -> None:
         """Add condition to stack template.
