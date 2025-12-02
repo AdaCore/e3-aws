@@ -307,6 +307,37 @@
         },
         "Type": "AWS::SNS::Topic"
     },
+    "TestS3wDistInvalidationTopicPolicy": {
+        "Properties": {
+            "PolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": "sns:Publish",
+                        "Condition": {
+                            "ArnLike": {
+                                "aws:SourceArn": "arn:aws:s3:::host-bucket"
+                            }
+                        },
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": "s3.amazonaws.com"
+                        },
+                        "Resource": {
+                            "Ref": "TestS3wDistInvalidationTopic"
+                        },
+                        "Sid": "HostBucketPubAccess"
+                    }
+                ],
+                "Version": "2012-10-17"
+            },
+            "Topics": [
+                {
+                    "Ref": "TestS3wDistInvalidationTopic"
+                }
+            ]
+        },
+        "Type": "AWS::SNS::TopicPolicy"
+    },
     "TestS3wDistCacheInvalidationLambdaSub": {
         "Properties": {
             "Endpoint": {

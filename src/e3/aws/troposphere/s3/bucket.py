@@ -88,6 +88,7 @@ class Bucket(Construct):
         ] = []
         self.topic_configurations: list[tuple[dict[str, str], Topic | None, str]] = []
         self.queue_configurations: list[tuple[dict[str, str], Queue | None, str]] = []
+        self.notification_resources: list[AWSObject] = []
         self.depends_on: list[str] = []
         self.bucket_kwargs = bucket_kwargs
 
@@ -134,12 +135,38 @@ class Bucket(Construct):
         if isinstance(target, Topic):
             params["Topic"] = target.arn
             self.topic_configurations.append((params, target, permission_suffix))
+
+            # Add policy allowing to publish to topic
+            topic_policy_name = target.add_allow_service_to_publish_statement(
+                applicant=f"{name_to_id(self.name)}",
+                service="s3",
+                condition={"ArnLike": {"aws:SourceArn": self.arn}},
+            )
+            self.depends_on.append(topic_policy_name)
         elif isinstance(target, Function):
             params["Function"] = target.arn
             self.lambda_configurations.append((params, target, permission_suffix))
+
+            # Add Permission invoke for lambda
+            self.notification_resources.append(
+                target.invoke_permission(
+                    name_suffix=permission_suffix,
+                    service="s3",
+                    source_arn=self.arn,
+                    source_account=AccountId,
+                )
+            )
         elif isinstance(target, Queue):
             params["Queue"] = target.arn
             self.queue_configurations.append((params, target, permission_suffix))
+
+            # Add policy allowing to publish to queue
+            queue_policy_name = target.add_allow_service_to_write_statement(
+                applicant=f"{name_to_id(self.name)}",
+                service="s3",
+                condition={"ArnLike": {"aws:SourceArn": self.arn}},
+            )
+            self.depends_on.append(queue_policy_name)
         elif ":sns:" in target:
             params["Topic"] = target
             self.topic_configurations.append((params, None, permission_suffix))
@@ -150,81 +177,9 @@ class Bucket(Construct):
             params["Queue"] = target
             self.queue_configurations.append((params, None, permission_suffix))
 
-    @property
-    def notification_setup(
-        self,
-    ) -> tuple[s3.NotificationConfiguration, list[AWSObject]]:
-        """Return notification configuration and associated resources."""
-        notification_resources = []
-        notification_config = None
-        params = {}
-        if self.lambda_configurations:
-            params.update(
-                {
-                    "LambdaConfigurations": [
-                        s3.LambdaConfigurations(**lambda_params)
-                        for lambda_params, _, _ in self.lambda_configurations
-                    ]
-                }
-            )
-            # Add Permission invoke for lambdas
-            for _, function, suffix in self.lambda_configurations:
-                if function:
-                    notification_resources.append(
-                        function.invoke_permission(
-                            name_suffix=suffix,
-                            service="s3",
-                            source_arn=self.arn,
-                            source_account=AccountId,
-                        )
-                    )
-        if self.topic_configurations:
-            params.update(
-                {
-                    "TopicConfigurations": [
-                        s3.TopicConfigurations(**topic_params)
-                        for topic_params, _, _ in self.topic_configurations
-                    ]
-                }
-            )
-            # Add policy allowing to publish to topics
-            for _, topic, _ in self.topic_configurations:
-                if topic:
-                    topic_policy_name = topic.add_allow_service_to_publish_statement(
-                        applicant=f"{name_to_id(self.name)}",
-                        service="s3",
-                        condition={"ArnLike": {"aws:SourceArn": self.arn}},
-                    )
-                    self.depends_on.append(topic_policy_name)
-        if self.queue_configurations:
-            params.update(
-                {
-                    "QueueConfigurations": [
-                        s3.QueueConfigurations(**queue_params)
-                        for queue_params, _, _ in self.queue_configurations
-                    ]
-                }
-            )
-            for _, queue, _ in self.queue_configurations:
-                if queue:
-                    queue_policy_name = queue.add_allow_service_to_write_statement(
-                        applicant=f"{name_to_id(self.name)}",
-                        service="s3",
-                        condition={"ArnLike": {"aws:SourceArn": self.arn}},
-                    )
-                    self.depends_on.append(queue_policy_name)
-
-        if params:
-            notification_config = s3.NotificationConfiguration(
-                name_to_id(self.name + "NotifConfig"), **params
-            )
-
-        return notification_config, notification_resources
-
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Construct and return a s3.Bucket and its associated s3.BucketPolicy."""
         # Handle versioning configuration
-        optional_resources = []
         versioning_status = "Suspended"
         if self.enable_versioning:
             versioning_status = "Enabled"
@@ -256,8 +211,35 @@ class Bucket(Construct):
                 name_to_id(self.name) + "LifeCycleConfig", Rules=self.lifecycle_rules
             )
 
-        notification_config, notification_resources = self.notification_setup
-        optional_resources.extend(notification_resources)
+        # Build the parameters of NotificationConfiguration, keeping only the
+        # parameters with non empty lists
+        notification_params: dict[str, Any] = {
+            k: v
+            for k, v in [
+                (
+                    "LambdaConfigurations",
+                    [
+                        s3.LambdaConfigurations(**params)
+                        for params, _, _ in self.lambda_configurations
+                    ],
+                ),
+                (
+                    "TopicConfigurations",
+                    [
+                        s3.TopicConfigurations(**params)
+                        for params, _, _ in self.topic_configurations
+                    ],
+                ),
+                (
+                    "QueueConfigurations",
+                    [
+                        s3.QueueConfigurations(**params)
+                        for params, _, _ in self.queue_configurations
+                    ],
+                ),
+            ]
+            if v
+        }
 
         attr = {"DeletionPolicy": "Retain"}
         for key, val in {
@@ -268,7 +250,13 @@ class Bucket(Construct):
                 Status=versioning_status
             ),
             "LifecycleConfiguration": lifecycle_config,
-            "NotificationConfiguration": notification_config,
+            "NotificationConfiguration": (
+                s3.NotificationConfiguration(
+                    name_to_id(self.name + "NotifConfig"), **notification_params
+                )
+                if notification_params
+                else None
+            ),
             "DependsOn": self.depends_on,
         }.items():
             if val:
@@ -282,7 +270,7 @@ class Bucket(Construct):
                 Bucket=self.ref,
                 PolicyDocument=self.policy_document.as_dict,
             ),
-            *optional_resources,
+            *self.notification_resources,
         ]
 
     @property
