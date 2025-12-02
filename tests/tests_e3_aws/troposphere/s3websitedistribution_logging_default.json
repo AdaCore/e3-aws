@@ -1,8 +1,21 @@
 {
     "HostBucket": {
         "DeletionPolicy": "Retain",
+        "DependsOn": [
+            "TestS3wDistInvalidationTopicPolicy"
+        ],
         "Properties": {
             "BucketName": "host-bucket",
+            "NotificationConfiguration": {
+                "TopicConfigurations": [
+                    {
+                        "Event": "s3:ObjectCreated:*",
+                        "Topic": {
+                            "Ref": "TestS3wDistInvalidationTopic"
+                        }
+                    }
+                ]
+            },
             "BucketEncryption": {
                 "ServerSideEncryptionConfiguration": [
                     {
