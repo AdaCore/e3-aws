@@ -306,6 +306,9 @@ class S3WebsiteDistribution(Construct):
         # Add bucket policy granting read access to te cloudfront distribution
         self.add_oai_access_to_bucket()
 
+        # Add a lambda invalidating cloudfront cache when bucket objects are modified
+        invalidation_resources = self.add_cache_invalidation(stack)
+
         result = [
             *(self.bucket.resources(stack) if self._create_bucket else []),
             self.cache_policy,
@@ -313,8 +316,7 @@ class S3WebsiteDistribution(Construct):
             self.origin_access_identity,
         ]
 
-        # Add a lambda invalidating cloudfront cache when bucket objects are modified
-        result.extend(self.add_cache_invalidation(stack))
+        result.extend(invalidation_resources)
 
         # Add route53 records if needed
         if self.r53_route_from:
