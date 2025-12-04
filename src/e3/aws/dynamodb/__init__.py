@@ -4,6 +4,7 @@ import logging
 import re
 import time
 from botocore.exceptions import ClientError
+from boto3.dynamodb.conditions import Key
 
 if TYPE_CHECKING:
     from typing import Any, Literal, Optional
@@ -244,13 +245,22 @@ class DynamoDB:
         """Query items from a table.
 
         :param table_name: name of the table
-        :param query: a dict containing the key-values to query for
-            e.g. {"name": ["John", "Robert"]}
+        :param query: a dict containing the key-value to query for
+            e.g. {"name": ["John"]}
         :param index_name: the name of an index to query, defaults to None
         :param sort_key: sort key-value of the table or the index to use as
             filter expression on the query
         :return: result of the query
         """
+        if len(query) > 1:
+            logger.warning(
+                "DynamoDB.query_items only supports one key in the query dict"
+            )
+        if len(list(query.values())[0]) > 1:
+            logger.warning(
+                "DynamoDB.query_items only supports one value per key in the "
+                "query dict, use query_itemsv2 instead"
+            )
         table = self.client.Table(table_name)
         logger.info(f"Quering table {table_name} with {query}")
         attr_name = list(query.keys())[0]
@@ -279,6 +289,8 @@ class DynamoDB:
         if index_name:
             attr["IndexName"] = index_name
 
+        logger.debug(f"query attributes: {attr}")
+
         paging = True
         items = []
         while paging:
@@ -289,6 +301,54 @@ class DynamoDB:
                 attr.update({"ExclusiveStartKey": result["LastEvaluatedKey"]})
             else:
                 paging = False
+
+        return items
+
+    def query_itemsv2(
+        self,
+        table_name: str,
+        query_key: str,
+        query_values: list[str],
+        sort_key: tuple[str, str] | None = None,
+        index_name: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Query items from a table with support for multiple values.
+
+        :param table_name: name of the table to query
+        :param query_key: the key to query
+        :param query_values: list of values to query for the given key
+        :param sort_key: optional sort key-value tuple (key_name, value) to
+            filter results
+        :param index_name: optional name of a secondary index to query
+        :return: list of items matching the query criteria
+        """
+        table = self.client.Table(table_name)
+        logger.info(f"Querying table {table_name} with ({query_key}: {query_values})")
+        items: list[dict[str, Any]] = []
+
+        for attr_value in query_values:
+            key_condition = Key(query_key).eq(attr_value)
+            if sort_key:
+                key_condition = key_condition & Key(sort_key[0]).eq(sort_key[1])
+
+            attr = {
+                "KeyConditionExpression": key_condition,
+            }
+
+            if index_name:
+                attr["IndexName"] = index_name
+
+            logger.debug(f"query attributes: {attr}")
+
+            paging = True
+            while paging:
+                query_result = table.query(**attr)
+                items += query_result["Items"]
+                if query_result.get("LastEvaluatedKey"):
+                    # we have not scanned all table
+                    attr.update({"ExclusiveStartKey": query_result["LastEvaluatedKey"]})
+                else:
+                    paging = False
 
         return items
 
