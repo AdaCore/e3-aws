@@ -96,9 +96,6 @@ def test_s3_website_distribution_bucket(stack: Stack) -> None:
         r53_route_from=[("hosted_zone_id", "test.s3w.com")],
     )
 
-    # Has to be called manually because this is normally done from resources(stack)
-    s3_website_distribution.add_oai_access_to_bucket()
-
     stack.add(bucket)
     stack.add(s3_website_distribution)
 

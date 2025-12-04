@@ -96,8 +96,8 @@ class S3WebsiteDistribution(Construct):
         self.logging_include_cookies = logging_include_cookies
         self.iam_path = iam_path
 
-    def add_oai_access_to_bucket(self) -> None:
-        """Add policy granting cloudfront OAI read access to the bucket."""
+        # Add statements granting read access to the CloudFront distribution
+        # to the bucket policy
         cf_principal = {
             "CanonicalUser": GetAtt(self.origin_access_identity, "S3CanonicalUserId")
         }
@@ -114,6 +114,16 @@ class S3WebsiteDistribution(Construct):
                     principal=cf_principal,
                 ),
             ]
+        )
+
+        # SNS topic for cache invalidation notifications
+        self.sns_invalidation_topic = Topic(name=f"{self.name}-invalidation-topic")
+
+        # Trigger cache invalidation when objects are updated
+        self.bucket.add_notification_configuration(
+            event="s3:ObjectCreated:*",
+            target=self.sns_invalidation_topic,
+            permission_suffix=self.name,
         )
 
     @property
@@ -274,19 +284,13 @@ class S3WebsiteDistribution(Construct):
             environment={"DISTRIBUTION_ID": Sub("${id}", id=self.id)},
         )
 
-        sns_topic = Topic(name=f"{self.name}-invalidation-topic")
-        sns_topic.add_lambda_subscription(
+        self.sns_invalidation_topic.add_lambda_subscription(
             function=lambda_function,
             delivery_policy={"throttlePolicy": {"maxReceivesPerSecond": 10}},
         )
-        # Trigger the invalidation when a file is updated
-        self.bucket.add_notification_configuration(
-            event="s3:ObjectCreated:*", target=sns_topic, permission_suffix=self.name
-        )
-
         result = [
             resource
-            for construct in (lambda_policy, lambda_role, lambda_function, sns_topic)
+            for construct in (lambda_policy, lambda_role, lambda_function)
             for resource in construct.resources(stack)
         ]
         return result
@@ -303,15 +307,13 @@ class S3WebsiteDistribution(Construct):
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
-        # Add bucket policy granting read access to te cloudfront distribution
-        self.add_oai_access_to_bucket()
-
         # Add a lambda invalidating cloudfront cache when bucket objects are modified
         invalidation_resources = self.add_cache_invalidation(stack)
 
         result = [
             *(self.bucket.resources(stack) if self._create_bucket else []),
             self.cache_policy,
+            self.sns_invalidation_topic,
             self.distribution,
             self.origin_access_identity,
         ]
