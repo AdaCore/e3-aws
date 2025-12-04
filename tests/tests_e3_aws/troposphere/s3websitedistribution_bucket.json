@@ -45,32 +45,6 @@
                         },
                         "Action": "s3:ListBucket",
                         "Resource": "arn:aws:s3:::host-bucket"
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Principal": {
-                            "CanonicalUser": {
-                                "Fn::GetAtt": [
-                                    "TestS3wDistCloudfrontOai",
-                                    "S3CanonicalUserId"
-                                ]
-                            }
-                        },
-                        "Action": "s3:GetObject",
-                        "Resource": "arn:aws:s3:::host-bucket/*"
-                    },
-                    {
-                        "Effect": "Allow",
-                        "Principal": {
-                            "CanonicalUser": {
-                                "Fn::GetAtt": [
-                                    "TestS3wDistCloudfrontOai",
-                                    "S3CanonicalUserId"
-                                ]
-                            }
-                        },
-                        "Action": "s3:ListBucket",
-                        "Resource": "arn:aws:s3:::host-bucket"
                     }
                 ]
             }

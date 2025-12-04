@@ -96,21 +96,8 @@ class S3WebsiteDistribution(Construct):
         self.logging_include_cookies = logging_include_cookies
         self.iam_path = iam_path
 
-        # Add bucket policy granting read access to the CloudFront distribution
-        self.add_oai_access_to_bucket()
-
-        # SNS topic for cache invalidation notifications
-        self.sns_invalidation_topic = Topic(name=f"{self.name}-invalidation-topic")
-
-        # Trigger cache invalidation when objects are updated
-        self.bucket.add_notification_configuration(
-            event="s3:ObjectCreated:*",
-            target=self.sns_invalidation_topic,
-            permission_suffix=self.name,
-        )
-
-    def add_oai_access_to_bucket(self) -> None:
-        """Add policy granting cloudfront OAI read access to the bucket."""
+        # Add statements granting read access to the CloudFront distribution
+        # to the bucket policy
         cf_principal = {
             "CanonicalUser": GetAtt(self.origin_access_identity, "S3CanonicalUserId")
         }
@@ -127,6 +114,16 @@ class S3WebsiteDistribution(Construct):
                     principal=cf_principal,
                 ),
             ]
+        )
+
+        # SNS topic for cache invalidation notifications
+        self.sns_invalidation_topic = Topic(name=f"{self.name}-invalidation-topic")
+
+        # Trigger cache invalidation when objects are updated
+        self.bucket.add_notification_configuration(
+            event="s3:ObjectCreated:*",
+            target=self.sns_invalidation_topic,
+            permission_suffix=self.name,
         )
 
     @property
