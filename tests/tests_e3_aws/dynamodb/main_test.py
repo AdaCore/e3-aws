@@ -155,6 +155,29 @@ def test_query_items(client: DynamoDB) -> None:
     assert items[0] == CUSTOMERS[0]
 
 
+def test_query_items_error(client: DynamoDB, caplog: LogCaptureFixture) -> None:
+    """Test querying items."""
+    items = client.query_items(table_name=TABLE_NAME, query={"name": ["John", "Doe"]})
+    assert (
+        caplog.text.count(
+            "DynamoDB.query_items only supports one value per key in the query dict, "
+            "use query_itemsv2 instead"
+        )
+        == 1
+    )
+    assert len(items) == 1
+    assert items[0] == CUSTOMERS[0]
+
+
+def test_query_itemsv2(client: DynamoDB) -> None:
+    """Test querying items."""
+    items = client.query_itemsv2(
+        table_name=TABLE_NAME, query_key="name", query_values=["John", "Doe"]
+    )
+    assert len(items) == 2
+    assert items == CUSTOMERS
+
+
 def test_scan(client: DynamoDB) -> None:
     """Test querying items."""
     items = client.scan(table_name=TABLE_NAME, query={"name": ["John"]})
