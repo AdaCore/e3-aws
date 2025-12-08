@@ -876,11 +876,18 @@ class PyFunction(Function):
                 else self.version.latest
             )
 
-            # If the version already exist then we are not deploying anything
-            # as a version is immutable. So there are no changes in that case
-            if self._exist_version(version=version):
-                print(f"No new version for function {name_with_qualifier}")
-                return
+            try:
+                # If the version already exists then we are not deploying anything
+                # as a version is immutable. So there are no changes in that case
+                if self._exist_version(version=version):
+                    print(f"No new version for function {name_with_qualifier}")
+                    return
+            except botocore.exceptions.ClientError as e:
+                # We can get a genuine AccessDeniedException depending on conditions
+                # in the policy if the lambda doesn't exist yet. In such cases it's
+                # better to not fail
+                if e.response["Error"]["Code"] != "ResourceNotFoundException":
+                    logger.exception(f"Failed to fetch function {self.name} versions:")
 
         # Otherwise we are redeploying the function, so we get the list of files
         # from the local code asset
@@ -903,9 +910,11 @@ class PyFunction(Function):
                     os.path.join(tmpd, archive_name)
                 )
         except botocore.exceptions.ClientError as e:
-            # In this case the function has not yet been deployed
+            # We can get a genuine AccessDeniedException depending on conditions
+            # in the policy if the lambda doesn't exist yet. In such cases it's
+            # better to not fail
             if e.response["Error"]["Code"] != "ResourceNotFoundException":
-                raise e
+                logger.exception(f"Failed to fetch function {self.name} code asset:")
 
         diff = modified_diff_lines(
             list(difflib.ndiff(active_archive_files, archive_files))
