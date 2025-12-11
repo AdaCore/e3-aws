@@ -6,6 +6,7 @@ import os
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 from tempfile import TemporaryDirectory
+from textwrap import dedent
 
 from e3.aws import AWSEnv
 from e3.aws.troposphere import CFNProjectMain
@@ -227,10 +228,20 @@ def test_cfn_project_main_diff_assets(capfd: pytest.CaptureFixture[str]) -> None
         # Diff with the mocked response
         test.execute(args=["show", "--diff", "--assets"], aws_env=aws_env)
 
+    # Only check that the diff part for the code asset of the lambda is in the output.
+    # Checking the whole diff gives different results depending if we are running
+    # Python < 3.14 or Python >= 3.14 https://github.com/python/cpython/pull/119492
     captured = capfd.readouterr()
     print(captured.out)
-    with open(os.path.join(TEST_DIR, "cfn_project_test_diff_assets.out")) as f_out:
-        assert captured.out == f_out.read()
+    assert (
+        dedent(
+            """\
+            Diff for the new version of function mypylambda:
+            + app.py
+            """
+        )
+        in captured.out
+    )
 
 
 def test_cfn_project_main_show_assets(capfd: pytest.CaptureFixture[str]) -> None:
