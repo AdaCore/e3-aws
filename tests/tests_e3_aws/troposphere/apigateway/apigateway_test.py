@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Any, cast
+import logging
 import json
 import os
 import pytest
@@ -20,6 +21,11 @@ from e3.aws.troposphere.apigateway import (
     Method,
     Resource,
     StageConfiguration,
+    EndpointConfigurationType,
+    IpAddressType,
+    EndpointAccessMode,
+    SecurityPolicy,
+    SecurityPolicyLookup,
 )
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -805,3 +811,293 @@ def test_rest_api_multi_lambdas_stages(stack: Stack) -> None:
 
     print(stack.export()["Resources"])
     assert stack.export()["Resources"] == expected
+
+
+def test_rest_api_endpoint_configuration_regional(
+    stack: Stack, lambda_fun: PyFunction
+) -> None:
+    """Test REST API with REGIONAL endpoint configuration."""
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        method_list=[Method("ANY")],
+        endpoint_configuration_type=EndpointConfigurationType.REGIONAL,
+        ip_address_type=IpAddressType.IPV4,
+    )
+
+    stack.add(lambda_fun)
+    stack.add(rest_api)
+
+    with open(
+        os.path.join(TEST_DIR, "apigatewayv1_test_regional_endpoint.json"),
+    ) as fd:
+        expected = json.load(fd)
+
+    assert stack.export()["Resources"] == expected
+
+
+def test_rest_api_endpoint_configuration_edge(
+    stack: Stack, lambda_fun: PyFunction
+) -> None:
+    """Test REST API with EDGE endpoint configuration and DUAL_STACK IP."""
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        method_list=[Method("ANY")],
+        endpoint_configuration_type=EndpointConfigurationType.EDGE,
+        ip_address_type=IpAddressType.DUAL_STACK,
+    )
+
+    stack.add(lambda_fun)
+    stack.add(rest_api)
+
+    with open(
+        os.path.join(TEST_DIR, "apigatewayv1_test_edge_endpoint.json"),
+    ) as fd:
+        expected = json.load(fd)
+
+    assert stack.export()["Resources"] == expected
+
+
+def test_rest_api_endpoint_access_mode(stack: Stack, lambda_fun: PyFunction) -> None:
+    """Test REST API with endpoint access mode and security policy."""
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        method_list=[Method("ANY")],
+        endpoint_access_mode=EndpointAccessMode.STRICT,
+        security_policy=SecurityPolicy.SECURITYPOLICY_TLS13_1_2_2021_06,
+    )
+
+    stack.add(lambda_fun)
+    stack.add(rest_api)
+
+    with open(
+        os.path.join(TEST_DIR, "apigatewayv1_test_endpoint_access_mode.json"),
+    ) as fd:
+        expected = json.load(fd)
+
+    assert stack.export()["Resources"] == expected
+
+
+def test_rest_api_integration_timeout(stack: Stack, lambda_fun: PyFunction) -> None:
+    """Test REST API with custom integration timeout."""
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        method_list=[Method("ANY")],
+        integration_timeout=10000,
+    )
+
+    stack.add(lambda_fun)
+    stack.add(rest_api)
+
+    with open(
+        os.path.join(TEST_DIR, "apigatewayv1_test_integration_timeout.json"),
+    ) as fd:
+        expected = json.load(fd)
+
+    assert stack.export()["Resources"] == expected
+
+
+def test_rest_api_regional_custom_domain(stack: Stack, lambda_fun: PyFunction) -> None:
+    """Test REST API with REGIONAL endpoint and custom domain."""
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        domain_name="api.example.com",
+        hosted_zone_id="ABCDEFG",
+        method_list=[Method("ANY")],
+        endpoint_configuration_type=EndpointConfigurationType.REGIONAL,
+        security_policy=SecurityPolicy.SECURITYPOLICY_TLS13_1_3_2025_09,
+        endpoint_access_mode=EndpointAccessMode.BASIC,
+    )
+
+    stack.add(lambda_fun)
+    stack.add(rest_api)
+
+    with open(
+        os.path.join(TEST_DIR, "apigatewayv1_test_regional_custom_domain.json"),
+    ) as fd:
+        expected = json.load(fd)
+
+    assert stack.export()["Resources"] == expected
+
+
+def test_rest_api_security_policy_legacy_warning(
+    stack: Stack, lambda_fun: PyFunction, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Test that legacy security policies produce a warning."""
+    caplog.set_level(logging.WARNING)
+
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        method_list=[Method("ANY")],
+        security_policy=SecurityPolicy.TLS_1_2,
+    )
+
+    stack.add(lambda_fun)
+    stack.add(rest_api)
+
+    # Check that a warning was logged about legacy security policy
+    assert any(
+        "legacy security policy" in record.message.lower() for record in caplog.records
+    )
+
+
+def test_rest_api_security_policy_incompatible_warning(
+    stack: Stack, lambda_fun: PyFunction, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Test that incompatible security policy produces a warning."""
+    caplog.set_level(logging.WARNING)
+
+    # Verify no warning exists before creating the RestApi
+    assert not any(
+        "may not be compatible" in record.message.lower() for record in caplog.records
+    )
+
+    # Use EDGE security policy with REGIONAL endpoint (incompatible)
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        method_list=[Method("ANY")],
+        endpoint_configuration_type=EndpointConfigurationType.REGIONAL,
+        security_policy=SecurityPolicy.SECURITYPOLICY_TLS12_2018_EDGE,
+    )
+
+    stack.add(lambda_fun)
+    stack.add(rest_api)
+
+    # Check that a warning was logged about incompatible security policy
+    assert any(
+        "may not be compatible" in record.message.lower() for record in caplog.records
+    )
+
+
+def test_rest_api_endpoint_configuration_type_only(
+    stack: Stack, lambda_fun: PyFunction
+) -> None:
+    """Test REST API with only endpoint_configuration_type (no ip_address_type)."""
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        method_list=[Method("ANY")],
+        endpoint_configuration_type=EndpointConfigurationType.PRIVATE,
+    )
+
+    stack.add(lambda_fun)
+    stack.add(rest_api)
+
+    with open(
+        os.path.join(TEST_DIR, "apigatewayv1_test_private_endpoint.json"),
+    ) as fd:
+        expected = json.load(fd)
+
+    assert stack.export()["Resources"] == expected
+
+
+@pytest.mark.parametrize(
+    "endpoint_type,security_policy,should_be_valid",
+    [
+        # Valid REGIONAL policies
+        (
+            EndpointConfigurationType.REGIONAL,
+            SecurityPolicy.SECURITYPOLICY_TLS13_1_2_2021_06,
+            True,
+        ),
+        (
+            EndpointConfigurationType.REGIONAL,
+            SecurityPolicy.TLS_1_2,
+            True,
+        ),
+        # Invalid: EDGE policy with REGIONAL endpoint
+        (
+            EndpointConfigurationType.REGIONAL,
+            SecurityPolicy.SECURITYPOLICY_TLS12_2018_EDGE,
+            False,
+        ),
+        # Valid EDGE policies
+        (
+            EndpointConfigurationType.EDGE,
+            SecurityPolicy.SECURITYPOLICY_TLS13_2025_EDGE,
+            True,
+        ),
+        (
+            EndpointConfigurationType.EDGE,
+            SecurityPolicy.TLS_1_0,
+            True,
+        ),
+        # Invalid: REGIONAL policy with EDGE endpoint
+        (
+            EndpointConfigurationType.EDGE,
+            SecurityPolicy.SECURITYPOLICY_TLS13_1_2_2021_06,
+            False,
+        ),
+        # Valid PRIVATE policies
+        (
+            EndpointConfigurationType.PRIVATE,
+            SecurityPolicy.SECURITYPOLICY_TLS13_1_3_2025_09,
+            True,
+        ),
+        # Invalid: EDGE policy with PRIVATE endpoint
+        (
+            EndpointConfigurationType.PRIVATE,
+            SecurityPolicy.SECURITYPOLICY_TLS13_2025_EDGE,
+            False,
+        ),
+    ],
+)
+def test_rest_api_security_policy_validation(
+    stack: Stack,
+    lambda_fun: PyFunction,
+    caplog: pytest.LogCaptureFixture,
+    endpoint_type: EndpointConfigurationType,
+    security_policy: SecurityPolicy,
+    should_be_valid: bool,
+) -> None:
+    """Test security policy validation against endpoint configuration types."""
+    caplog.set_level(logging.WARNING)
+
+    # Verify our test data matches the SecurityPolicyLookup
+    is_valid_in_lookup = security_policy in SecurityPolicyLookup[endpoint_type]
+    assert is_valid_in_lookup == should_be_valid, (
+        f"Test data mismatch: {security_policy.name} with {endpoint_type.name} "
+        f"should be {'valid' if should_be_valid else 'invalid'}"
+    )
+
+    rest_api = RestApi(
+        name="testapi",
+        description="this is a test",
+        lambda_arn=lambda_fun.ref,
+        method_list=[Method("ANY")],
+        endpoint_configuration_type=endpoint_type,
+        security_policy=security_policy,
+    )
+
+    stack.add(lambda_fun)
+    stack.add(rest_api)
+
+    # Check for compatibility warning
+    has_compatibility_warning = any(
+        "may not be compatible" in record.message.lower() for record in caplog.records
+    )
+
+    if should_be_valid:
+        assert not has_compatibility_warning, (
+            f"Should not warn for valid combination: "
+            f"{security_policy.name} with {endpoint_type.name}"
+        )
+    else:
+        assert has_compatibility_warning, (
+            f"Should warn for invalid combination: "
+            f"{security_policy.name} with {endpoint_type.name}"
+        )

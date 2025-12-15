@@ -1,0 +1,148 @@
+{
+    "Mypylambda": {
+        "Properties": {
+            "Code": {
+                "S3Bucket": "cfn_bucket",
+                "S3Key": {
+                    "Fn::Sub": "assets/${MypylambdaSourcesS3Key}"
+                }
+            },
+            "Description": "this is a test",
+            "FunctionName": "mypylambda",
+            "Handler": "app.main",
+            "Role": "somearn",
+            "Runtime": "python3.8",
+            "Timeout": 3
+        },
+        "Type": "AWS::Lambda::Function"
+    },
+    "Testapi": {
+        "Properties": {
+            "Description": "this is a test",
+            "DisableExecuteApiEndpoint": false,
+            "EndpointConfiguration": {
+                "IpAddressType": "ipv4",
+                "Types": [
+                    "REGIONAL"
+                ]
+            },
+            "Name": "testapi"
+        },
+        "Type": "AWS::ApiGateway::RestApi"
+    },
+    "TestapiANYDefaultLambdaPermission": {
+        "Properties": {
+            "Action": "lambda:InvokeFunction",
+            "FunctionName": {
+                "Ref": "Mypylambda"
+            },
+            "Principal": "apigateway.amazonaws.com",
+            "SourceArn": {
+                "Fn::Sub": [
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${api}/default/${method}/*",
+                    {
+                        "api": {
+                            "Ref": "Testapi"
+                        },
+                        "method": "*"
+                    }
+                ]
+            }
+        },
+        "Type": "AWS::Lambda::Permission"
+    },
+    "TestapiANYMethod": {
+        "Properties": {
+            "AuthorizationType": "NONE",
+            "HttpMethod": "ANY",
+            "Integration": {
+                "CacheKeyParameters": [],
+                "CacheNamespace": "none",
+                "IntegrationHttpMethod": "POST",
+                "PassthroughBehavior": "NEVER",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                    "Fn::Sub": [
+                        "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations",
+                        {
+                            "lambdaArn": {
+                                "Ref": "Mypylambda"
+                            }
+                        }
+                    ]
+                }
+            },
+            "ResourceId": {
+                "Ref": "TestapiResource"
+            },
+            "RestApiId": {
+                "Ref": "Testapi"
+            }
+        },
+        "Type": "AWS::ApiGateway::Method"
+    },
+    "TestapiDefaultDeployment": {
+        "DependsOn": [
+            "TestapiANYMethod"
+        ],
+        "Properties": {
+            "Description": "Deployment resource of default stage",
+            "RestApiId": {
+                "Ref": "Testapi"
+            }
+        },
+        "Type": "AWS::ApiGateway::Deployment"
+    },
+    "TestapiDefaultStage": {
+        "Properties": {
+            "AccessLogSetting": {
+                "DestinationArn": {
+                    "Fn::GetAtt": [
+                        "TestapiLogGroup",
+                        "Arn"
+                    ]
+                },
+                "Format": "{\"source_ip\": \"$context.identity.sourceIp\", \"request_time\": \"$context.requestTime\", \"method\": \"$context.httpMethod\", \"path\": \"$context.path\", \"protocol\": \"$context.protocol\", \"status\": \"$context.status\", \"response_length\": \"$context.responseLength\", \"request_id\": \"$context.requestId\", \"extendedRequestId\": \"$context.extendedRequestId\", \"integration_error\": \"$context.integration.error\"}"
+            },
+            "DeploymentId": {
+                "Ref": "TestapiDefaultDeployment"
+            },
+            "Description": "stage default",
+            "MethodSettings": [
+                {
+                    "HttpMethod": "*",
+                    "MetricsEnabled": true,
+                    "ResourcePath": "/*",
+                    "ThrottlingBurstLimit": 10,
+                    "ThrottlingRateLimit": 10
+                }
+            ],
+            "RestApiId": {
+                "Ref": "Testapi"
+            },
+            "StageName": "default"
+        },
+        "Type": "AWS::ApiGateway::Stage"
+    },
+    "TestapiLogGroup": {
+        "Properties": {
+            "LogGroupName": "testapi"
+        },
+        "Type": "AWS::Logs::LogGroup"
+    },
+    "TestapiResource": {
+        "Properties": {
+            "ParentId": {
+                "Fn::GetAtt": [
+                    "Testapi",
+                    "RootResourceId"
+                ]
+            },
+            "PathPart": "{proxy+}",
+            "RestApiId": {
+                "Ref": "Testapi"
+            }
+        },
+        "Type": "AWS::ApiGateway::Resource"
+    }
+}
