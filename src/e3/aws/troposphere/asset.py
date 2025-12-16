@@ -70,7 +70,8 @@ class DirectoryAsset(Asset):
             return ""
 
         fingerprint = sha256()
-        for f in Path(self.data_dir).iterdir():
+        # Sort files to ensure deterministic hash across different systems
+        for f in sorted(Path(self.data_dir).iterdir()):
             if f in self._cached_ignored:
                 continue
             fingerprint.update(f.relative_to(self.data_dir).as_posix().encode())

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from botocore.stub import ANY
 from e3.mock.os.process import mock_run, CommandResult
+from e3.os.process import which
 from e3.aws import AWSEnv, default_region
 from e3.aws.cfn import Stack
 from e3.aws.cfn.main import CFNMain
@@ -235,13 +236,14 @@ def test_cfn_local_changes_check_ko(
         def create_stack(self) -> Stack:
             return Stack(name="teststack")
 
+    git_path = which("git", default="/usr/bin/git")
     with mock_run(
         config={
             "results": [
                 # Make CFNMain think we are on main
                 CommandResult(
                     cmd=[
-                        "/usr/bin/git",
+                        git_path,
                         "-c",
                         "fetch.prune=false",
                         "branch",
@@ -252,7 +254,7 @@ def test_cfn_local_changes_check_ko(
                 # Make CFNMain detect some local changes
                 CommandResult(
                     cmd=[
-                        "/usr/bin/git",
+                        git_path,
                         "-c",
                         "fetch.prune=false",
                         "status",
@@ -279,13 +281,14 @@ def test_cfn_correct_branch_check_ko(
         def create_stack(self) -> Stack:
             return Stack(name="teststack")
 
+    git_path = which("git", default="/usr/bin/git")
     with mock_run(
         config={
             "results": [
                 # Make CFNMain detect an incorrect branch
                 CommandResult(
                     cmd=[
-                        "/usr/bin/git",
+                        git_path,
                         "-c",
                         "fetch.prune=false",
                         "branch",
@@ -364,13 +367,14 @@ def test_cfn_branch_up_to_date_check(
     )
     stubber.add_response("describe_stacks", {}, {"StackName": "teststack"})
 
+    git_path = which("git", default="/usr/bin/git")
     with default_region("us-east-1"), stubber, mock_run(
         config={
             "results": [
                 # Make CFNMain think we are on main
                 CommandResult(
                     cmd=[
-                        "/usr/bin/git",
+                        git_path,
                         "-c",
                         "fetch.prune=false",
                         "branch",
@@ -381,7 +385,7 @@ def test_cfn_branch_up_to_date_check(
                 # Make CFNMain detect no local changes
                 CommandResult(
                     cmd=[
-                        "/usr/bin/git",
+                        git_path,
                         "-c",
                         "fetch.prune=false",
                         "status",
@@ -391,7 +395,7 @@ def test_cfn_branch_up_to_date_check(
                 # Make CFNMain detect an outdated branch
                 CommandResult(
                     cmd=[
-                        "/usr/bin/git",
+                        git_path,
                         "-c",
                         "fetch.prune=false",
                         "fetch",
