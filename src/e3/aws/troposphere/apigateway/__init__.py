@@ -23,6 +23,7 @@ from e3.aws.troposphere.iam.role import Role
 from troposphere import AWSObject
 from troposphere.certificatemanager import Certificate, DomainValidationOption
 import json
+import logging
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
@@ -33,6 +34,8 @@ if TYPE_CHECKING:
         "GET", "POST", "PUT", "DELETE", "ANY", "HEAD", "OPTIONS", "PATCH"
     ]
 
+logger = logging.getLogger("e3.aws.troposphere.apigateway")
+
 
 class AuthorizationType(Enum):
     """Allowed authorization types for ApiGateway routes."""
@@ -41,6 +44,85 @@ class AuthorizationType(Enum):
     JWT = "JWT"
     IAM = "AWS_IAM"
     CUSTOM = "CUSTOM"
+
+
+class EndpointConfigurationType(Enum):
+    """Allowed endpoint configuration types for RestApi ApiGateways."""
+
+    REGIONAL = "REGIONAL"
+    """APIs will be deployed in the current AWS Region"""
+    EDGE = "EDGE"
+    """APIs will route requests to the nearest CloudFront Point of Presence"""
+    PRIVATE = "PRIVATE"
+    """API will only be accessible from VPCs."""
+
+
+class IpAddressType(Enum):
+    """The type of IP addresses that can invoke the default endpoint of a REST API."""
+
+    IPV4 = "ipv4"
+    """Supports only edge-optimized and Regional API endpoint types"""
+    DUAL_STACK = "dualstack"
+    """Supports all API endpoint types."""
+
+
+class EndpointAccessMode(Enum):
+    """Provide additional governance for your APIs."""
+
+    BASIC = "BASIC"
+    """Allow all clients to access the API"""
+    STRICT = "STRICT"
+    """Enforce Server Name Indication (SNI) validation"""
+
+
+class SecurityPolicy(Enum):
+    """The Transport Layer Security (TLS) version + cipher suite for a RestApi."""
+
+    SECURITYPOLICY_TLS12_2018_EDGE = "SecurityPolicy_TLS12_2018_EDGE"
+    SECURITYPOLICY_TLS12_PFS_2025_EDGE = "SecurityPolicy_TLS12_PFS_2025_EDGE"
+    SECURITYPOLICY_TLS13_1_2_2021_06 = "SecurityPolicy_TLS13_1_2_2021_06"
+    SECURITYPOLICY_TLS13_1_2_FIPS_PQ_2025_09 = (
+        "SecurityPolicy_TLS13_1_2_FIPS_PQ_2025_09"
+    )
+    SECURITYPOLICY_TLS13_1_2_PFS_PQ_2025_09 = "SecurityPolicy_TLS13_1_2_PFS_PQ_2025_09"
+    SECURITYPOLICY_TLS13_1_2_PQ_2025_09 = "SecurityPolicy_TLS13_1_2_PQ_2025_09"
+    SECURITYPOLICY_TLS13_1_3_2025_09 = "SecurityPolicy_TLS13_1_3_2025_09"
+    SECURITYPOLICY_TLS13_1_3_FIPS_2025_09 = "SecurityPolicy_TLS13_1_3_FIPS_2025_09"
+    SECURITYPOLICY_TLS13_2025_EDGE = "SecurityPolicy_TLS13_2025_EDGE"
+    TLS_1_0 = "TLS_1_0"
+    TLS_1_2 = "TLS_1_2"
+
+
+LEGACY_SECURITY_POLICIES = {SecurityPolicy.TLS_1_0, SecurityPolicy.TLS_1_2}
+
+SecurityPolicyLookup = {
+    EndpointConfigurationType.REGIONAL: {
+        SecurityPolicy.SECURITYPOLICY_TLS13_1_2_2021_06,
+        SecurityPolicy.SECURITYPOLICY_TLS13_1_2_FIPS_PQ_2025_09,
+        SecurityPolicy.SECURITYPOLICY_TLS13_1_2_PFS_PQ_2025_09,
+        SecurityPolicy.SECURITYPOLICY_TLS13_1_2_PQ_2025_09,
+        SecurityPolicy.SECURITYPOLICY_TLS13_1_3_2025_09,
+        SecurityPolicy.SECURITYPOLICY_TLS13_1_3_FIPS_2025_09,
+        SecurityPolicy.TLS_1_0,
+        SecurityPolicy.TLS_1_2,
+    },
+    EndpointConfigurationType.EDGE: {
+        SecurityPolicy.SECURITYPOLICY_TLS12_2018_EDGE,
+        SecurityPolicy.SECURITYPOLICY_TLS12_PFS_2025_EDGE,
+        SecurityPolicy.SECURITYPOLICY_TLS13_2025_EDGE,
+        SecurityPolicy.TLS_1_0,
+        SecurityPolicy.TLS_1_2,
+    },
+    EndpointConfigurationType.PRIVATE: {
+        SecurityPolicy.SECURITYPOLICY_TLS13_1_2_2021_06,
+        SecurityPolicy.SECURITYPOLICY_TLS13_1_2_FIPS_PQ_2025_09,
+        SecurityPolicy.SECURITYPOLICY_TLS13_1_2_PFS_PQ_2025_09,
+        SecurityPolicy.SECURITYPOLICY_TLS13_1_2_PQ_2025_09,
+        SecurityPolicy.SECURITYPOLICY_TLS13_1_3_2025_09,
+        SecurityPolicy.SECURITYPOLICY_TLS13_1_3_FIPS_2025_09,
+        SecurityPolicy.TLS_1_2,
+    },
+}
 
 
 # Declare some constants to make declarations more concise.
@@ -733,6 +815,11 @@ class RestApi(Api):
         policy: list[PolicyStatement] | None = None,
         minimum_compression_size: int | None = None,
         binary_media_types: list[str] | None = None,
+        endpoint_configuration_type: EndpointConfigurationType | None = None,
+        ip_address_type: IpAddressType | None = None,
+        endpoint_access_mode: EndpointAccessMode | None = None,
+        security_policy: SecurityPolicy | None = None,
+        integration_timeout: int | None = None,
     ):
         """Initialize a Rest API.
 
@@ -777,6 +864,16 @@ class RestApi(Api):
             bytes, inclusive) or disable compression (with a null value) on an API
         :param binary_media_types: the list of binary media types supported by
             the RestApi
+        :param endpoint_configuration_type: the endpoint configuration type for the API
+        :param ip_address_type: the type of IP addresses that can invoke the
+            default endpoint for your API.
+        :param endpoint_access_mode: Provide additional governance for the API
+        :param security_policy: determines the TLS version & cipher suite
+            supported by the API
+        :param integration_timeout: integration timeout in ms (50-29000 by
+            default, can be increased for Regional/Private APIs with
+            quota increase). If None, uses API Gateway default (29000ms)
+
         """
         super().__init__(
             name=name,
@@ -796,6 +893,11 @@ class RestApi(Api):
         self.policy = policy
         self.minimum_compression_size = minimum_compression_size
         self.binary_media_types = binary_media_types
+        self.endpoint_configuration_type = endpoint_configuration_type
+        self.ip_address_type = ip_address_type
+        self.endpoint_access_mode = endpoint_access_mode
+        self.security_policy = security_policy
+        self.integration_timeout = integration_timeout
 
         # For backward compatibility
         if resource_list is None:
@@ -950,15 +1052,13 @@ class RestApi(Api):
             self.lambda_arn if resource_lambda_arn is None else resource_lambda_arn
         )
 
-        integration = apigateway.Integration(
-            f"{id_prefix}Integration",
-            # set at POST because we are doing lambda integration
-            CacheKeyParameters=[],
-            CacheNamespace="none",
-            IntegrationHttpMethod="POST",
-            PassthroughBehavior="NEVER",
-            Type="AWS_PROXY",
-            Uri=(
+        integration_params = {
+            "CacheKeyParameters": [],
+            "CacheNamespace": "none",
+            "IntegrationHttpMethod": "POST",
+            "PassthroughBehavior": "NEVER",
+            "Type": "AWS_PROXY",
+            "Uri": (
                 integration_uri
                 if integration_uri is not None
                 else Sub(
@@ -967,6 +1067,15 @@ class RestApi(Api):
                     dict_values={"lambdaArn": lambda_arn},
                 )
             ),
+        }
+
+        # Add timeout if specified
+        if self.integration_timeout is not None:
+            integration_params["TimeoutInMillis"] = self.integration_timeout
+
+        integration = apigateway.Integration(
+            f"{id_prefix}Integration",
+            **integration_params,
         )
 
         method_params = {
@@ -1012,6 +1121,21 @@ class RestApi(Api):
             )
         return result
 
+    @cached_property
+    def _endpoint_configuration(self) -> apigateway.EndpointConfiguration | None:
+        """Get the endpoint configuration for the Rest API.
+
+        :return: endpoint configuration or None
+        """
+        if self.endpoint_configuration_type is None and self.ip_address_type is None:
+            return None
+        params: dict[str, str | list[str]] = {}
+        if self.endpoint_configuration_type is not None:
+            params["Types"] = [self.endpoint_configuration_type.value]
+        if self.ip_address_type is not None:
+            params["IpAddressType"] = self.ip_address_type.value
+        return apigateway.EndpointConfiguration(**params)
+
     def _declare_domain_name(
         self, domain_name: str, certificate_arn: Ref | str
     ) -> apigatewayv2.DomainName | apigateway.DomainName:
@@ -1021,10 +1145,21 @@ class RestApi(Api):
         :param certificate_arn: the ARN of the certificate
         :return: a domain name aws resource
         """
+        params = {"DomainName": domain_name}
+        if (
+            self.endpoint_configuration_type == EndpointConfigurationType.REGIONAL
+            and self._endpoint_configuration is not None
+        ):
+            params["RegionalCertificateArn"] = certificate_arn
+            params["EndpointConfiguration"] = self._endpoint_configuration
+        else:
+            params["CertificateArn"] = certificate_arn
+        if self.security_policy is not None:
+            params["SecurityPolicy"] = self.security_policy.value
+        if self.endpoint_access_mode is not None:
+            params["EndpointAccessMode"] = self.endpoint_access_mode.value
         return apigateway.DomainName(
-            name_to_id(self.name + domain_name + "Domain"),
-            DomainName=domain_name,
-            CertificateArn=certificate_arn,
+            name_to_id(self.name + domain_name + "Domain"), **params
         )
 
     def _declare_api_mapping(
@@ -1160,6 +1295,11 @@ class RestApi(Api):
 
     def _get_alias_target_attributes(self) -> Api._AliasTargetAttributes:
         """Get atributes to pass to GetAtt for alias target."""
+        if self.endpoint_configuration_type == EndpointConfigurationType.REGIONAL:
+            return {
+                "DNSName": "RegionalDomainName",
+                "HostedZoneId": "RegionalHostedZoneId",
+            }
         return {
             "DNSName": "DistributionDomainName",
             "HostedZoneId": "DistributionHostedZoneId",
@@ -1217,6 +1357,27 @@ class RestApi(Api):
         }
         if self.policy:
             api_params["Policy"] = PolicyDocument(statements=self.policy).as_dict
+        if self.endpoint_access_mode is not None:
+            api_params["EndpointAccessMode"] = self.endpoint_access_mode.value
+        if self.security_policy is not None:
+            api_params["SecurityPolicy"] = self.security_policy.value
+            if self.security_policy in LEGACY_SECURITY_POLICIES:
+                logger.warning(
+                    f"{self.security_policy.value} is a legacy security policy. "
+                    "Consider using one that starts with 'SecurityPolicy' instead"
+                )
+            if (
+                self.endpoint_configuration_type is not None
+                and self.security_policy
+                not in SecurityPolicyLookup[self.endpoint_configuration_type]
+            ):
+                logger.warning(
+                    f"{self.security_policy.value} security policy may not be "
+                    f"compatible with {self.endpoint_configuration_type.value} "
+                    "endpoint configuration type"
+                )
+        if self._endpoint_configuration is not None:
+            api_params["EndpointConfiguration"] = self._endpoint_configuration
 
         if self.minimum_compression_size is not None:
             api_params["MinimumCompressionSize"] = self.minimum_compression_size
