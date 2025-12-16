@@ -124,6 +124,7 @@ EXPECTED_PYFUNCTION_DEFAULT_TEMPLATE = EXPECTED_STACK_TEMPLATE | {
                 "RetentionInDays": 731,
             },
             "Type": "AWS::Logs::LogGroup",
+            "UpdateReplacePolicy": "Retain",
         },
     }
 }
@@ -165,6 +166,7 @@ EXPECTED_PYFUNCTION_TEMPLATE = EXPECTED_STACK_TEMPLATE | {
                 "RetentionInDays": 7,
             },
             "Type": "AWS::Logs::LogGroup",
+            "UpdateReplacePolicy": "Retain",
         },
         "MypylambdaProd": {
             "Properties": {
@@ -253,6 +255,7 @@ EXPECTED_PYFUNCTION_WITH_DLQ_TEMPLATE = EXPECTED_STACK_TEMPLATE | {
                 "RetentionInDays": 7,
             },
             "Type": "AWS::Logs::LogGroup",
+            "UpdateReplacePolicy": "Retain",
         },
         "PyFunctionDLQ": {
             "Properties": {
@@ -310,6 +313,7 @@ EXPECTED_PYFUNCTION_WITH_VPC_TEMPLATE = EXPECTED_STACK_TEMPLATE | {
                 "RetentionInDays": 7,
             },
             "Type": "AWS::Logs::LogGroup",
+            "UpdateReplacePolicy": "Retain",
         },
     }
 }
