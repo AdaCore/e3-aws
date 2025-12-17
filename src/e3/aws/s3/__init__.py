@@ -8,7 +8,7 @@ import botocore
 import boto3
 
 if TYPE_CHECKING:
-    from typing import Any, BinaryIO
+    from typing import Any, BinaryIO, IO
     from collections.abc import Iterable, Iterator
 
 logger = logging.getLogger("e3.aws.s3")
@@ -127,6 +127,29 @@ class S3:
         else:
             raise KeyExistsError(key)
 
+    def get_object(self, key: str) -> dict[str, Any]:
+        """Get an object from S3.
+
+        :param key: object key
+        :raises KeyNotFoundError: the key doesn't exist
+        """
+        try:
+            return self.client.get_object(Bucket=self.bucket, Key=key)
+        except ClientError as e:
+            # Handle the error when key doesn't exist
+            if e.response["Error"]["Code"] == "NoSuchKey":
+                raise KeyNotFoundError(key) from e
+
+            raise e
+
+    def get_body(self, key: str) -> IO[bytes]:
+        """Get the body of an object from S3.
+
+        :param key: object key
+        :raises KeyNotFoundError: the key doesn't exist
+        """
+        return self.get_object(key)["Body"]
+
     def get(self, key: str, default: bytes | None = None) -> bytes:
         """Get content from S3.
 
@@ -134,17 +157,15 @@ class S3:
         doesn't exist in the S3 bucket.
 
         :param key: object key
+        :param default: default content to return if the key doesn't exist
         :raises KeyNotFoundError: the key doesn't exist
         """
         try:
-            return self.client.get_object(Bucket=self.bucket, Key=key)["Body"].read()
-        except ClientError as e:
-            # Handle the error when key doesn't exist
-            if e.response["Error"]["Code"] == "NoSuchKey":
-                if default is not None:
-                    return default
+            return self.get_body(key).read()
+        except KeyNotFoundError as e:
+            if default is not None:
+                return default
 
-                raise KeyNotFoundError(key) from e
             raise e
 
     def iterate(self, *, prefix: str | None = None) -> Iterable[dict[str, Any]]:
