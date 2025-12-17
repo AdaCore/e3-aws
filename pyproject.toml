@@ -10,11 +10,9 @@ description = "E3 Cloud Formation Extensions"
 dependencies = [
   "boto3",
   "botocore",
-  # Only require docker for linux as there is a known dependency issue
-  # with pywin32 on windows
-  "docker; platform_system=='Linux'",
   "e3-core",
   "pyyaml",
+  "python-on-whales",
   "troposphere"
 ]
 
@@ -91,7 +89,6 @@ module = [
     "botocore.*",
     "boto3.*",
     "requests.*",
-    "docker.*",
     "troposphere.*",
 ]
 ignore_missing_imports = true

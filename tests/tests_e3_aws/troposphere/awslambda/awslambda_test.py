@@ -1,7 +1,6 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 import base64
-import docker
 import os
 import pytest
 import json
@@ -32,23 +31,20 @@ from e3.aws.troposphere.awslambda import (
     BlueGreenVersions,
     BlueGreenAliases,
     BlueGreenAliasConfiguration,
+    Architecture,
 )
 from e3.aws.troposphere.awslambda.flask_apigateway_wrapper import FlaskLambdaHandler
-
-from e3.pytest import require_tool
-
 from e3.aws.troposphere.sqs import Queue
+from e3.aws.util.ecr import get_ecr_credentials
 
 if TYPE_CHECKING:
-    from typing import Iterable, Callable
+    from typing import Iterable
     from flask import Response
     from pathlib import Path
 
 
 SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "source_dir")
 
-
-has_docker = require_tool("docker")
 
 EXPECTED_STACK_TEMPLATE = {
     "AWSTemplateFormatVersion": "2010-09-09",
@@ -346,14 +342,18 @@ EXPECTED_DOCKER_FUNCTION = {
             "Description": "this is a test",
             "Role": "somearn",
             "FunctionName": "dockerfunction",
+            "Environment": {
+                "Variables": {"env_key_1": "env_value_1", "env_key_2": "env_value2"}
+            },
         },
         "Type": "AWS::Lambda::Function",
     },
     "DockerfunctionLogGroup": {
         "DeletionPolicy": "Retain",
+        "UpdateReplacePolicy": "Retain",
         "Properties": {
             "LogGroupName": "/aws/lambda/dockerfunction",
-            "RetentionInDays": 731,
+            "RetentionInDays": 7,
         },
         "Type": "AWS::Logs::LogGroup",
     },
@@ -771,11 +771,60 @@ def test_pyfunction_policy_document(stack: Stack) -> None:
     assert stack.cfn_policy_document().as_dict == EXPECTED_PYFUNCTION_POLICY_DOCUMENT
 
 
-@pytest.mark.skip(
-    reason="This test does not work in GitLab CI jobs. Disable it for now.",
-)
-def test_docker_function(stack: Stack, has_docker: Callable) -> None:
-    """Test adding docker function to stack."""
+def test_get_ecr_credentials() -> None:
+    """Test getting ECR credentials."""
+    # Mock the ECR get_authorization_token call
+    aws_env = AWSEnv(regions=["us-east-1"], stub=True)
+    stubber_ecr = aws_env.stub("ecr")
+    stubber_ecr.add_response(
+        "get_authorization_token",
+        {
+            "authorizationData": [
+                {
+                    "authorizationToken": base64.b64encode(
+                        b"test_user:test_pwd"
+                    ).decode(),
+                    "proxyEndpoint": "test_endpoint",
+                }
+            ]
+        },
+        {},
+    )
+
+    # Check the response is parsed correctly
+    ecr_username, ecr_password, ecr_url = get_ecr_credentials(aws_env)
+    assert ecr_username == "test_user"
+    assert ecr_password == "test_pwd"
+    assert ecr_url == "test_endpoint"
+
+
+def test_docker_function_dry_run(stack: Stack) -> None:
+    """Test adding docker function to stack with dry_run."""
+    docker_function = DockerFunction(
+        name="dockerfunction",
+        description="this is a test",
+        role="somearn",
+        source_dir=SOURCE_DIR,
+        repository_name="e3_aws_test_repository",
+        image_tag="test_tag",
+        logs_retention_in_days=7,
+        environment={"env_key_1": "env_value_1", "env_key_2": "env_value2"},
+    )
+
+    # Add resources without trying to push the image to ECR
+    stack.dry_run = True
+    stack.add(docker_function)
+
+    assert stack.export()["Resources"] == EXPECTED_DOCKER_FUNCTION
+
+
+def test_docker_function(stack: Stack) -> None:
+    """Test adding docker function to stack.
+
+    This test verifies that the build_and_push_image function executes
+    without raising exceptions when Docker calls are mocked. The CloudFormation
+    template format is verified by test_docker_function_dry_run.
+    """
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
     stubber_ecr = aws_env.stub("ecr")
 
@@ -802,22 +851,52 @@ def test_docker_function(stack: Stack, has_docker: Callable) -> None:
         source_dir=SOURCE_DIR,
         repository_name="e3_aws_test_repository",
         image_tag="test_tag",
+        logs_retention_in_days=7,
+        environment={"env_key_1": "env_value_1", "env_key_2": "env_value2"},
     )
-    client = docker.from_env()
-    try:
+
+    # Mock python-on-whales DockerClient to avoid requiring Docker
+    with patch("e3.aws.util.ecr.DockerClient") as mock_docker_client_class:
+        mock_docker_client = mock_docker_client_class.return_value
+        mock_docker_client.login.return_value = None
+        mock_docker_client.build.return_value = iter([])
+
         stack.add(docker_function)
-    except docker.errors.APIError:
-        # Push is expected to fail
-        pass
-    finally:
-        # Always try to remove local test image
-        client.images.remove(f"e3_aws_test_repository:{docker_function.image_tag}")
 
-    # Add resources without trying to push the image to ECR
-    stack.dry_run = True
-    stack.add(docker_function)
 
-    assert stack.export()["Resources"] == EXPECTED_DOCKER_FUNCTION
+@pytest.mark.parametrize(
+    "architecture, build_args, expected_platform",
+    [
+        (Architecture.X86_64, {}, ["linux/amd64"]),
+        (Architecture.ARM64, {}, ["linux/arm64"]),
+        (None, {}, ["linux/amd64"]),  # Default should be x86_64 -> linux/amd64
+        (
+            Architecture.X86_64,
+            {"platforms": ["linux/arm64", "linux/amd64"]},
+            ["linux/arm64", "linux/amd64"],
+        ),  # Build args should take precedence over architecture
+    ],
+)
+def test_buildkit_docker_function_platform_defaults(
+    architecture: Architecture | None,
+    build_args: dict[str, Any],
+    expected_platform: list[str],
+) -> None:
+    """Test that DockerFunction sets appropriate platform."""
+    # Create function without explicitly setting platforms in build_args
+    docker_function = DockerFunction(
+        name="dockerfunction",
+        description="this is a test",
+        role="somearn",
+        source_dir=SOURCE_DIR,
+        repository_name="e3_aws_test_repository",
+        image_tag="test_tag",
+        architecture=architecture,
+        **build_args,
+    )
+
+    # Verify the platform was automatically set based on architecture
+    assert docker_function.build_args["platforms"] == expected_platform
 
 
 def test_version(stack: Stack, simple_lambda_function: PyFunction) -> None:

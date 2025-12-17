@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
+from enum import Enum
 import logging
 import os
 import sys
@@ -34,8 +35,21 @@ if TYPE_CHECKING:
     from troposphere import AWSObject
     import botocore.client
     from e3.aws.troposphere import Stack
+    from python_on_whales import DockerClient
 
 logger = logging.getLogger("e3.aws.troposphere.awslambda")
+
+
+class Architecture(Enum):
+    X86_64 = "x86_64"
+    ARM64 = "arm64"
+
+
+class UnknownPlatform(Exception):
+    """Unknown platform exception."""
+
+    def __init__(self, architecture: Architecture):
+        super().__init__(f"Unknown platform for architecture {architecture}.")
 
 
 def package_pyfunction_code(
@@ -263,6 +277,7 @@ class Function(Construct):
         code_version: int | None = None,
         timeout: int = 3,
         runtime: str | None = None,
+        architecture: Architecture | None = None,
         memory_size: int | None = None,
         ephemeral_storage_size: int | None = None,
         logs_retention_in_days: int | None = 731,
@@ -288,6 +303,7 @@ class Function(Construct):
         :param code_version: code version
         :param timeout: maximum execution time (default: 3s)
         :param runtime: runtime to use
+        :param architecture: x86_64 or arm64. (default: x86_64)
         :param memory_size: the amount of memory available to the function at
             runtime. The value can be any multiple of 1 MB.
         :param ephemeral_storage_size: The size of the function’s /tmp directory
@@ -317,6 +333,7 @@ class Function(Construct):
         self.runtime = runtime
         self.role = role
         self.handler = handler
+        self.architecture = architecture
         self.memory_size = memory_size
         self.ephemeral_storage_size = ephemeral_storage_size
         self.logs_retention_in_days = logs_retention_in_days
@@ -449,6 +466,9 @@ class Function(Construct):
 
         if self.handler is not None:
             params["Handler"] = self.handler
+
+        if self.architecture is not None:
+            params["Architectures"] = [self.architecture.value]
 
         if self.memory_size is not None:
             params["MemorySize"] = self.memory_size
@@ -592,9 +612,14 @@ class DockerFunction(Function):
         repository_name: str,
         image_tag: str,
         timeout: int = 3,
+        architecture: Architecture | None = None,
         memory_size: int | None = None,
+        logs_retention_in_days: int | None = 731,
+        environment: dict[str, str] | None = None,
         logging_config: awslambda.LoggingConfig | None = None,
         dl_config: awslambda.DeadLetterConfig | None = None,
+        docker_client: DockerClient | None = None,
+        **build_args: Any,
     ):
         """Initialize an AWS lambda function using a Docker image.
 
@@ -605,26 +630,48 @@ class DockerFunction(Function):
         :param repository_name: ECR repository name
         :param image_tag: docker image version
         :param timeout: maximum execution time (default: 3s)
+        :param architecture: x86_64 or arm64. (default: x86_64)
         :param memory_size: the amount of memory available to the function at
             runtime. The value can be any multiple of 1 MB.
+        :param logs_retention_in_days: The number of days to retain the log
+            events in the lambda log group
+        :param environment: Environment variables that are accessible from
+            function code during execution
         :param logging_config: The function's Amazon CloudWatch Logs settings
-        :param dl_config: The dead letter config that specifies the topic or queue where
-            lambda sends asynchronous events when they fail processing
+        :param dl_config: The dead letter config that specifies the topic or
+            queue where lambda sends asynchronous events when they fail processing
+        :param docker_client: Docker client to use for building and pushing.
+            This is here in case the user wants to customize the Docker client,
+            for example to use podman.
+        :param build_args: args to pass to docker build
         """
         super().__init__(
             name=name,
             description=description,
             role=role,
             timeout=timeout,
+            architecture=architecture,
             memory_size=memory_size,
+            logs_retention_in_days=logs_retention_in_days,
+            environment=environment,
             logging_config=logging_config,
             dl_config=dl_config,
         )
         self.source_dir: str = source_dir
         self.repository_name: str = repository_name
-        timestamp = datetime.utcnow().strftime("%Y-%m-%d-%H-%M-%S-%f")
+        timestamp = datetime.now(UTC).strftime("%Y-%m-%d-%H-%M-%S-%f")
         self.image_tag: str = f"{image_tag}-{timestamp}"
         self.image_uri: str | None = None
+        self.docker_client = docker_client
+        self.build_args = build_args
+        if "platforms" not in self.build_args:
+            match self.architecture:
+                case Architecture.ARM64:
+                    self.build_args["platforms"] = ["linux/arm64"]
+                case Architecture.X86_64 | None:
+                    self.build_args["platforms"] = ["linux/amd64"]
+                case _:
+                    raise UnknownPlatform(self.architecture)
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Compute AWS resources for the construct.
@@ -641,6 +688,9 @@ class DockerFunction(Function):
                 self.repository_name,
                 self.image_tag,
                 stack.deploy_session,
+                push=True,
+                docker_client=self.docker_client,
+                **self.build_args,
             )
 
         return self.lambda_resources(image_uri=self.image_uri)
