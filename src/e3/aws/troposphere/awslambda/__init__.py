@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import timezone, datetime
 from enum import Enum
 import logging
 import os
@@ -659,7 +659,7 @@ class DockerFunction(Function):
         )
         self.source_dir: str = source_dir
         self.repository_name: str = repository_name
-        timestamp = datetime.now(UTC).strftime("%Y-%m-%d-%H-%M-%S-%f")
+        timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d-%H-%M-%S-%f")
         self.image_tag: str = f"{image_tag}-{timestamp}"
         self.image_uri: str | None = None
         self.docker_client = docker_client
