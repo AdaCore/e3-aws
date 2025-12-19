@@ -12,7 +12,6 @@ dependencies = [
   "botocore",
   "e3-core",
   "pyyaml",
-  "python-on-whales",
   "troposphere"
 ]
 
@@ -32,7 +31,8 @@ test = [
   "requests_mock",
   "httpretty",
   "flask",
-  "moto[sts, dynamodb]"
+  "moto[sts, dynamodb]",
+  "python-on-whales"
 ]
 
 check = [
@@ -48,6 +48,7 @@ check = [
   "types-PyYAML",
   "types-requests",
   "types-setuptools",
+  "python-on-whales"
 ]
 
 [tool.setuptools.dynamic]
