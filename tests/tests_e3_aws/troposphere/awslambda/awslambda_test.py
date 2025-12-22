@@ -24,7 +24,6 @@ from e3.aws.troposphere.awslambda import (
     Function,
     PyFunction,
     Py38Function,
-    DockerFunction,
     Alias,
     Version,
     AutoVersion,
@@ -33,6 +32,7 @@ from e3.aws.troposphere.awslambda import (
     BlueGreenAliasConfiguration,
     Architecture,
 )
+from e3.aws.troposphere.awslambda.docker import DockerFunction
 from e3.aws.troposphere.awslambda.flask_apigateway_wrapper import FlaskLambdaHandler
 from e3.aws.troposphere.sqs import Queue
 from e3.aws.util.ecr import get_ecr_credentials
