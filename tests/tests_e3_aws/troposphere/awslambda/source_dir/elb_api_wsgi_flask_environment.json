@@ -1,0 +1,32 @@
+{
+    "PATH_INFO": "/page",
+    "QUERY_STRING": "m=%C3%A9t%C3%A9&n=48&n=kko",
+    "REMOTE_ADDR": "1.2.3.4",
+    "REQUEST_METHOD": "GET",
+    "SCRIPT_NAME": "",
+    "HTTP_HOST": "abcdefg123456.example.com",
+    "SERVER_NAME": "abcdefg123456.example.com",
+    "SERVER_PORT": "443",
+    "SERVER_PROTOCOL": "HTTP/1.1",
+    "wsgi.version": [
+        1,
+        0
+    ],
+    "wsgi.url_scheme": "https",
+    "wsgi.multiprocess": false,
+    "wsgi.multithread": false,
+    "wsgi.run_once": false,
+    "HTTP_ACCEPT": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+    "HTTP_ACCEPT_ENCODING": "gzip, deflate, br",
+    "HTTP_ACCEPT_LANGUAGE": "en-US,en;q=0.9",
+    "HTTP_COOKIE": "s_fid=7AAB6XMPLAFD9BBF-0643XMPL09956DE2; regStatus=pre-register",
+    "HTTP_SEC_FETCH_DEST": "document",
+    "HTTP_SEC_FETCH_MODE": "navigate",
+    "HTTP_SEC_FETCH_SITE": "none",
+    "HTTP_UPGRADE_INSECURE_REQUESTS": "1",
+    "HTTP_USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36",
+    "HTTP_X_AMZN_TRACE_ID": "Root=1-5e66d96f-7491f09xmpl79d18acf3d050",
+    "HTTP_X_FORWARDED_FOR": "1.2.3.4",
+    "HTTP_X_FORWARDED_PORT": "443",
+    "HTTP_X_FORWARDED_PROTO": "https"
+}
