@@ -102,13 +102,19 @@ class FlaskLambdaHandler:
         remote_user: str | None = None
 
         # http is True if the event comes from HTTP API gateway
-        # otherwise it is false and the event is from a REST API
+        # otherwise it is false and the event is either from a REST API
+        # or ELB
         http = "version" in event
+        # elb is True if the event comes from ELB
+        elb = "elb" in request_ctx
 
         if "authorizer" in request_ctx:
             remote_user = request_ctx["authorizer"].get("principalId")
         elif "identity" in request_ctx:
             remote_user = request_ctx["identity"].get("userArn")
+
+        # Normalized headers
+        headers = {k.title(): v for k, v in event["headers"].items()}
 
         # Set values for an HTTP event
         if http:
@@ -119,6 +125,27 @@ class FlaskLambdaHandler:
             # set environ items
             query_string = event["rawQueryString"]
             remote_addr = request_ctx["http"]["sourceIp"]
+
+        # Set values for an ELB event
+        elif elb:
+            # HTTP method used
+            http_method = event["httpMethod"]
+            path = event["path"]
+
+            # set environ items.
+            # multiValueQueryStringParameters exists only when multi-value headers
+            # is enabled
+            query_string = (
+                urlencode(q, doseq=True)
+                if (
+                    q := event.get(
+                        "multiValueQueryStringParameters",
+                        event.get("queryStringParameters"),
+                    )
+                )
+                else ""
+            )
+            remote_addr = headers["X-Forwarded-For"]
 
         # Set values for a REST API event
         else:
@@ -141,11 +168,8 @@ class FlaskLambdaHandler:
             script_name = f"/{stage}"
             path = path.replace(script_name, "", 1)
 
-        # Normalized headers
-        headers = {k.title(): v for k, v in event["headers"].items()}
-
         # Normalized cookies
-        cookies = ";".join(c for c in event.get("cookies", []))
+        cookies = ";".join(c for c in event.get("cookie" if elb else "cookies", []))
 
         # Body
         body = event.get("body", "")
