@@ -9,7 +9,7 @@ from troposphere import secretsmanager, Ref
 
 if TYPE_CHECKING:
     from troposphere import AWSObject
-    from e3.aws.troposphere.awslambda import Function
+    from e3.aws.troposphere.awslambda import Function, Version, Alias
 
 
 class Secret(Construct):
@@ -64,7 +64,11 @@ class RotationSchedule(Construct):
     """Provide resources to schedule rotation for a secret."""
 
     def __init__(
-        self, secret: Secret, rotation_function: Function, schedule_expression: str
+        self,
+        secret: Secret,
+        rotation_function: Function,
+        schedule_expression: str,
+        rotation_function_version: Version | Alias | None = None,
     ):
         """Initialize a ScheduleRotationSecret instance.
 
@@ -73,16 +77,22 @@ class RotationSchedule(Construct):
         :param schedule_expression: expression that schedule the rotation.
             It has to follow the scheduled event rules format
             https://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
+        :param rotation_function_version: version of the lambda function
         """
         self.schedule_expression = schedule_expression
         self.lambda_permission = rotation_function.invoke_permission(
             name_suffix="permission",
             service="secretsmanager",
             source_arn=secret.secret_arn,
+            version=rotation_function_version,
         )
         self.schedule = secretsmanager.RotationSchedule(
             name_to_id(f"{secret.name}RotationSchedule"),
-            RotationLambdaARN=rotation_function.arn,
+            RotationLambdaARN=(
+                rotation_function_version.ref
+                if rotation_function_version is not None
+                else rotation_function.arn
+            ),
             RotationRules=secretsmanager.RotationRules(
                 ScheduleExpression=schedule_expression
             ),

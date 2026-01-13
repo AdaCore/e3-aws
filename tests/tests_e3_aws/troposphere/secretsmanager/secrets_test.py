@@ -3,16 +3,30 @@
 from __future__ import annotations
 import json
 import os
+import pytest
 
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.secretsmanager import Secret, RotationSchedule
-from e3.aws.troposphere.awslambda import PyFunction
+from e3.aws.troposphere.awslambda import PyFunction, Alias
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-def test_secret_rotation_schedule(stack: Stack) -> None:
-    """Test RotatingSecret."""
+@pytest.mark.parametrize(
+    "alias",
+    [
+        # The rotation schedule invokes the function without alias
+        None,
+        # The rotation schedule invokes the function with the prod alias
+        "prod",
+    ],
+)
+def test_secret_rotation_schedule(alias: str | None, stack: Stack) -> None:
+    """Test RotatingSecret.
+
+    :param alias: name of the function alias
+    :param stack: the stack
+    """
     secret = Secret(
         name="TestSecret",
         description="TestSecret description",
@@ -25,15 +39,24 @@ def test_secret_rotation_schedule(stack: Stack) -> None:
         runtime="python3.9",
         code_dir="my_code_dir",
         handler="app.main",
+        version=1 if alias else None,
+        alias=alias,
     )
+    assert rotation_function.alias is None or isinstance(rotation_function.alias, Alias)
     rotation_schedule = RotationSchedule(
         secret=secret,
         rotation_function=rotation_function,
+        rotation_function_version=rotation_function.alias,
         schedule_expression="rate(4 days)",
     )
     for el in (secret, rotation_policy, rotation_function, rotation_schedule):
         stack.add(el)
-    with open(os.path.join(TEST_DIR, "secret_rotation_schedule.json")) as fd:
+    with open(
+        os.path.join(
+            TEST_DIR,
+            "secret_rotation_schedule{}.json".format(f"_{alias}" if alias else ""),
+        )
+    ) as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
