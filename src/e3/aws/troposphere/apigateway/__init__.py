@@ -1318,7 +1318,7 @@ class RestApi(Api):
         result: list[AWSObject] = []
 
         access_cloudwatch_role = Role(
-            name="EnableCloudwatchLoggingForApigatewayRole",
+            name=f"{self.name}EnableCloudwatchLoggingForApigatewayRole",
             description="role that enables CloudWatch logging for apigateway v1"
             " apigateway",
             trust=Trust(services=["apigateway"]),
