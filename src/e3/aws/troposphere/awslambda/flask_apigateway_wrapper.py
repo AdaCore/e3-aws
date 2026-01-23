@@ -6,7 +6,8 @@ import json
 import io
 import sys
 import base64
-from urllib.parse import urlencode
+from urllib.parse import urlencode, unquote_plus
+from werkzeug.datastructures import iter_multi_items
 
 if TYPE_CHECKING:
     from typing import Any, TypedDict
@@ -135,15 +136,17 @@ class FlaskLambdaHandler:
             # set environ items.
             # multiValueQueryStringParameters exists only when multi-value headers
             # is enabled
-            query_string = (
-                urlencode(q, doseq=True)
-                if (
-                    q := event.get(
-                        "multiValueQueryStringParameters",
-                        event.get("queryStringParameters"),
+            query_string = urlencode(
+                [
+                    (unquote_plus(k), unquote_plus(v))
+                    for k, v in iter_multi_items(
+                        event.get(
+                            "multiValueQueryStringParameters",
+                            event.get("queryStringParameters", ""),
+                        )
                     )
-                )
-                else ""
+                ],
+                doseq=True,
             )
             remote_addr = headers["X-Forwarded-For"]
 
