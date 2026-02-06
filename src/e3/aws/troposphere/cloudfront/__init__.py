@@ -7,7 +7,7 @@ from troposphere import AccountId, cloudfront, GetAtt, Join, route53, Ref, Sub
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
-from e3.aws.troposphere.awslambda import Function
+from e3.aws.troposphere.awslambda import Function, Alias
 from e3.aws.troposphere.iam.managed_policy import ManagedPolicy
 from e3.aws.troposphere.iam.policy_statement import Allow, Trust
 from e3.aws.troposphere.iam.role import Role
@@ -37,6 +37,9 @@ class S3WebsiteDistribution(Construct):
         bucket_name: str | None = None,
         lambda_edge_function_arns: list[str] | None = None,
         lambda_runtime: str = "python3.9",
+        lambda_version: int | None = None,
+        lambda_min_version: int | None = None,
+        lambda_alias: str | None = None,
         root_object: str = "index.html",
         r53_route_from: list[tuple[str, str]] | None = None,
         logging_bucket: str | None = None,
@@ -59,6 +62,12 @@ class S3WebsiteDistribution(Construct):
         :param bucket_name: name of the bucket to create to host the website
         :param lambda_edge_function_arns: ARNs of Lambda@Edge functions to
             associate with the cloudfront distribution default cache behaviour
+        :param lambda_version: the latest deployed version of the lambda invalidation
+            cache
+        :param lambda_min_version: minimum deployed version of the lambda invalidation
+            cache (default 1)
+        :param lambda_alias: alias for the latest version of the lambda invalidation
+            cache
         :param lambda_runtime: the runtime of the lambda invalidation cache. It must be
             a Python runtime
         :param root_object: The object that you want CloudFront to request from
@@ -87,6 +96,9 @@ class S3WebsiteDistribution(Construct):
         self.default_ttl = default_ttl
         self.lambda_edge_function_arns = lambda_edge_function_arns
         self.lambda_runtime = lambda_runtime
+        self.lambda_version = lambda_version
+        self.lambda_min_version = lambda_min_version
+        self.lambda_alias = lambda_alias
         self.root_object = root_object
         self.r53_route_from = r53_route_from
         self._origin_access_identity = None
@@ -278,15 +290,22 @@ class S3WebsiteDistribution(Construct):
                 f"{self.bucket.name} objects are updated"
             ),
             handler="invalidate.handler",
+            version=self.lambda_version,
+            min_version=self.lambda_min_version,
+            alias=self.lambda_alias,
             role=lambda_role,
             code_zipfile=Join("\n", lambda_code),
             runtime=self.lambda_runtime,
             environment={"DISTRIBUTION_ID": Sub("${id}", id=self.id)},
         )
 
+        lambda_alias = lambda_function.alias
+        assert lambda_alias is None or isinstance(lambda_alias, Alias)
+
         self.sns_invalidation_topic.add_lambda_subscription(
             function=lambda_function,
             delivery_policy={"throttlePolicy": {"maxReceivesPerSecond": 10}},
+            version=lambda_alias,
         )
         result = [
             resource
