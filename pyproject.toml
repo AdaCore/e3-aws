@@ -93,3 +93,40 @@ module = [
     "troposphere.*",
 ]
 ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 88
+[tool.ruff.lint]
+select = ["ALL"]
+
+ignore = [
+  # Decision not to follow
+  "G004", # we accept f-string in logging statements
+  "ERA001", # too many false positive with this rule
+  "PERF203", # `try`-`except` within a loop incurs performance overhead for Python < 3.11
+  "PGH003", # allow type: ignore - can be done by mypy if we wanted to
+  "S101", # use of assert statement, used for mypy
+  "T201", # print statement are allowed
+
+  # Recommendations from ruff
+  "COM812", # Avoid enforcing trailing commas - use of formatter instead
+  "D203", # 1 blank line required before class docstring, we follow pep257
+  "D213", # We use pep257 convention for multi-line docstrings
+]
+
+[tool.ruff.lint.isort]
+# Accept to have from xxx import yyy as zzz combined instead of one per line
+combine-as-imports = true
+section-order = [
+  "future",
+  "standard-library",
+  "third-party",
+  "e3",
+  "first-party",
+  "local-folder",
+  "typing"
+]
+
+[tool.ruff.lint.isort.sections]
+e3 = ["e3*"]
+typing = ["typing"]
