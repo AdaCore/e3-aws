@@ -23,8 +23,8 @@ class LambdaInvokeResponse(TypedDict, total=False):
 
     StatusCode: int
     """HTTP status code of the invocation (200 on success)."""
-    Payload: dict[str, Any] | list[Any] | bytes | None
-    """Decoded response body: parsed JSON, raw bytes, or None when empty."""
+    Payload: dict[str, Any] | list[Any] | bytes
+    """Decoded response body: parsed JSON or raw bytes."""
     FunctionError: str
     """Set when the function crashed (e.g. ``"Handled"`` or ``"Unhandled"``)."""
     LogResult: str
@@ -33,6 +33,10 @@ class LambdaInvokeResponse(TypedDict, total=False):
     """Version of the function that was executed."""
     ResponseMetadata: dict[str, Any]
     """boto3 response metadata."""
+
+
+class LambdaEmptyPayloadError(Exception):
+    """Raised when a Lambda function returns a JSON null payload."""
 
 
 class LambdaUnexpectedStatusError(Exception):
@@ -82,6 +86,7 @@ def invoke(
     :raise LambdaUnexpectedStatusError: if the AWS invoke status code is not 200
     :raise LambdaExecutionError: if the Lambda function code crashes (unhandled
         exception, timeout, syntax error, etc.)
+    :raise LambdaEmptyPayloadError: if the Lambda function returns a JSON null payload
     :return: the full boto3 invoke response with ``Payload`` already read and decoded
     """
     params: dict[str, Any] = {
@@ -97,9 +102,15 @@ def invoke(
 
     raw_payload = response["Payload"].read()
     try:
-        response["Payload"] = json.loads(raw_payload) if raw_payload else None
+        decoded = json.loads(raw_payload)
     except json.JSONDecodeError:
         response["Payload"] = raw_payload
+    else:
+        if decoded is None:
+            raise LambdaEmptyPayloadError(
+                f"Lambda {function_name!r} returned a null payload"
+            )
+        response["Payload"] = decoded
 
     if "FunctionError" in response:
         raise LambdaExecutionError(

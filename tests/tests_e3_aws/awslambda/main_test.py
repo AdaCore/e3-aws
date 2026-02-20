@@ -12,6 +12,7 @@ from botocore.stub import Stubber
 
 from e3.aws.awslambda import (
     LAMBDA_SUCCESS_STATUS,
+    LambdaEmptyPayloadError,
     LambdaExecutionError,
     LambdaUnexpectedStatusError,
     invoke,
@@ -97,10 +98,10 @@ def test_invoke_returns_raw_bytes_when_payload_is_not_json(
     assert result["Payload"] == b"not-json"
 
 
-def test_invoke_returns_none_payload_when_response_is_empty(
+def test_invoke_returns_raw_bytes_when_response_is_empty(
     client: botocore.client.BaseClient,
 ) -> None:
-    """Test invoke sets Payload to None when the response body is empty."""
+    """Test invoke sets Payload to raw bytes when the response body is empty."""
     with Stubber(client) as stubber:
         stubber.add_response(
             "invoke",
@@ -109,7 +110,23 @@ def test_invoke_returns_none_payload_when_response_is_empty(
         )
         result = invoke(client, FUNCTION_NAME)
 
-    assert result["Payload"] is None
+    assert result["Payload"] == b""
+
+
+def test_invoke_raises_empty_payload_error_when_payload_is_json_null(
+    client: botocore.client.BaseClient,
+) -> None:
+    """Test invoke raises LambdaEmptyPayloadError when the response is JSON null."""
+    with Stubber(client) as stubber:
+        stubber.add_response(
+            "invoke",
+            {"StatusCode": LAMBDA_SUCCESS_STATUS, "Payload": _make_payload(b"null")},
+            BASE_INVOKE_PARAMS,
+        )
+        with pytest.raises(LambdaEmptyPayloadError) as exc_info:
+            invoke(client, FUNCTION_NAME)
+
+    assert FUNCTION_NAME in str(exc_info.value)
 
 
 def test_invoke_raises_execution_error_on_function_error(
