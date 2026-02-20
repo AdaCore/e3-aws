@@ -23,8 +23,8 @@ class LambdaInvokeResponse(TypedDict, total=False):
 
     StatusCode: int
     """HTTP status code of the invocation (200 on success)."""
-    Payload: dict[str, Any] | list[Any] | bytes
-    """Decoded response body: parsed JSON or raw bytes."""
+    Payload: dict[str, Any] | list[Any]
+    """Decoded response body: parsed JSON value."""
     FunctionError: str
     """Set when the function crashed (e.g. ``"Handled"`` or ``"Unhandled"``)."""
     LogResult: str
@@ -33,6 +33,10 @@ class LambdaInvokeResponse(TypedDict, total=False):
     """Version of the function that was executed."""
     ResponseMetadata: dict[str, Any]
     """boto3 response metadata."""
+
+
+class LambdaInvalidPayloadError(Exception):
+    """Raised when a Lambda function returns a payload that is not valid JSON."""
 
 
 class LambdaEmptyPayloadError(Exception):
@@ -47,7 +51,7 @@ class LambdaExecutionError(Exception):
     """Raised when a Lambda function is invoked successfully but its code crashes."""
 
     def __init__(
-        self, function_name: str, error_code: str, payload: dict[str, Any]
+        self, function_name: str, error_code: str, payload: dict[str, Any] | list[Any]
     ) -> None:
         """Initialize a LambdaExecutionError.
 
@@ -59,7 +63,11 @@ class LambdaExecutionError(Exception):
         self.error_code = error_code
         self.payload = payload
 
-        details = payload.get("errorMessage", "No details provided")
+        details = (
+            payload.get("errorMessage", "No details provided")
+            if isinstance(payload, dict)
+            else "No details provided"
+        )
         super().__init__(f"Lambda {function_name!r} crashed ({error_code}): {details}")
 
 
@@ -86,6 +94,8 @@ def invoke(
     :raise LambdaUnexpectedStatusError: if the AWS invoke status code is not 200
     :raise LambdaExecutionError: if the Lambda function code crashes (unhandled
         exception, timeout, syntax error, etc.)
+    :raise LambdaInvalidPayloadError: if the Lambda function returns a payload that is
+        not valid JSON
     :raise LambdaEmptyPayloadError: if the Lambda function returns a JSON null payload
     :return: the full boto3 invoke response with ``Payload`` already read and decoded
     """
@@ -103,8 +113,10 @@ def invoke(
     raw_payload = response["Payload"].read()
     try:
         decoded = json.loads(raw_payload)
-    except json.JSONDecodeError:
-        response["Payload"] = raw_payload
+    except json.JSONDecodeError as e:
+        raise LambdaInvalidPayloadError(
+            f"Lambda {function_name!r} returned a payload that is not valid JSON"
+        ) from e
     else:
         if decoded is None:
             raise LambdaEmptyPayloadError(
@@ -116,11 +128,7 @@ def invoke(
         raise LambdaExecutionError(
             function_name=function_name,
             error_code=response["FunctionError"],
-            payload=(
-                response["Payload"]
-                if isinstance(response["Payload"], dict)
-                else {"raw_payload": str(raw_payload)}
-            ),
+            payload=response["Payload"],
         )
 
     if response["StatusCode"] != LAMBDA_SUCCESS_STATUS:
