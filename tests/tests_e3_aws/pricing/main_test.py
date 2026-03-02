@@ -1,11 +1,14 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-import pytest
-import boto3
+
 import json
+
+import boto3
+import pytest
 from botocore.stub import Stubber
 
 from e3.aws.pricing import Pricing
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -76,7 +79,7 @@ def client() -> Iterable[Pricing]:
     """Return a client for Pricing."""
     client = boto3.client("pricing", region_name="us-east-1")
 
-    yield Pricing(client=client)
+    return Pricing(client=client)
 
 
 def test_ec2_price_information(client: Pricing) -> None:

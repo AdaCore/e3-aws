@@ -6,10 +6,12 @@ import base64
 import logging
 import tempfile
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any
+
+from python_on_whales import DockerClient
 
 from e3.fs import sync_tree
-from python_on_whales import DockerClient
+
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from e3.aws import Session

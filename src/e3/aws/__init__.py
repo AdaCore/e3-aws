@@ -1,33 +1,37 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 import argparse
-import boto3
-import botocore.session
 import json
 import logging
 import os
 import re
+import urllib.parse
+from uuid import uuid4
+
+import boto3
+import botocore.session
 import requests
 import requests.auth
-import urllib.parse
-
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 from botocore.stub import Stubber
-from uuid import uuid4
 
-
-from e3.error import E3Error
 from e3.env import Env
+from e3.error import E3Error
 from e3.os.process import Run
+
+from typing import TYPE_CHECKING
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from typing import Any, TypedDict, Callable
+    from collections.abc import Callable
+    from datetime import datetime
+
     import botocore.client
     import botocore.stub
-    from datetime import datetime
+
+    from typing import Any, TypedDict
 
     class AWSCredentials(TypedDict, total=False):
         """Annotate a dict containing AWS credentials.

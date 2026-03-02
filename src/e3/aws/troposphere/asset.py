@@ -1,16 +1,18 @@
 from __future__ import annotations
 
+from enum import Enum, auto
 from functools import cached_property
 from hashlib import sha256
 from pathlib import Path
-from enum import Enum, auto
-from typing import TYPE_CHECKING
 
 from e3.aws.troposphere import Asset
 
+from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
-    import botocore.client
     from collections.abc import Sequence
+
+    import botocore.client
 
 
 class AssetLayout(Enum):

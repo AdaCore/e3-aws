@@ -1,46 +1,49 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any
-import base64
-import os
-import pytest
-import json
-import io
-from unittest.mock import patch
-import sys
 
+import base64
+import io
+import json
+import os
+import sys
+from unittest.mock import patch
+
+import pytest
 from flask import Flask, send_file
 from troposphere.awslambda import (
-    ProvisionedConcurrencyConfiguration,
     AliasRoutingConfiguration,
-    VersionWeight,
-    LoggingConfig,
     DeadLetterConfig,
+    LoggingConfig,
+    ProvisionedConcurrencyConfiguration,
+    VersionWeight,
     VPCConfig,
 )
 
 from e3.aws import AWSEnv
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.awslambda import (
-    Function,
-    PyFunction,
-    Py38Function,
     Alias,
-    Version,
-    AutoVersion,
-    BlueGreenVersions,
-    BlueGreenAliases,
-    BlueGreenAliasConfiguration,
     Architecture,
+    AutoVersion,
+    BlueGreenAliasConfiguration,
+    BlueGreenAliases,
+    BlueGreenVersions,
+    Function,
+    Py38Function,
+    PyFunction,
+    Version,
 )
 from e3.aws.troposphere.awslambda.docker import DockerFunction
 from e3.aws.troposphere.awslambda.flask_apigateway_wrapper import FlaskLambdaHandler
 from e3.aws.troposphere.sqs import Queue
 from e3.aws.util.ecr import get_ecr_credentials
 
+from typing import TYPE_CHECKING, Any
+
 if TYPE_CHECKING:
-    from typing import Iterable
-    from flask import Response
+    from collections.abc import Iterable
     from pathlib import Path
+
+    from flask import Response
 
 
 SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "source_dir")
@@ -1155,7 +1158,7 @@ def base64_response_server() -> Iterable[Flask]:
         }
     )
 
-    yield app
+    return app
 
 
 def test_text_response(base64_response_server: Flask) -> None:

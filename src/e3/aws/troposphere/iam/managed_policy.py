@@ -1,16 +1,19 @@
 """Provide IAM Managed policies."""
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
-from troposphere import iam, AWSObject, Ref
+
+from troposphere import AWSObject, Ref, iam
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
-from e3.aws.troposphere.iam.policy_statement import PolicyStatement, Allow
+from e3.aws.troposphere.iam.policy_statement import Allow, PolicyStatement
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # all: no cover
     from e3.aws.troposphere import Stack
+
     from typing import Any
 
 

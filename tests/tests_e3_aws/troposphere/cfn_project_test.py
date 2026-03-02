@@ -3,20 +3,21 @@
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING
-from unittest.mock import patch
 from tempfile import TemporaryDirectory
 from textwrap import dedent
+from unittest.mock import patch
 
 from e3.aws import AWSEnv
-from e3.aws.troposphere import CFNProjectMain
-from e3.aws.troposphere.iam.role import Role
-from e3.aws.troposphere.awslambda import PyFunction
 from e3.aws.mock.troposphere.awslambda import mock_pyfunctionasset
+from e3.aws.troposphere import CFNProjectMain
+from e3.aws.troposphere.awslambda import PyFunction
+from e3.aws.troposphere.iam.role import Role
 
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import pytest
+
     from e3.aws.cfn import Stack
 
 
@@ -37,13 +38,13 @@ class MyRoleCFNProject(CFNProjectMain):
     def create_stack(self) -> Stack | list[Stack]:
         """Return MyRoleCFNProject stack."""
         self.add(
-            (
+
                 Role(
                     name="TestRole",
                     description="TestRole description",
                     trust={"Service": "test"},
                 )
-            )
+
         )
         return self.stack
 

@@ -1,15 +1,16 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
-
-from troposphere import AWSObject, ecs, GetAtt, Ref, Tags
+from troposphere import AWSObject, GetAtt, Ref, Tags, ecs
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
-from e3.aws.troposphere.iam.role import Role
 from e3.aws.troposphere.iam.managed_policy import ManagedPolicy
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement, Trust
+from e3.aws.troposphere.iam.role import Role
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
@@ -32,7 +33,7 @@ class Cluster(Construct):
     capacity_providers: list[str] | None = None
     cluster_settings: list[dict[str, str]] | None = None
     default_capacity_provider_strategy: list[dict[str, str]] | None = None
-    tags: dict[str, str] = field(default_factory=lambda: {})
+    tags: dict[str, str] = field(default_factory=dict)
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Construct and return ECS cluster troposphere resources."""
@@ -104,7 +105,7 @@ class FargateCluster(Cluster):
     default_capacity_provider_strategy: list[dict[str, str]] | None = field(
         default_factory=lambda: [{"CapacityProvider": "FARGATE", "Weight": "1"}]
     )
-    tags: dict[str, str] = field(default_factory=lambda: {})
+    tags: dict[str, str] = field(default_factory=dict)
 
     @property
     def ecs_task_execution_role(self) -> Role:

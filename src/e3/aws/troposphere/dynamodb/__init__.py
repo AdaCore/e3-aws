@@ -1,14 +1,18 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 from enum import Enum
-from troposphere import dynamodb, GetAtt, Ref, Tags
+
+from troposphere import GetAtt, Ref, Tags, dynamodb
 from troposphere.dynamodb import PointInTimeRecoverySpecification
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 
+from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from troposphere import AWSObject
+
     from e3.aws.troposphere import Stack
 
 
@@ -37,7 +41,7 @@ INCLUDE_PROJECTION = ProjectionType.INCLUDE
 ALL_PROJECTION = ProjectionType.ALL
 
 
-class GlobalSecondaryIndex(object):
+class GlobalSecondaryIndex:
     """Global Secondary Index e3-aws abstraction class."""
 
     def __init__(

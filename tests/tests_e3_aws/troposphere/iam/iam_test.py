@@ -1,10 +1,11 @@
 """Provide IAM construct tests."""
 
-import os
 import json
-from e3.aws.troposphere.iam.role import Role, PolicyDocument
-from e3.aws.troposphere.iam.policy_statement import Allow, Trust
+import os
+
 from e3.aws.troposphere import Stack
+from e3.aws.troposphere.iam.policy_statement import Allow, Trust
+from e3.aws.troposphere.iam.role import PolicyDocument, Role
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 EXPECTED_ROLE = {

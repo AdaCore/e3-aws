@@ -1,32 +1,36 @@
 from __future__ import annotations
-from typing import Any, cast
-import logging
+
 import json
+import logging
 import os
+
 import pytest
+
 from e3.aws.troposphere import Stack
-from e3.aws.troposphere.awslambda import (
-    PyFunction,
-    BlueGreenAliases,
-    BlueGreenAliasConfiguration,
-    AutoVersion,
-)
-from e3.aws.troposphere.iam.policy_statement import Allow, PolicyStatement
 from e3.aws.troposphere.apigateway import (
-    JWT_AUTH,
-    HttpApi,
-    RestApi,
     GET,
+    JWT_AUTH,
     POST,
+    EndpointAccessMode,
+    EndpointConfigurationType,
+    HttpApi,
+    IpAddressType,
     Method,
     Resource,
-    StageConfiguration,
-    EndpointConfigurationType,
-    IpAddressType,
-    EndpointAccessMode,
+    RestApi,
     SecurityPolicy,
     SecurityPolicyLookup,
+    StageConfiguration,
 )
+from e3.aws.troposphere.awslambda import (
+    AutoVersion,
+    BlueGreenAliasConfiguration,
+    BlueGreenAliases,
+    PyFunction,
+)
+from e3.aws.troposphere.iam.policy_statement import Allow, PolicyStatement
+
+from typing import Any, cast
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -293,7 +297,7 @@ EXPECTED_TEMPLATE_LAMBDA_ALIAS = {
     "TestapiIntegration": {
         "Properties": {
             **cast(
-                dict[str, Any], EXPECTED_TEMPLATE["TestapiIntegration"]["Properties"]
+                "dict[str, Any]", EXPECTED_TEMPLATE["TestapiIntegration"]["Properties"]
             ),
             "IntegrationUri": "arn:aws:lambda:eu-west-1:123456789012:function:"
             "mypylambda:${stageVariables.lambdaAlias}",

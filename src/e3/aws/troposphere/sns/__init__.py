@@ -1,18 +1,22 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
+from troposphere import GetAtt, Ref, sns
+
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import Allow, PolicyStatement
 
-from troposphere import sns, GetAtt, Ref
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any
     from troposphere import AWSObject
+
     from e3.aws.troposphere import Stack
-    from e3.aws.troposphere.awslambda import Function, Version, Alias
+    from e3.aws.troposphere.awslambda import Alias, Function, Version
     from e3.aws.troposphere.iam.policy_statement import ConditionType
+
+    from typing import Any
 
 
 class Topic(Construct):
@@ -60,9 +64,7 @@ class Topic(Construct):
             [
                 sns.SubscriptionResource(
                     name_to_id(
-                        "{}Sub".format(
-                            version.name if version is not None else function.name
-                        )
+                        f"{version.name if version is not None else function.name}Sub"
                     ),
                     **sub_params,
                 ),

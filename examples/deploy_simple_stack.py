@@ -18,15 +18,18 @@ For more details on how to manage the stack run:
 """
 
 from __future__ import annotations
-from functools import cached_property
-import sys
-from typing import TYPE_CHECKING
 
-from e3.aws.troposphere import CFNProjectMain, Construct, name_to_id, Stack
+import sys
+from functools import cached_property
+
+from troposphere import GetAtt, Ref, Tags, ec2, iam
+
+from e3.aws.troposphere import CFNProjectMain, Construct, Stack, name_to_id
 from e3.aws.troposphere.ec2 import VPCv2
-from e3.aws.troposphere.iam.role import Role
 from e3.aws.troposphere.iam.policy_statement import Trust
-from troposphere import ec2, iam, Ref, GetAtt, Tags
+from e3.aws.troposphere.iam.role import Role
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from troposphhere import AWSObject

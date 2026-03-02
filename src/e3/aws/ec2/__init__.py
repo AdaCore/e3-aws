@@ -1,13 +1,17 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-from e3.aws import session
+
 from dateutil.parser import parse as parse_date
 
+from e3.aws import session
+
+from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
-    from typing import Any
     from datetime import datetime
 
     from e3.aws import Session
+
+    from typing import Any
 
 
 class EC2Element:
@@ -264,8 +268,7 @@ class BlockDeviceMapping(EC2Element):
         """
         if self.is_ebs:
             return self.data["Ebs"].get("SnapshotId")
-        else:
-            return None
+        return None
 
 
 class VolumeAttachment(EC2Element):
@@ -498,5 +501,4 @@ class NetworkInterface(EC2Element):
         """
         if "Association" in self.data:
             return self.data["Association"].get("PublicIp")
-        else:
-            return None
+        return None

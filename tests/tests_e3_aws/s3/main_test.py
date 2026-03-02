@@ -1,11 +1,15 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-import pytest
+
 from unittest.mock import ANY
-from moto import mock_aws
+
 import boto3
+import pytest
+from moto import mock_aws
+
 from e3.aws import s3
 from e3.aws.s3 import S3, BucketExistsError, KeyExistsError, KeyNotFoundError
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterable

@@ -1,12 +1,13 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
 
 from e3.aws.cfn import AWSType, Resource
 
-if TYPE_CHECKING:
-    from typing import Any
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
     from e3.aws.cfn.ec2 import VPC
+
+    from typing import Any
 
 
 class RecordSet(Resource):
@@ -31,7 +32,7 @@ class RecordSet(Resource):
         :param ttl: dns TTL
         :param resource_records: list of resourses associated with the entry
         """
-        super(RecordSet, self).__init__(name, kind=AWSType.ROUTE53_RECORDSET)
+        super().__init__(name, kind=AWSType.ROUTE53_RECORDSET)
         self.hosted_zone = hosted_zone
         self.dns_name = dns_name
         self.dns_type = dns_type
@@ -65,7 +66,7 @@ class HostedZone(Resource):
             is empty it means that a public zone is created. Otherwise
             this is a AWS private zone.
         """
-        super(HostedZone, self).__init__(name, kind=AWSType.ROUTE53_HOSTED_ZONE)
+        super().__init__(name, kind=AWSType.ROUTE53_HOSTED_ZONE)
         self.domain = domain
         self.vpcs = vpcs
 

@@ -1,7 +1,7 @@
-from __future__ import absolute_import, division, print_function
 
 import pytest
 from botocore.stub import ANY, Stubber
+
 from e3.aws import AWSEnv, default_region
 from e3.aws.cfn import Stack
 from e3.aws.cfn.s3 import Bucket

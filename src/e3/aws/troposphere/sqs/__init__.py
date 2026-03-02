@@ -1,17 +1,21 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
+from troposphere import GetAtt, Ref, sns, sqs
+
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import Allow, PolicyStatement
 
-from troposphere import sns, sqs, GetAtt, Ref
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Optional
     from troposphere import AWSObject
+
     from e3.aws.troposphere import Stack
     from e3.aws.troposphere.iam.policy_statement import ConditionType
+
+    from typing import Optional
 
 
 class Queue(Construct):
@@ -22,7 +26,7 @@ class Queue(Construct):
         name: str,
         fifo: bool = False,
         visibility_timeout: int = 30,
-        dlq_name: Optional[str] = None,
+        dlq_name: str | None = None,
     ) -> None:
         """Initialize a SQS.
 
@@ -60,7 +64,7 @@ class Queue(Construct):
         service: str,
         applicant: str,
         prefix: str | None = None,
-        condition: Optional[ConditionType] = None,
+        condition: ConditionType | None = None,
     ) -> str:
         """Add a statement in QueuePolicy allowing a service to send msg to the queue.
 
@@ -70,7 +74,7 @@ class Queue(Construct):
         :param condition: condition to be able to send message
         :return: the QueuePolicy name for depends_on settings
         """
-        sid_prefix = prefix if prefix else ""
+        sid_prefix = prefix or ""
         self.queue_policy_statements.append(
             Allow(
                 sid=f"{sid_prefix}{applicant}WriteAccess",
@@ -100,7 +104,7 @@ class Queue(Construct):
         :param filter_policy: The filter policy JSON assigned to the subscription.
         :param filter_policy_scope: The filtering scope.
         """
-        sid_prefix = prefix if prefix else ""
+        sid_prefix = prefix or ""
         sub_params = {
             "Endpoint": self.arn,
             "Protocol": "sqs",

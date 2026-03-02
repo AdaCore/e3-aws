@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 import json
 import mimetypes
 import tempfile
 from contextlib import closing
 
-
-from e3.event import EventHandler, unique_id
-from e3.fs import rm
 import e3.log
 from e3.aws import Session
+from e3.event import EventHandler, unique_id
+from e3.fs import rm
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any
     from e3.event import Event
+
+    from typing import Any
 
 logger = e3.log.getLogger("S3Handler")
 
@@ -49,7 +49,7 @@ class S3Handler(EventHandler):
             "event_bucket": event_bucket,
             "log_bucket": log_bucket,
             "sse": sse,
-            "profile": aws_profile if aws_profile else None,
+            "profile": aws_profile or None,
         }
 
     def encode_config(self) -> str:
@@ -80,7 +80,7 @@ class S3Handler(EventHandler):
             s3_key: str,
             bucket: str,
         ) -> str | None:
-            """copy file to S3 bucket.
+            """Copy file to S3 bucket.
 
             :param from_path: File to copy
             :param s3_key: destination in bucket
@@ -123,14 +123,13 @@ class S3Handler(EventHandler):
 
             if s3_url is None:
                 return False
-            else:
-                logger.debug(f"Attachment successfully pushed to {s3_url}")
-                ctype, encoding = mimetypes.guess_type(attach_path)
-                s3_attachs[name] = {
-                    "s3_url": s3_url,
-                    "encoding": encoding,
-                    "ctype": ctype,
-                }
+            logger.debug(f"Attachment successfully pushed to {s3_url}")
+            ctype, encoding = mimetypes.guess_type(attach_path)
+            s3_attachs[name] = {
+                "s3_url": s3_url,
+                "encoding": encoding,
+                "ctype": ctype,
+            }
 
         # Create the JSON to send on the event bucket
         s3_event = {"attachments": s3_attachs, "event": event.as_dict()}
@@ -149,9 +148,8 @@ class S3Handler(EventHandler):
 
             if s3_url is None:
                 return False
-            else:
-                logger.debug(f"Event successfully pushed to {s3_url}")
-                return True
+            logger.debug(f"Event successfully pushed to {s3_url}")
+            return True
         finally:
             if tempfile_name is not None:
                 rm(tempfile_name)

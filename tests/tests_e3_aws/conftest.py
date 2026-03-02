@@ -1,8 +1,10 @@
 """Provide fixtures for e3 aws tests."""
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 import pytest
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from pytest import MonkeyPatch

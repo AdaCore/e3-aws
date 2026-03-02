@@ -8,7 +8,6 @@ from e3.aws.troposphere import Stack
 from e3.aws.troposphere.cloudformation import StackSet
 from e3.aws.troposphere.iam.role import Role
 
-
 EXPECTED_TEMPLATE = {
     "StackSetTest": {
         "Properties": {
@@ -37,7 +36,7 @@ EXPECTED_TEMPLATE = {
 
 
 def test_stackset(stack: Stack) -> None:
-    """test Cloudformation stack set creation."""
+    """Test Cloudformation stack set creation."""
     stack.s3_bucket = "cfn_bucket"
     stack.s3_key = "templates/"
 

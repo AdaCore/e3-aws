@@ -2,16 +2,17 @@
 
 import json
 import os
+
 import pytest
-from e3.aws.troposphere.s3.bucket import Bucket, EncryptionAlgorithm
-from e3.aws.troposphere.s3 import BucketWithRoles
+
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.awslambda import Py38Function
+from e3.aws.troposphere.iam.policy_document import PolicyDocument
+from e3.aws.troposphere.iam.policy_statement import Trust
+from e3.aws.troposphere.s3 import BucketWithRoles
+from e3.aws.troposphere.s3.bucket import Bucket, EncryptionAlgorithm
 from e3.aws.troposphere.sns import Topic
 from e3.aws.troposphere.sqs import Queue
-from e3.aws.troposphere.iam.policy_statement import Trust
-from e3.aws.troposphere.iam.policy_document import PolicyDocument
-
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 

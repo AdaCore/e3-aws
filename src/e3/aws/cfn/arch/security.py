@@ -1,9 +1,13 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-from ipaddress import AddressValueError, IPv4Network, IPv6Network
+
 import logging
+from ipaddress import AddressValueError, IPv4Network, IPv6Network
+
 import requests
+
 from e3.aws.cfn.ec2.security import Ipv4EgressRule, SecurityGroup
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from e3.aws.cfn.ec2 import VPC

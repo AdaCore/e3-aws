@@ -1,16 +1,19 @@
 from __future__ import annotations
-from typing import Any, cast
-import os
+
 import json
+import os
+
 from troposphere import Ref
+
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.dynamodb import (
-    Table,
-    GlobalSecondaryIndex,
     ALL_PROJECTION,
     INCLUDE_PROJECTION,
+    GlobalSecondaryIndex,
+    Table,
 )
 
+from typing import Any, cast
 
 SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "source_dir")
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -37,9 +40,9 @@ EXPECTED_TABLE_TEMPLATE = {
     "Mytable": {
         "Properties": {
             **cast(
-                dict[str, Any], EXPECTED_TABLE_DEFAULT_TEMPLATE["Mytable"]["Properties"]
+                "dict[str, Any]", EXPECTED_TABLE_DEFAULT_TEMPLATE["Mytable"]["Properties"]
             ),
-            **{
+
                 "Tags": [{"Key": "tagkey", "Value": "tagvalue"}],
                 "TimeToLiveSpecification": {
                     "AttributeName": "ExpirationTime",
@@ -50,8 +53,8 @@ EXPECTED_TABLE_TEMPLATE = {
                     "ReadCapacityUnits": 20,
                     "WriteCapacityUnits": {"Ref": "WriteCapacityUnits"},
                 },
-                "StreamSpecification": {"StreamViewType": "NEW_IMAGE"},
-            },
+                "StreamSpecification": {"StreamViewType": "NEW_IMAGE"}
+            ,
         },
         "Type": "AWS::DynamoDB::Table",
     },

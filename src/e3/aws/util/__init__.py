@@ -1,6 +1,8 @@
 from __future__ import annotations
-import json
+
 import importlib.resources
+import json
+
 from colorama import Fore, Style
 
 
@@ -43,11 +45,10 @@ def color_diff(lines: list[str]) -> list[str]:
         """
         if line.startswith("-"):
             return Fore.RED
-        elif line.startswith("+"):
+        if line.startswith("+"):
             return Fore.GREEN
-        elif line.startswith("@"):
+        if line.startswith("@"):
             return Fore.CYAN
-        else:
-            return ""
+        return ""
 
     return [f"{color(line)}{line}{Style.RESET_ALL}" for line in lines]

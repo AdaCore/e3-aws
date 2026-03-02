@@ -1,9 +1,11 @@
 from __future__ import annotations
-from typing import Any, cast
+
 from troposphere import Ref
+
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.cloudwatch import Alarm
 
+from typing import Any, cast
 
 EXPECTED_ALARM_DEFAULT_TEMPLATE = {
     "Myalarm": {
@@ -23,9 +25,9 @@ EXPECTED_ALARM_TEMPLATE = {
     "Myalarm": {
         "Properties": {
             **cast(
-                dict[str, Any], EXPECTED_ALARM_DEFAULT_TEMPLATE["Myalarm"]["Properties"]
+                "dict[str, Any]", EXPECTED_ALARM_DEFAULT_TEMPLATE["Myalarm"]["Properties"]
             ),
-            **{
+
                 "AlarmActions": ["StrAction", {"Ref": "RefAction"}],
                 "Dimensions": [
                     {"Name": "StrDimensionValue", "Value": "DimensionValue"},
@@ -34,8 +36,8 @@ EXPECTED_ALARM_TEMPLATE = {
                 "MetricName": "Invocations",
                 "Namespace": "AWS/Lambda",
                 "Period": 300,
-                "Threshold": 1.0,
-            },
+                "Threshold": 1.0
+            ,
         },
         "Type": "AWS::CloudWatch::Alarm",
     },

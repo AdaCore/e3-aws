@@ -1,10 +1,14 @@
 from __future__ import annotations
-import pytest
+
 import argparse
-from unittest import mock
 from textwrap import dedent
+from unittest import mock
+
+import pytest
 from botocore.credentials import ReadOnlyCredentials
+
 from e3.aws import assume_profile_main
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -30,9 +34,8 @@ EXPECTED_JSON_OUTPUT = (
 class MockSession:
     def __init__(self, *args: list[Any], **kwargs: dict[str, Any]) -> None:
         """Mock the boto3.Session class."""
-        pass
 
-    def get_credentials(self) -> "MockSession":
+    def get_credentials(self) -> MockSession:
         """Return this class for get_frozen_credentials."""
         return self
 

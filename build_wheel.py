@@ -6,15 +6,17 @@ added to the version of the package as the patch version.
 """
 
 from __future__ import annotations
-import sys
-from pathlib import Path
-import re
-import tomllib
-from datetime import datetime, timezone
 
+import re
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+import tomllib
+
+from e3.log import getLogger
 from e3.main import Main
 from e3.os.process import Run
-from e3.log import getLogger
 
 logger = getLogger("build_wheel")
 

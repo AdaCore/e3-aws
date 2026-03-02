@@ -2,11 +2,12 @@
 
 import json
 from pathlib import Path
-import pytest
-from troposphere import Parameter, Output, Export
 
-from e3.aws.troposphere.s3.bucket import Bucket
+import pytest
+from troposphere import Export, Output, Parameter
+
 from e3.aws.troposphere import Stack
+from e3.aws.troposphere.s3.bucket import Bucket
 
 TEST_DIR = Path(__file__).parent
 

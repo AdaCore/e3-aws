@@ -1,12 +1,13 @@
 """Provide fixtures for e3 aws troposphere tests."""
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 import pytest
 
-from e3.aws.troposphere import Stack
 from e3.aws.mock.troposphere.awslambda import mock_pyfunctionasset
+from e3.aws.troposphere import Stack
 
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

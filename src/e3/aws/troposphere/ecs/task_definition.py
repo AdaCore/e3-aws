@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
-
-from troposphere import AWSObject, ecs, Ref, Tags
+from troposphere import AWSObject, Ref, Tags, ecs
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
@@ -37,7 +38,7 @@ class FargateTaskDefinition(Construct):
     memory: str = "512"
 
     family: str | None = None
-    tags: dict[str, str] = field(default_factory=lambda: {})
+    tags: dict[str, str] = field(default_factory=dict)
     task_role_arn: str | None = None
     volumes: list[ecs.Volume] | None = None
 

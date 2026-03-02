@@ -1,13 +1,15 @@
 """Provide SecretsManager constructs tests."""
 
 from __future__ import annotations
+
 import json
 import os
+
 import pytest
 
 from e3.aws.troposphere import Stack
-from e3.aws.troposphere.secretsmanager import Secret, RotationSchedule
-from e3.aws.troposphere.awslambda import PyFunction, Alias
+from e3.aws.troposphere.awslambda import Alias, PyFunction
+from e3.aws.troposphere.secretsmanager import RotationSchedule, Secret
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 
