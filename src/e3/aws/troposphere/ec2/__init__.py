@@ -305,9 +305,9 @@ class Subnet(Construct):
         self.nat_to = nat_to
 
         if use_nat:
-            assert (
-                internet_gateway is not None
-            ), "a NAT Gateway can only be added to a public subnet"
+            assert internet_gateway is not None, (
+                "a NAT Gateway can only be added to a public subnet"
+            )
 
         self._subnet: ec2.Subnet | None = None
         self._route_table: ec2.RouteTable | None = None

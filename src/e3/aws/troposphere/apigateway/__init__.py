@@ -327,9 +327,9 @@ class Api(Construct):
         self.disable_execute_api_endpoint: bool = False
         if self.domain_name is not None:
             self.disable_execute_api_endpoint = True
-            assert (
-                hosted_zone_id is not None
-            ), "hosted zone id required when domain_name is not None"
+            assert hosted_zone_id is not None, (
+                "hosted zone id required when domain_name is not None"
+            )
         self.hosted_zone_id = hosted_zone_id
         self.authorizers: dict[str, Any] = {}
         # By default, make sure to have a $default stage
@@ -901,9 +901,9 @@ class RestApi(Api):
 
         # For backward compatibility
         if resource_list is None:
-            assert (
-                self.method_list is not None
-            ), "method_list can't be None when resource_list is None"
+            assert self.method_list is not None, (
+                "method_list can't be None when resource_list is None"
+            )
             # Add a default root resource to match everything
             resource_list = [Resource(path="{proxy+}", method_list=self.method_list)]
 
@@ -1096,9 +1096,9 @@ class RestApi(Api):
             if resource_lambda_arn_permission is not None:
                 # Use the lambda_arn_permission configured for resource
                 if isinstance(resource_lambda_arn_permission, dict):
-                    assert (
-                        config.name in resource_lambda_arn_permission
-                    ), f"missing lambda arn permission for stage {config.name}"
+                    assert config.name in resource_lambda_arn_permission, (
+                        f"missing lambda arn permission for stage {config.name}"
+                    )
                     lambda_arn = resource_lambda_arn_permission[config.name]
                 else:
                     lambda_arn = resource_lambda_arn_permission

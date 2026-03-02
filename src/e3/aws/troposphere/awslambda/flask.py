@@ -174,9 +174,9 @@ class PyFlaskFunction(PyFunction):
             through that VPC
         """
         if code_asset is None:
-            assert (
-                code_dir is not None
-            ), "code_dir must be provided when code_asset is None"
+            assert code_dir is not None, (
+                "code_dir must be provided when code_asset is None"
+            )
 
             code_asset = PyFlaskFunctionAsset(
                 name=name_to_id(f"{name}Sources"),

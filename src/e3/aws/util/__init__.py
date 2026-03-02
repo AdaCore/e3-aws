@@ -13,9 +13,11 @@ def get_region_name(region_code: str) -> str | None:
     :param region_code: region code
     :return: region name or None if the region code is not found
     """
-    with importlib.resources.files("botocore.data").joinpath(
-        "endpoints.json"
-    ).open() as f:
+    with (
+        importlib.resources.files("botocore.data")
+        .joinpath("endpoints.json")
+        .open() as f
+    ):
         data = json.load(f)
 
     return data["partitions"][0]["regions"].get(region_code, {}).get("description")

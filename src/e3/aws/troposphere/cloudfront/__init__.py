@@ -83,9 +83,9 @@ class S3WebsiteDistribution(Construct):
         :param iam_path: IAM path for cloudwatch permission and role
             (must be either / or a string starting and ending with /)
         """
-        assert (
-            bucket is not None or bucket_name is not None
-        ), "either bucket or bucket_name should be provided"
+        assert bucket is not None or bucket_name is not None, (
+            "either bucket or bucket_name should be provided"
+        )
         self.name = name
         self.aliases = aliases
         # bucket_name can't be None if bucket is None

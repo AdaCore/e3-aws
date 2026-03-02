@@ -127,9 +127,9 @@ class EC2NetworkInterface:
             public_ip and groups should be set to None
         """
         if subnet is not None:
-            assert (
-                interface is None
-            ), "cannot specify a network interface if subnet is set"
+            assert interface is None, (
+                "cannot specify a network interface if subnet is set"
+            )
             self.subnet: Subnet | None = subnet
             self.public_ip: bool | None = public_ip
             self.groups: list[SecurityGroup] | None = groups

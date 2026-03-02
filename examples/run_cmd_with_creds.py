@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """Run a command with credentials obtained from assuming a given AWS role."""
+
 import argparse
 
 from e3.aws import Session

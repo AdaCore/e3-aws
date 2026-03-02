@@ -368,45 +368,49 @@ def test_cfn_branch_up_to_date_check(
     stubber.add_response("describe_stacks", {}, {"StackName": "teststack"})
 
     git_path = which("git", default="/usr/bin/git")
-    with default_region("us-east-1"), stubber, mock_run(
-        config={
-            "results": [
-                # Make CFNMain think we are on main
-                CommandResult(
-                    cmd=[
-                        git_path,
-                        "-c",
-                        "fetch.prune=false",
-                        "branch",
-                        "--show-current",
-                    ],
-                    raw_out=b"main",
-                ),
-                # Make CFNMain detect no local changes
-                CommandResult(
-                    cmd=[
-                        git_path,
-                        "-c",
-                        "fetch.prune=false",
-                        "status",
-                        "-s",
-                    ]
-                ),
-                # Make CFNMain detect an outdated branch
-                CommandResult(
-                    cmd=[
-                        git_path,
-                        "-c",
-                        "fetch.prune=false",
-                        "fetch",
-                        "origin",
-                        "main",
-                        "--dry-run",
-                    ],
-                    raw_out=fetch_out.encode(),
-                ),
-            ]
-        }
+    with (
+        default_region("us-east-1"),
+        stubber,
+        mock_run(
+            config={
+                "results": [
+                    # Make CFNMain think we are on main
+                    CommandResult(
+                        cmd=[
+                            git_path,
+                            "-c",
+                            "fetch.prune=false",
+                            "branch",
+                            "--show-current",
+                        ],
+                        raw_out=b"main",
+                    ),
+                    # Make CFNMain detect no local changes
+                    CommandResult(
+                        cmd=[
+                            git_path,
+                            "-c",
+                            "fetch.prune=false",
+                            "status",
+                            "-s",
+                        ]
+                    ),
+                    # Make CFNMain detect an outdated branch
+                    CommandResult(
+                        cmd=[
+                            git_path,
+                            "-c",
+                            "fetch.prune=false",
+                            "fetch",
+                            "origin",
+                            "main",
+                            "--dry-run",
+                        ],
+                        raw_out=fetch_out.encode(),
+                    ),
+                ]
+            }
+        ),
     ):
         # Activate the local checks
         monkeypatch.setenv("CI", "false")

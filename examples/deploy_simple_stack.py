@@ -16,6 +16,7 @@ The 'CFNServiceRole' must trust the CloudFormation service.
 For more details on how to manage the stack run:
 ./deploy_simple_stack.py --help
 """
+
 from __future__ import annotations
 from functools import cached_property
 import sys

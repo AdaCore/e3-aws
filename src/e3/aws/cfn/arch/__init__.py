@@ -332,8 +332,7 @@ class Fortress(Stack):
                     self.name + "InternalSG",
                     self.vpc.vpc,
                     description=(
-                        "Allow ssh inside VPC and allow https "
-                        "to VPC endpoints subnet"
+                        "Allow ssh inside VPC and allow https to VPC endpoints subnet"
                     ),
                     rules=[
                         Ipv4IngressRule("ssh", self.public_subnet.cidr_block),

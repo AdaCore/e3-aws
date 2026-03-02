@@ -70,9 +70,9 @@ class GlobalSecondaryIndex(object):
         self.projection_type = projection_type
         self.non_key_attributes = non_key_attributes
         if self.projection_type is INCLUDE_PROJECTION:
-            assert (
-                self.non_key_attributes is not None
-            ), "non key attributes parameter is required when the projection "
+            assert self.non_key_attributes is not None, (
+                "non key attributes parameter is required when the projection "
+            )
             "type is INCLUDE"
         self.read_capacity_units = read_capacity_units
         self.write_capacity_units = write_capacity_units
@@ -221,9 +221,9 @@ class Table(Construct):
         )
 
         if self.time_to_live_enabled is not None:
-            assert (
-                self.time_to_live_attribute_name is not None
-            ), "time_to_live_attribute_name should be set"
+            assert self.time_to_live_attribute_name is not None, (
+                "time_to_live_attribute_name should be set"
+            )
             params["TimeToLiveSpecification"] = dynamodb.TimeToLiveSpecification(
                 AttributeName=self.time_to_live_attribute_name,
                 Enabled=self.time_to_live_enabled,

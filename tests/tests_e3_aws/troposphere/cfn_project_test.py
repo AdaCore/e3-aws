@@ -222,8 +222,9 @@ def test_cfn_project_main_diff_assets(capfd: pytest.CaptureFixture[str]) -> None
         """Return the lines without added colors."""
         return lines
 
-    with patch("e3.aws.troposphere.awslambda.color_diff", mocked_color_diff), patch(
-        "e3.aws.cfn.main.color_diff", mocked_color_diff
+    with (
+        patch("e3.aws.troposphere.awslambda.color_diff", mocked_color_diff),
+        patch("e3.aws.cfn.main.color_diff", mocked_color_diff),
     ):
         # Diff with the mocked response
         test.execute(args=["show", "--diff", "--assets"], aws_env=aws_env)

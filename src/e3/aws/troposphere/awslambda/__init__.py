@@ -716,9 +716,9 @@ class PyFunction(Function):
         if code_asset is not None:
             self.code_asset = code_asset
         else:
-            assert (
-                code_dir is not None
-            ), "code_dir must be provided when code_asset is None"
+            assert code_dir is not None, (
+                "code_dir must be provided when code_asset is None"
+            )
 
             self.code_asset = PyFunctionAsset(
                 name=name_to_id(f"{name}Sources"),
@@ -1118,12 +1118,12 @@ class AutoVersion(Construct):
             supported for this property
         """
         assert version > 0, "version should be greater than 0"
-        assert (
-            min_version is None or min_version > 0
-        ), "min_version should be greater than 0"
-        assert (
-            min_version is None or min_version <= version
-        ), "min_version can't be greater than version"
+        assert min_version is None or min_version > 0, (
+            "min_version should be greater than 0"
+        )
+        assert min_version is None or min_version <= version, (
+            "min_version can't be greater than version"
+        )
         if lambda_function is not None:
             logger.warning("lambda_function is deprecated, use lambda_name instead")
         if lambda_arn is not None:

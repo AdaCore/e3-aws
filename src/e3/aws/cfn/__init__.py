@@ -441,7 +441,7 @@ class Stack(object):
         """
         assert (
             re.match(VALID_STACK_NAME, name) and len(name) <= VALID_STACK_NAME_MAX_LEN
-        ), ("invalid stack name: %s" % name)
+        ), "invalid stack name: %s" % name
         self.resources: dict[str, Resource | Stack] = {}
         self.name = name
 

@@ -253,13 +253,14 @@ class AMI(EC2Element):
             owners=owners,
             **kwargs,
         )
-        assert (
-            len(result) == 1
-        ), "cannot find AMI %s (%s) of kind (%s) in region %s %s" % (
-            platform,
-            os_version,
-            kind,
-            region,
-            kwargs,
+        assert len(result) == 1, (
+            "cannot find AMI %s (%s) of kind (%s) in region %s %s"
+            % (
+                platform,
+                os_version,
+                kind,
+                region,
+                kwargs,
+            )
         )
         return result[0]

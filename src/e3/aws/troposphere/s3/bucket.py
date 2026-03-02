@@ -104,9 +104,9 @@ class Bucket(Construct):
             )
         ]
 
-        assert (
-            self.authorized_encryptions
-        ), "At least one authorized s3 encryption should be provided"
+        assert self.authorized_encryptions, (
+            "At least one authorized s3 encryption should be provided"
+        )
 
     @property
     def policy_document(self) -> PolicyDocument:
