@@ -1,3 +1,4 @@
+"""Provide tests for CloudFormation stack operations."""
 
 import pytest
 from botocore.stub import ANY, Stubber

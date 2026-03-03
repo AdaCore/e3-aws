@@ -1,3 +1,4 @@
+"""Provide tests for AWS session assume profile."""
 from __future__ import annotations
 
 import argparse

@@ -1,3 +1,4 @@
+"""Provide EC2 security group and security rule CloudFormation resources."""
 from __future__ import annotations
 
 from e3.aws.cfn import AWSType, GetAtt, Resource

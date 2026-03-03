@@ -1,3 +1,4 @@
+"""Provide service discovery namespace CloudFormation resources."""
 from __future__ import annotations
 
 from e3.aws.cfn import AWSType, Resource

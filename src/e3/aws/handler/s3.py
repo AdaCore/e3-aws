@@ -1,3 +1,4 @@
+"""Provide S3-based event handler for logging and storing events."""
 from __future__ import annotations
 
 import json

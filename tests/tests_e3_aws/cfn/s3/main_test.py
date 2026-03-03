@@ -1,3 +1,4 @@
+"""Provide tests for CloudFormation S3 resources."""
 from e3.aws.cfn.iam import Allow, PolicyDocument
 from e3.aws.cfn.s3 import AccessControl, Bucket, BucketPolicy
 

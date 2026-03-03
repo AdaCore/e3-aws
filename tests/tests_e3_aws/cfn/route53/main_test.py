@@ -1,3 +1,4 @@
+"""Provide tests for CloudFormation Route53 resources."""
 from e3.aws.cfn.ec2 import VPC
 from e3.aws.cfn.route53 import HostedZone, RecordSet
 

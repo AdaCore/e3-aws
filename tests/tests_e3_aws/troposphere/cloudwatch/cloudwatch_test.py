@@ -1,3 +1,4 @@
+"""Provide tests for CloudWatch troposphere resources."""
 from __future__ import annotations
 
 from troposphere import Ref

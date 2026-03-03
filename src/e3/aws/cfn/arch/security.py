@@ -1,3 +1,4 @@
+"""Provide security groups authorizing access to AWS services."""
 from __future__ import annotations
 
 import logging

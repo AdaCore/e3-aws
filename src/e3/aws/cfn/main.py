@@ -1,3 +1,4 @@
+"""Provide CLI entry point for managing CloudFormation stacks."""
 from __future__ import annotations
 
 import abc

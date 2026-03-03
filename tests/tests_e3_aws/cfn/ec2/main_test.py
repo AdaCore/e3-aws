@@ -1,3 +1,4 @@
+"""Provide tests for CloudFormation EC2 resources."""
 
 import pytest
 import yaml

@@ -1,3 +1,4 @@
+"""Provide a wrapper to run Flask applications as API Gateway Lambda functions."""
 # The following package is packaged automatically with Flask lambda.
 # Do not introduce dependencies outside Python standard library.
 from __future__ import annotations

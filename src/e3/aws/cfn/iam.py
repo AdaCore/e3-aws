@@ -1,3 +1,4 @@
+"""Provide IAM policy, role, and principal CloudFormation resources."""
 from __future__ import annotations
 
 from enum import Enum

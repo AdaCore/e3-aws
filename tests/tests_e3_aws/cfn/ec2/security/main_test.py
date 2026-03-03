@@ -1,3 +1,4 @@
+"""Provide tests for CloudFormation EC2 security groups."""
 import pytest
 
 from e3.aws.cfn.ec2 import VPC

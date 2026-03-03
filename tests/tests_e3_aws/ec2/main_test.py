@@ -1,3 +1,4 @@
+"""Provide tests for EC2 AMI management."""
 import pytest
 
 from e3.aws import AWSEnv, Session, default_region

@@ -1,3 +1,4 @@
+"""Provide tests for CloudFormation architecture patterns."""
 
 import pytest
 from botocore.stub import ANY
