@@ -1,3 +1,5 @@
+"""Provide Lambda function troposphere resource constructs."""
+
 from __future__ import annotations
 
 import difflib
@@ -44,6 +46,8 @@ logger = logging.getLogger("e3.aws.troposphere.awslambda")
 
 
 class Architecture(Enum):
+    """Represent supported Lambda CPU architectures."""
+
     X86_64 = "x86_64"
     ARM64 = "arm64"
 
@@ -52,6 +56,10 @@ class UnknownPlatform(Exception):
     """Unknown platform exception."""
 
     def __init__(self, architecture: Architecture):
+        """Initialize an UnknownPlatform error.
+
+        :param architecture: the unsupported CPU architecture
+        """
         super().__init__(f"Unknown platform for architecture {architecture}.")
 
 
@@ -255,6 +263,13 @@ class PyFunctionAsset(Asset):
         client: botocore.client.S3 | None = None,
         dry_run: bool | None = None,
     ) -> None:
+        """Upload the Lambda code to S3.
+
+        :param s3_bucket: the S3 bucket name for upload
+        :param s3_root_key: the root S3 key prefix
+        :param client: optional S3 client to use
+        :param dry_run: if True, skip the actual upload
+        """
         if self._archive_dir is not None:
             self._upload_file(
                 s3_bucket=s3_bucket,
@@ -381,6 +396,11 @@ class Function(Construct):
                     )
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
+        """Return the CloudFormation policy document for this function.
+
+        :param stack: the stack requesting the policy
+        :return: a policy document with required permissions
+        """
         statements = [
             PolicyStatement(
                 action=[
@@ -420,6 +440,7 @@ class Function(Construct):
 
     @property
     def ref(self) -> Ref:
+        """Return a CloudFormation Ref to this function."""
         return Ref(name_to_id(self.name))
 
     def resources(self, stack: Stack) -> list[AWSObject]:
@@ -889,6 +910,10 @@ class PyFunction(Function):
             print(f"No diff for the new version of function {name_with_qualifier}")
 
     def show(self, stack: Stack) -> None:
+        """Display the function archive contents.
+
+        :param stack: the stack containing this function
+        """
         files = self._show_archive_files(self.code_asset.archive_path)
         print(f"List of files for function {self.name}:")
         if files:
@@ -988,6 +1013,7 @@ class Alias(Construct):
 
     @property
     def ref(self) -> Ref:
+        """Return a CloudFormation Ref to this alias."""
         return Ref(name_to_id(self.name))
 
     @property
@@ -1059,6 +1085,7 @@ class Version(Construct):
 
     @property
     def ref(self) -> Ref:
+        """Return a CloudFormation Ref to this version."""
         return Ref(name_to_id(self.name))
 
     @property

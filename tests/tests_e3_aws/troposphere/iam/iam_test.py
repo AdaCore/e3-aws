@@ -104,6 +104,7 @@ def test_trust_roles(stack: Stack) -> None:
 
 
 def test_role_with_inline(stack: Stack) -> None:
+    """Test role creation with inline policy."""
     stack.add(
         Role(
             name="TestRoleWithPolicies",

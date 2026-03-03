@@ -1,3 +1,5 @@
+"""Provide CloudFormation EC2 resource definitions."""
+
 from __future__ import annotations
 
 from abc import abstractmethod
@@ -28,10 +30,10 @@ ${Cfninit} -v --stack ${AWS::StackName} \\
 
 CFN_INIT_STARTUP_SCRIPT_WIN = (
     "C:\\ProgramData\\Amazon\\EC2-Windows\\"
-     "Launch\\Scripts\\InitializeInstance.ps1 -schedule \n"
-     "${Cfninit} -v --stack ${AWS::StackName} --region "
-     "${AWS::Region} --resource ${Resource} --configsets ${Config} "
-     "${CfninitOptions}\n\n"
+    "Launch\\Scripts\\InitializeInstance.ps1 -schedule \n"
+    "${Cfninit} -v --stack ${AWS::StackName} --region "
+    "${AWS::Region} --resource ${Resource} --configsets ${Config} "
+    "${CfninitOptions}\n\n"
 )
 
 
@@ -40,7 +42,9 @@ class BlockDevice:
 
     @property
     @abstractmethod
-    def properties(self) -> dict[str, Any]: ...
+    def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
+        ...
 
 
 class EphemeralDisk(BlockDevice):
@@ -287,6 +291,8 @@ class NetworkInterface(Resource):
 
 
 class TemplateOrInstance(Resource):
+    """Represent a base class for EC2 launch templates and instances."""
+
     def __init__(self, name: str, image: AMI, kind: AWSType) -> None:
         """Initialize TemplateOrInstance.
 
@@ -303,6 +309,10 @@ class TemplateOrInstance(Resource):
         self.tags: dict[str, str] = {}
 
     def set_instance_profile(self, profile: InstanceProfile) -> None:
+        """Set the instance profile.
+
+        :param profile: the IAM instance profile to associate
+        """
         self.instance_profile = profile
 
     def add(self, device: EC2NetworkInterface | BlockDevice) -> TemplateOrInstance:
@@ -619,6 +629,7 @@ class VPC(Resource):
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         return {
             "CidrBlock": self.cidr_block,
             "EnableDnsHostnames": True,
@@ -627,6 +638,7 @@ class VPC(Resource):
 
     @property
     def cidrblock(self) -> GetAtt:
+        """Return the VPC CIDR block attribute."""
         return self.getatt("CidrBlock")
 
 
@@ -659,6 +671,7 @@ class VPCEndpoint(Resource):
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         return {
             "VpcId": self.vpc.ref,
             "ServiceName": Join(
@@ -670,6 +683,8 @@ class VPCEndpoint(Resource):
 
 
 class VPCInterfaceEndpoint(Resource):
+    """Represent a VPC interface endpoint resource."""
+
     def __init__(
         self,
         name: str,
@@ -699,6 +714,7 @@ class VPCInterfaceEndpoint(Resource):
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         props: dict[str, Any] = {
             "VpcId": self.subnet.vpc.ref,
             "ServiceName": Join(
@@ -732,6 +748,7 @@ class Subnet(Resource):
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         return {"CidrBlock": self.cidr_block, "VpcId": self.vpc.ref}
 
 
@@ -769,10 +786,12 @@ class EIP(Resource):
 
     @property
     def allocation_id(self) -> GetAtt:
+        """Return the EIP allocation ID attribute."""
         return GetAtt(self.name, "AllocationId")
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         result: dict[str, Any] = {"Domain": "vpc"}
         if self.instance is not None:
             result["InstanceId"] = self.instance.ref
@@ -796,6 +815,7 @@ class NatGateway(Resource):
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         return {"AllocationId": self.eip.allocation_id, "SubnetId": self.subnet.ref}
 
 
@@ -815,6 +835,7 @@ class VPCGatewayAttachment(Resource):
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         return {"VpcId": self.vpc.ref, "InternetGatewayId": self.gateway.ref}
 
 
@@ -834,6 +855,7 @@ class RouteTable(Resource):
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         result: dict[str, Any] = {"VpcId": self.vpc.ref}
         if self.tags is not None:
             result["Tags"] = self.tags
@@ -868,6 +890,7 @@ class Route(Resource):
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         result = {
             "RouteTableId": self.route_table.ref,
             "DestinationCidrBlock": self.dest_cidr_block,
@@ -895,4 +918,5 @@ class SubnetRouteTableAssociation(Resource):
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         return {"SubnetId": self.subnet.ref, "RouteTableId": self.route_table.ref}

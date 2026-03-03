@@ -1,3 +1,5 @@
+"""Provide directory-based asset management for S3 uploads."""
+
 from __future__ import annotations
 
 from enum import Enum, auto

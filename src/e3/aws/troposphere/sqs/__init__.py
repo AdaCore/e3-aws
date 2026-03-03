@@ -1,3 +1,5 @@
+"""Provide SQS queue troposphere resource constructs."""
+
 from __future__ import annotations
 
 from troposphere import GetAtt, Ref, sns, sqs
@@ -14,8 +16,6 @@ if TYPE_CHECKING:
 
     from e3.aws.troposphere import Stack
     from e3.aws.troposphere.iam.policy_statement import ConditionType
-
-    from typing import Optional
 
 
 class Queue(Construct):

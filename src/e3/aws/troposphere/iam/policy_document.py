@@ -30,6 +30,11 @@ class PolicyDocument:
         return PolicyDocument(statements=self.statements + other.statements)
 
     def __iadd__(self, other: PolicyDocument) -> PolicyDocument:
+        """Merge another policy document into this one.
+
+        :param other: the policy document to merge
+        :return: this policy document with merged statements
+        """
         self.statements += other.statements
         return self
 

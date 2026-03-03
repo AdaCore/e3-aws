@@ -1,3 +1,5 @@
+"""Provide SNS topic troposphere resource constructs."""
+
 from __future__ import annotations
 
 from troposphere import GetAtt, Ref, sns

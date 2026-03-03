@@ -1,3 +1,5 @@
+"""Provide tests for CloudFormation EC2 security groups."""
+
 import pytest
 
 from e3.aws.cfn.ec2 import VPC
@@ -5,6 +7,7 @@ from e3.aws.cfn.ec2.security import EgressRule, IngressRule, SecurityGroup
 
 
 def test_security_group():
+    """Test security group creation and rules."""
     vpc = VPC("vpc", cidr_block="10.10.0.0/16")
     rule1 = IngressRule("ssh", "10.10.1.1/32", description="ssh rule")
     rule2 = IngressRule("ip", "10.10.1.1/32", from_port=3389)

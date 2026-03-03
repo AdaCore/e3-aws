@@ -1,3 +1,5 @@
+"""Provide EC2 AMI and instance management utilities."""
+
 from __future__ import annotations
 
 from dateutil.parser import parse as parse_date
@@ -428,6 +430,8 @@ class Volume(EC2Element):
 
 
 class Snapshot(EC2Element):
+    """Represent an EBS snapshot."""
+
     PROPERTIES = {"Encrypted": "encrypted", "SnapshotId": "snapshot_id"}
 
     encrypted: bool

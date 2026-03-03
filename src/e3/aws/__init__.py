@@ -1,3 +1,5 @@
+"""Provide AWS environment, session, and credential management."""
+
 from __future__ import annotations
 
 import argparse
@@ -53,6 +55,8 @@ if TYPE_CHECKING:
 
 
 class AWSSessionRunError(E3Error):
+    """Represent an error raised when an AWS session command fails."""
+
     def __init__(self, message: str, origin: str, process: Run | None = None) -> None:
         """Initialize an AWSSessionRunError.
 
@@ -347,9 +351,11 @@ class default_region:
         self.default_region = region
 
     def __enter__(self):
+        """Enter the default region context."""
         Env().aws_env.default_region = self.default_region
 
     def __exit__(self, _type, _value, _tb):
+        """Exit the default region context."""
         del _type, _value, _tb
         Env().aws_env.default_region = self.previous_region
 

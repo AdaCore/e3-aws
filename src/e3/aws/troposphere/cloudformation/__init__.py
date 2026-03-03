@@ -1,3 +1,5 @@
+"""Provide CloudFormation stack set troposphere resource constructs."""
+
 from __future__ import annotations
 
 import os

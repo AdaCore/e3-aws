@@ -1,3 +1,5 @@
+"""Provide DynamoDB table troposphere resource constructs."""
+
 from __future__ import annotations
 
 from enum import Enum
@@ -33,6 +35,7 @@ class ProjectionType(Enum):
     ALL = "ALL"
 
     def __str__(self):
+        """Return string representation of the projection type."""
         return str(self.value)
 
 
@@ -151,6 +154,7 @@ class Table(Construct):
 
     @property
     def ref(self) -> Ref:
+        """Return a CloudFormation Ref to this table."""
         return Ref(name_to_id(self.name))
 
     @property

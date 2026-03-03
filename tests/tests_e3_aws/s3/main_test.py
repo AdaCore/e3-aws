@@ -1,3 +1,5 @@
+"""Provide tests for S3 operations."""
+
 from __future__ import annotations
 
 from unittest.mock import ANY

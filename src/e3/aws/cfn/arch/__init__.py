@@ -1,3 +1,5 @@
+"""Provide CloudFormation architecture patterns for VPC and fortress stacks."""
+
 from __future__ import annotations
 
 from itertools import chain
@@ -48,7 +50,6 @@ PREFIX_LISTS = {
 
 class AWSFortressError(Exception):
     """Error raised when Fortress configuration fails."""
-
 
 
 class SubnetStack(Stack):
@@ -116,22 +117,26 @@ class SubnetStack(Stack):
 
     @property
     def s3_endpoint(self) -> VPCEndpoint:
+        """Return the S3 VPC endpoint."""
         resource = self[self.name + "S3EndPoint"]
         assert isinstance(resource, VPCEndpoint)
         return resource
 
     @property
     def subnet(self) -> Subnet:
+        """Return the subnet."""
         resource = self[self.name]
         assert isinstance(resource, Subnet)
         return resource
 
     @property
     def cidr_block(self) -> str:
+        """Return the CIDR block of the subnet."""
         return self.subnet.cidr_block
 
     @property
     def route_table(self) -> RouteTable:
+        """Return the route table."""
         resource = self[self.name + "RouteTable"]
         assert isinstance(resource, RouteTable)
         return resource
@@ -255,6 +260,8 @@ class VPCStack(Stack):
 
 
 class Fortress(Stack):
+    """Represent a fortress network architecture stack."""
+
     def __init__(
         self,
         name: str,
@@ -472,6 +479,7 @@ class Fortress(Stack):
         )
 
     def add_s3_endpoint_access(self) -> None:
+        """Add S3 endpoint access to the internal security group."""
         internal_sg = self.internal_security_group
         internal_sg.add_rule(
             PrefixListEgressRule("https", PREFIX_LISTS[internal_sg.region]["s3"])
@@ -607,60 +615,70 @@ class Fortress(Stack):
 
     @property
     def vpc(self) -> VPCStack:
+        """Return the VPC stack."""
         resource = self[self.name + "VPC"]
         assert isinstance(resource, VPCStack)
         return resource
 
     @property
     def private_subnet(self) -> SubnetStack:
+        """Return the private subnet stack."""
         resource = self.vpc[self.name + "PrivateNet"]
         assert isinstance(resource, SubnetStack)
         return resource
 
     @property
     def aws_endpoints_subnet(self) -> SubnetStack:
+        """Return the AWS endpoints subnet stack."""
         resource = self.vpc[self.name + "AWSEndpointsNet"]
         assert isinstance(resource, SubnetStack)
         return resource
 
     @property
     def internal_security_group(self) -> SecurityGroup:
+        """Return the internal security group."""
         resource = self[self.name + "InternalSG"]
         assert isinstance(resource, SecurityGroup)
         return resource
 
     @property
     def aws_endpoints_security_group(self) -> SecurityGroup:
+        """Return the AWS endpoints security group."""
         resource = self[self.name + "InterfaceEndpointsSG"]
         assert isinstance(resource, SecurityGroup)
         return resource
 
     @property
     def secretsmanager_endpoint(self) -> VPCInterfaceEndpoint:
+        """Return the Secrets Manager VPC endpoint."""
         resource = self[self.name + "SecretsManagerEndPoint"]
         assert isinstance(resource, VPCInterfaceEndpoint)
         return resource
 
     @property
     def lambda_endpoint(self) -> VPCInterfaceEndpoint:
+        """Return the Lambda VPC endpoint."""
         resource = self[self.name + "LambdaEndPoint"]
         assert isinstance(resource, VPCInterfaceEndpoint)
         return resource
 
     @property
     def public_subnet(self) -> SubnetStack:
+        """Return the public subnet stack."""
         resource = self.vpc[self.name + "PublicNet"]
         assert isinstance(resource, SubnetStack)
         return resource
 
     @property
     def bastion(self) -> Instance:
+        """Return the bastion instance."""
         resource = self[self.name + "Bastion"]
         assert isinstance(resource, Instance)
         return resource
 
     @property
     def private_server_instance_role(self) -> InstanceRole:
+        """Return the private server instance role."""
         resource = self[self.name + "PrivServerInstanceRole"]
         assert isinstance(resource, InstanceRole)
         return resource

@@ -276,25 +276,35 @@ class Bucket(Construct):
 
     @property
     def ref(self):
+        """Return a CloudFormation Ref to this bucket."""
         return Ref(name_to_id(self.name))
 
     @property
     def arn(self):
+        """Return the bucket ARN."""
         return f"arn:aws:s3:::{self.name}"
 
     @property
     def all_objects_arn(self):
+        """Return the ARN for all objects in the bucket."""
         return f"{self.arn}/*"
 
     @property
     def domain_name(self):
+        """Return the bucket domain name attribute."""
         return GetAtt(name_to_id(self.name), "DomainName")
 
     @property
     def regional_domain_name(self):
+        """Return the bucket regional domain name attribute."""
         return GetAtt(name_to_id(self.name), "RegionalDomainName")
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
+        """Return the CloudFormation policy document for this bucket.
+
+        :param stack: the stack requesting the policy
+        :return: a policy document with required S3 permissions
+        """
         return PolicyDocument(
             [
                 PolicyStatement(

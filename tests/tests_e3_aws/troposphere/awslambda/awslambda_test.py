@@ -1,3 +1,5 @@
+"""Provide tests for Lambda troposphere resources."""
+
 from __future__ import annotations
 
 import base64
@@ -626,6 +628,7 @@ def test_pyfunction(stack: Stack) -> None:
 
 
 def test_pyfunction_with_dlconfig(stack: Stack) -> None:
+    """Test PyFunction with dead letter queue configuration."""
     dlq = Queue(name="PyFunctionDLQ")
     stack.add(dlq)
     stack.add(
@@ -654,6 +657,7 @@ def test_pyfunction_with_dlconfig(stack: Stack) -> None:
 
 
 def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
+    """Test PyFunction with VPC configuration."""
     stack.add(
         PyFunction(
             name="mypylambda",

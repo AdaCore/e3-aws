@@ -1,3 +1,5 @@
+"""Provide S3-based event handler for logging and storing events."""
+
 from __future__ import annotations
 
 import json
@@ -44,6 +46,11 @@ class S3Handler(EventHandler):
 
     @classmethod
     def decode_config(cls, config_str: str) -> dict[str, str | None]:
+        """Decode a configuration string into handler parameters.
+
+        :param config_str: comma-separated configuration string
+        :return: a dict of handler configuration parameters
+        """
         event_bucket, log_bucket, sse, aws_profile = config_str.split(",", 3)
         return {
             "event_bucket": event_bucket,
@@ -53,6 +60,10 @@ class S3Handler(EventHandler):
         }
 
     def encode_config(self) -> str:
+        """Encode the handler configuration as a string.
+
+        :return: comma-separated configuration string
+        """
         return "{},{},{},{}".format(
             self.event_bucket,
             self.log_bucket,
@@ -75,6 +86,12 @@ class S3Handler(EventHandler):
         return ""
 
     def send_event(self, event: Event) -> bool:
+        """Send an event to S3.
+
+        :param event: the event to send
+        :return: True if the event was sent successfully
+        """
+
         def s3_cp(
             from_path: str,
             s3_key: str,

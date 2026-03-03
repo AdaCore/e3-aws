@@ -1,3 +1,5 @@
+"""Provide tests for CloudFormation CodeCommit resources."""
+
 from e3.aws.cfn.codecommit import Repository
 
 

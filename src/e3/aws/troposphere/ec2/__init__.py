@@ -1,3 +1,5 @@
+"""Provide EC2 VPC and networking troposphere resource constructs."""
+
 from __future__ import annotations
 
 from functools import cached_property
@@ -335,9 +337,7 @@ class Subnet(Construct):
             # By default only one route table is used to route traffic
             # from public subnets to the Internet Gateway.
             return self.internet_gateway.route_table
-        return ec2.RouteTable(
-            name_to_id(f"{self.name}RouteTable"), VpcId=Ref(self.vpc)
-        )
+        return ec2.RouteTable(name_to_id(f"{self.name}RouteTable"), VpcId=Ref(self.vpc))
 
     @cached_property
     def route_table_assoc(self) -> ec2.SubnetRouteTableAssociation:

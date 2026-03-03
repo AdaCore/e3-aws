@@ -1,3 +1,5 @@
+"""Provide Route53 DNS record and hosted zone CloudFormation resources."""
+
 from __future__ import annotations
 
 from e3.aws.cfn import AWSType, Resource
@@ -41,6 +43,7 @@ class RecordSet(Resource):
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         result = {
             "Name": self.dns_name,
             "Type": self.dns_type,
@@ -72,6 +75,7 @@ class HostedZone(Resource):
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         result: dict[str, Any] = {"Name": self.domain}
         if self.vpcs is not None:
             result["VPCs"] = [

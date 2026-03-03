@@ -1,3 +1,5 @@
+"""Provide S3 bucket and bucket policy CloudFormation resources."""
+
 from __future__ import annotations
 
 from enum import Enum
@@ -86,6 +88,7 @@ class Bucket(Resource):
 
     @property
     def arn(self) -> GetAtt:
+        """Return the bucket ARN attribute."""
         return self.getatt("Arn")
 
     @property

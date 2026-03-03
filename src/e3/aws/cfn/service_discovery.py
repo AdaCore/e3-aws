@@ -1,3 +1,5 @@
+"""Provide service discovery namespace CloudFormation resources."""
+
 from __future__ import annotations
 
 from e3.aws.cfn import AWSType, Resource
@@ -10,6 +12,8 @@ if TYPE_CHECKING:
 
 
 class PrivateDnsNamespace(Resource):
+    """Represent a private DNS namespace for service discovery."""
+
     def __init__(
         self, name: str, vpc: VPC, domain: str, description: str | None = None
     ) -> None:
@@ -20,9 +24,7 @@ class PrivateDnsNamespace(Resource):
         :param domain: domain
         :param description: optional description
         """
-        super().__init__(
-            name, kind=AWSType.SERVICE_DISCOVERY_PRIVATE_DNS_NAMESPACE
-        )
+        super().__init__(name, kind=AWSType.SERVICE_DISCOVERY_PRIVATE_DNS_NAMESPACE)
         self.domain = domain
         self.vpc = vpc
         self.description = description

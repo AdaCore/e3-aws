@@ -1,3 +1,5 @@
+"""Provide CloudFormation resource for CodeCommit repositories."""
+
 from __future__ import annotations
 
 import re
@@ -22,9 +24,7 @@ class Repository(Resource):
         :param description: description of the repository content
         """
         resource_name = re.sub(r"[^a-zA-Z0-9]+", "", name)
-        super().__init__(
-            resource_name, kind=AWSType.CODE_COMMIT_REPOSITORY
-        )
+        super().__init__(resource_name, kind=AWSType.CODE_COMMIT_REPOSITORY)
         self.name = resource_name
         self.repository_name = name
         self.description = description

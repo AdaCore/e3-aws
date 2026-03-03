@@ -1,3 +1,5 @@
+"""Provide tests for CloudWatch troposphere resources."""
+
 from __future__ import annotations
 
 from troposphere import Ref
@@ -25,19 +27,18 @@ EXPECTED_ALARM_TEMPLATE = {
     "Myalarm": {
         "Properties": {
             **cast(
-                "dict[str, Any]", EXPECTED_ALARM_DEFAULT_TEMPLATE["Myalarm"]["Properties"]
+                "dict[str, Any]",
+                EXPECTED_ALARM_DEFAULT_TEMPLATE["Myalarm"]["Properties"],
             ),
-
-                "AlarmActions": ["StrAction", {"Ref": "RefAction"}],
-                "Dimensions": [
-                    {"Name": "StrDimensionValue", "Value": "DimensionValue"},
-                    {"Name": "RefDimensionValue", "Value": {"Ref": "DimensionValue"}},
-                ],
-                "MetricName": "Invocations",
-                "Namespace": "AWS/Lambda",
-                "Period": 300,
-                "Threshold": 1.0
-            ,
+            "AlarmActions": ["StrAction", {"Ref": "RefAction"}],
+            "Dimensions": [
+                {"Name": "StrDimensionValue", "Value": "DimensionValue"},
+                {"Name": "RefDimensionValue", "Value": {"Ref": "DimensionValue"}},
+            ],
+            "MetricName": "Invocations",
+            "Namespace": "AWS/Lambda",
+            "Period": 300,
+            "Threshold": 1.0,
         },
         "Type": "AWS::CloudWatch::Alarm",
     },

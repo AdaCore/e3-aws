@@ -1,3 +1,5 @@
+"""Provide tests for CloudFormation IAM resources."""
+
 import pytest
 
 from e3.aws.cfn.iam import (

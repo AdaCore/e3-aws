@@ -58,6 +58,8 @@ class PolicyStatement:
 
 
 class Allow(PolicyStatement):
+    """Represent an IAM Allow policy statement."""
+
     def __init__(
         self,
         action: str | list[str],

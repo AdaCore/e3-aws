@@ -1,3 +1,5 @@
+"""Provide IAM policy, role, and principal CloudFormation resources."""
+
 from __future__ import annotations
 
 from enum import Enum
@@ -15,6 +17,8 @@ if TYPE_CHECKING:
 
 
 class PrincipalKind(Enum):
+    """Represent the kinds of IAM policy principals."""
+
     AWS = "AWS"
     FEDERATED = "Federated"
     SERVICE = "Service"

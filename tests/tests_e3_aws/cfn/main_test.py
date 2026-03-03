@@ -1,3 +1,4 @@
+"""Provide tests for CloudFormation stack operations."""
 
 import pytest
 from botocore.stub import ANY, Stubber
@@ -8,6 +9,7 @@ from e3.aws.cfn.s3 import Bucket
 
 
 def test_stack_create():
+    """Test stack creation."""
     s = Stack(name="teststack")
     s.body
     assert True
@@ -18,6 +20,7 @@ def test_stack_create():
 
 
 def test_stack_compose():
+    """Test stack composition."""
     s = Stack(name="teststack")
     s2 = Stack(name="teststack2")
     s2.add(Bucket("bucket1")).add(Bucket("bucket2"))
@@ -26,6 +29,7 @@ def test_stack_compose():
 
 
 def test_create_stack():
+    """Test create stack API call."""
     s = Stack(name="teststack")
 
     aws_env = AWSEnv(regions=["us-east-1"])
@@ -59,6 +63,7 @@ def test_create_stack():
 
 
 def test_create_change_set():
+    """Test create change set API call."""
     s = Stack(name="teststack")
 
     aws_env = AWSEnv(regions=["us-east-1"])
@@ -92,6 +97,7 @@ def test_create_change_set():
 
 
 def test_create_change_set_role_arn():
+    """Test create change set with role ARN."""
     s = Stack(name="teststack", cfn_role_arn="arn:aws:iam::123456789012:role/S3Access")
 
     aws_env = AWSEnv(regions=["us-east-1"])
@@ -115,6 +121,7 @@ def test_create_change_set_role_arn():
 
 
 def test_validate():
+    """Test stack template validation."""
     s = Stack(name="teststack")
 
     aws_env = AWSEnv(regions=["us-east-1"])

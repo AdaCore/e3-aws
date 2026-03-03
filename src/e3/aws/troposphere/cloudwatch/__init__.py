@@ -1,3 +1,5 @@
+"""Provide CloudWatch alarm troposphere resource constructs."""
+
 from __future__ import annotations
 
 from troposphere import GetAtt, Ref, cloudwatch
@@ -67,6 +69,7 @@ class Alarm(Construct):
 
     @property
     def ref(self) -> Ref:
+        """Return a CloudFormation Ref to this alarm."""
         return Ref(name_to_id(self.name))
 
     def resources(self, stack: Stack) -> list[AWSObject]:

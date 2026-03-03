@@ -1,3 +1,5 @@
+"""Provide CloudFormation stack and template management."""
+
 from __future__ import annotations
 
 import logging
@@ -170,30 +172,62 @@ class Sub:
 
 
 def getatt_representer(dumper: CFNYamlDumper, data: Any) -> yaml.ScalarNode:
+    """Represent a GetAtt intrinsic function in YAML.
+
+    :param dumper: the YAML dumper instance
+    :param data: the GetAtt data to serialize
+    :return: a YAML scalar node with the !GetAtt tag
+    """
     return dumper.represent_scalar("!GetAtt", "%s.%s" % (data.name, data.attribute))
 
 
 def ref_representer(dumper: CFNYamlDumper, data: Any) -> yaml.ScalarNode:
+    """Represent a Ref intrinsic function in YAML.
+
+    :param dumper: the YAML dumper instance
+    :param data: the Ref data to serialize
+    :return: a YAML scalar node with the !Ref tag
+    """
     return dumper.represent_scalar("!Ref", data.name)
 
 
 def base64_representer(dumper: CFNYamlDumper, data: Any) -> yaml.MappingNode:
+    """Represent a Base64 intrinsic function in YAML.
+
+    :param dumper: the YAML dumper instance
+    :param data: the Base64 data to serialize
+    :return: a YAML mapping node with the Fn::Base64 key
+    """
     return dumper.represent_dict({"Fn::Base64": data.content})
 
 
 def sub_representer(
     dumper: CFNYamlDumper, data: Any
 ) -> yaml.SequenceNode | yaml.ScalarNode:
+    """Represent a Sub intrinsic function in YAML.
+
+    :param dumper: the YAML dumper instance
+    :param data: the Sub data to serialize
+    :return: a YAML node with the !Sub tag
+    """
     if data.variables:
         return dumper.represent_sequence("!Sub", [data.content, data.variables])
     return dumper.represent_scalar("!Sub", data.content)
 
 
 def join_representer(dumper: CFNYamlDumper, data: Any) -> yaml.SequenceNode:
+    """Represent a Join intrinsic function in YAML.
+
+    :param dumper: the YAML dumper instance
+    :param data: the Join data to serialize
+    :return: a YAML sequence node with the !Join tag
+    """
     return dumper.represent_sequence("!Join", [data.delimiter, data.content])
 
 
 class CFNYamlDumper(yaml.Dumper):
+    """Provide a YAML dumper for CloudFormation templates."""
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Yaml dumper for cloud formation templates.
 
@@ -301,6 +335,7 @@ class StackEventOperation(Enum):
     rollback = "ROLLBACK"
 
     def __str__(self) -> str:
+        """Return string representation of the operation."""
         return {
             "CREATE": "creation",
             "DELETE": "deletion",
@@ -321,6 +356,7 @@ class StackEventState(Enum):
     skipped = "SKIPPED"
 
     def __str__(self) -> str:
+        """Return string representation of the state."""
         return {
             "IN_PROGRESS": "started",
             "FAILED": "failed",
@@ -366,6 +402,7 @@ class StackEventStatus:
         )
 
     def __str__(self) -> str:
+        """Return string representation of the stack status."""
         return f"{self.operation} {self.state}"
 
 
@@ -417,9 +454,10 @@ class StackEvent:
         )
 
     def __str__(self) -> str:
+        """Return string representation of the stack event."""
         return (
             f"{self.logical_resource_id:<32}: {self.resource_type:<32}: "
-             f"{self.resource_status!s:<16} ({self.resource_status_reason})"
+            f"{self.resource_status!s:<16} ({self.resource_status_reason})"
         )
 
 
@@ -500,11 +538,22 @@ class Stack:
         return self.add(element)
 
     def __getitem__(self, key: str) -> Resource | Stack:
+        """Return a resource by its logical name.
+
+        :param key: the logical resource name
+        :return: the resource or nested stack
+        :raise KeyError: if the resource does not exist
+        """
         if key not in self.resources:
             raise KeyError
         return self.resources[key]
 
     def __contains__(self, key: str) -> bool:
+        """Check whether a resource exists in the stack.
+
+        :param key: the logical resource name
+        :return: True if the resource exists
+        """
         return key in self.resources
 
     def create_data_dir(self, root_dir: str) -> None:
@@ -584,6 +633,11 @@ class Stack:
 
     @client("cloudformation")
     def wait(self, client: botocore.client.Client) -> str:
+        """Wait for the stack operation to complete.
+
+        :param client: the CloudFormation client
+        :return: the final stack status string
+        """
         status = self.state()
         while "PROGRESS" in status["StackStatus"]:
             for event in self.events(mark_as_read=True):

@@ -1,3 +1,5 @@
+"""Provide Docker-based Lambda function support using troposphere."""
+
 from __future__ import annotations
 
 import logging

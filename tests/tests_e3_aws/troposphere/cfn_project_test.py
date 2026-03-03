@@ -38,13 +38,11 @@ class MyRoleCFNProject(CFNProjectMain):
     def create_stack(self) -> Stack | list[Stack]:
         """Return MyRoleCFNProject stack."""
         self.add(
-
-                Role(
-                    name="TestRole",
-                    description="TestRole description",
-                    trust={"Service": "test"},
-                )
-
+            Role(
+                name="TestRole",
+                description="TestRole description",
+                trust={"Service": "test"},
+            )
         )
         return self.stack
 

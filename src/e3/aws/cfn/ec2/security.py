@@ -1,3 +1,5 @@
+"""Provide EC2 security group and security rule CloudFormation resources."""
+
 from __future__ import annotations
 
 from e3.aws.cfn import AWSType, GetAtt, Resource
@@ -73,6 +75,7 @@ class GroupSecurityRule:
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         result: dict[str, Any] = {"IpProtocol": self.ip_protocol}
         if self.RULE_TYPE is not None:
             result[self.RULE_TYPE] = self.target
@@ -86,22 +89,32 @@ class GroupSecurityRule:
 
 
 class EgressRule(GroupSecurityRule):
+    """Represent an outbound security group rule."""
+
     pass
 
 
 class IngressRule(GroupSecurityRule):
+    """Represent an inbound security group rule."""
+
     pass
 
 
 class Ipv4EgressRule(EgressRule):
+    """Represent an IPv4 outbound security group rule."""
+
     RULE_TYPE: str = "CidrIp"
 
 
 class PrefixListEgressRule(EgressRule):
+    """Represent a prefix list outbound security group rule."""
+
     RULE_TYPE: str = "DestinationPrefixListId"
 
 
 class Ipv4IngressRule(IngressRule):
+    """Represent an IPv4 inbound security group rule."""
+
     RULE_TYPE: str = "CidrIp"
 
 
@@ -150,6 +163,7 @@ class SecurityGroup(Resource):
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         result: dict[str, Any] = {"VpcId": self.vpc.ref}
 
         if self.egress:

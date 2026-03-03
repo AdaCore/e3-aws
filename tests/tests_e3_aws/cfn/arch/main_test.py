@@ -1,3 +1,4 @@
+"""Provide tests for CloudFormation architecture patterns."""
 
 import pytest
 from botocore.stub import ANY
@@ -48,6 +49,7 @@ GITHUB_API_RANGE = {"git": ["127.0.0.0/24", "2a0a:a440::/29"]}
 )
 @pytest.mark.parametrize("enable_github", [True, False])
 def test_create_fortress(enable_github, requests_mock):
+    """Test fortress stack creation."""
     if enable_github:
         requests_mock.get("https://api.github.com/meta", json=GITHUB_API_RANGE)
     requests_mock.get(
@@ -114,6 +116,7 @@ def test_create_fortress(enable_github, requests_mock):
     reason="This test does not work offline and the associated feature is deprecated"
 )
 def test_create_fortress_no_bastion():
+    """Test fortress stack creation without bastion."""
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
     with default_region("us-east-1"):
         stub = aws_env.stub("ec2", region="us-east-1")
@@ -159,6 +162,7 @@ def test_create_fortress_no_bastion():
 
 
 def test_create_fortress_with_too_much_sgs():
+    """Test fortress creation with too many security groups."""
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
     with default_region("us-east-1"):
         stub = aws_env.stub("ec2", region="us-east-1")

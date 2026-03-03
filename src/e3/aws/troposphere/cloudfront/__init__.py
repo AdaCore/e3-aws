@@ -1,3 +1,5 @@
+"""Provide CloudFront distribution troposphere resource constructs."""
+
 from __future__ import annotations
 
 import os
@@ -92,7 +94,9 @@ class S3WebsiteDistribution(Construct):
         self.name = name
         self.aliases = aliases
         # bucket_name can't be None if bucket is None
-        self.bucket = Bucket(name=cast("str", bucket_name)) if bucket is None else bucket
+        self.bucket = (
+            Bucket(name=cast("str", bucket_name)) if bucket is None else bucket
+        )
         # If the bucket must be created by this Construct
         self._create_bucket = bucket is None
         self.certificate_arn = certificate_arn
