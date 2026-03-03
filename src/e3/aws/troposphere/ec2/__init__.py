@@ -1,3 +1,4 @@
+"""Provide EC2 VPC and networking troposphere resource constructs."""
 from __future__ import annotations
 
 from functools import cached_property

@@ -1,3 +1,4 @@
+"""Provide AWS environment, session, and credential management."""
 from __future__ import annotations
 
 import argparse

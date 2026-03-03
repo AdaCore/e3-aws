@@ -1,3 +1,4 @@
+"""Provide troposphere-based CloudFormation stack and construct abstractions."""
 from __future__ import annotations
 
 import logging

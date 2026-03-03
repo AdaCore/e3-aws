@@ -1,3 +1,4 @@
+"""Provide SQS queue troposphere resource constructs."""
 from __future__ import annotations
 
 from troposphere import GetAtt, Ref, sns, sqs

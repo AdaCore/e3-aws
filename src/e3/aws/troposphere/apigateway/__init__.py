@@ -1,3 +1,4 @@
+"""Provide API Gateway troposphere resource constructs."""
 from __future__ import annotations
 
 import json

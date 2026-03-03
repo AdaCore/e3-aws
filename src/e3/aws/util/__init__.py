@@ -1,3 +1,4 @@
+"""Provide AWS utility functions for region mapping and formatting."""
 from __future__ import annotations
 
 import importlib.resources

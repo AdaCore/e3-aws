@@ -1,3 +1,4 @@
+"""Provide Secrets Manager troposphere resource constructs."""
 from __future__ import annotations
 
 from troposphere import Ref, secretsmanager

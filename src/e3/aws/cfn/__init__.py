@@ -1,3 +1,4 @@
+"""Provide CloudFormation stack and template management."""
 from __future__ import annotations
 
 import logging

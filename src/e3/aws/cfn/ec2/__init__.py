@@ -1,3 +1,4 @@
+"""Provide CloudFormation EC2 resource definitions for instances, VPCs, and networking."""
 from __future__ import annotations
 
 from abc import abstractmethod

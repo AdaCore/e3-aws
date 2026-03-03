@@ -1,3 +1,4 @@
+"""Provide CloudFront distribution troposphere resource constructs."""
 from __future__ import annotations
 
 import os

@@ -1,3 +1,4 @@
+"""Provide CloudFormation architecture patterns for VPC and fortress stacks."""
 from __future__ import annotations
 
 from itertools import chain
