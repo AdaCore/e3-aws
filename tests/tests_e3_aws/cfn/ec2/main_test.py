@@ -30,6 +30,7 @@ from e3.aws.ec2.ami import AMI
 
 
 def test_create_network():
+    """Test network resource creation."""
     s = Stack(name="teststack")
 
     s = Stack(name="MyStack")
@@ -54,6 +55,7 @@ def test_create_network():
 
 
 def test_create_instance():
+    """Test EC2 instance creation."""
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
     with default_region("us-east-1"):
         stub = aws_env.stub("ec2", region="us-east-1")
@@ -156,6 +158,7 @@ def test_win_user_data_creation():
 
 
 def test_cfn_init_set():
+    """Test CFN init configuration set."""
     s = Stack(name="teststack")
 
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)

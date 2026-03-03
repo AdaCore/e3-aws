@@ -8,6 +8,11 @@ DISTRIBUTION_ID = os.environ["DISTRIBUTION_ID"]
 
 
 def handler(event, context):
+    """Handle CloudFront cache invalidation on S3 events.
+
+    :param event: the S3 event triggering the invalidation
+    :param context: the Lambda runtime context
+    """
     path = []
     client = boto3.client("cloudfront")
     for items in event["Records"]:

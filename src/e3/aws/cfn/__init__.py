@@ -171,26 +171,56 @@ class Sub:
 
 
 def getatt_representer(dumper: CFNYamlDumper, data: Any) -> yaml.ScalarNode:
+    """Represent a GetAtt intrinsic function in YAML.
+
+    :param dumper: the YAML dumper instance
+    :param data: the GetAtt data to serialize
+    :return: a YAML scalar node with the !GetAtt tag
+    """
     return dumper.represent_scalar("!GetAtt", "%s.%s" % (data.name, data.attribute))
 
 
 def ref_representer(dumper: CFNYamlDumper, data: Any) -> yaml.ScalarNode:
+    """Represent a Ref intrinsic function in YAML.
+
+    :param dumper: the YAML dumper instance
+    :param data: the Ref data to serialize
+    :return: a YAML scalar node with the !Ref tag
+    """
     return dumper.represent_scalar("!Ref", data.name)
 
 
 def base64_representer(dumper: CFNYamlDumper, data: Any) -> yaml.MappingNode:
+    """Represent a Base64 intrinsic function in YAML.
+
+    :param dumper: the YAML dumper instance
+    :param data: the Base64 data to serialize
+    :return: a YAML mapping node with the Fn::Base64 key
+    """
     return dumper.represent_dict({"Fn::Base64": data.content})
 
 
 def sub_representer(
     dumper: CFNYamlDumper, data: Any
 ) -> yaml.SequenceNode | yaml.ScalarNode:
+    """Represent a Sub intrinsic function in YAML.
+
+    :param dumper: the YAML dumper instance
+    :param data: the Sub data to serialize
+    :return: a YAML node with the !Sub tag
+    """
     if data.variables:
         return dumper.represent_sequence("!Sub", [data.content, data.variables])
     return dumper.represent_scalar("!Sub", data.content)
 
 
 def join_representer(dumper: CFNYamlDumper, data: Any) -> yaml.SequenceNode:
+    """Represent a Join intrinsic function in YAML.
+
+    :param dumper: the YAML dumper instance
+    :param data: the Join data to serialize
+    :return: a YAML sequence node with the !Join tag
+    """
     return dumper.represent_sequence("!Join", [data.delimiter, data.content])
 
 
