@@ -1,5 +1,6 @@
 import pytest
-from e3.aws import AWSEnv, default_region, Session
+
+from e3.aws import AWSEnv, Session, default_region
 from e3.aws.ec2.ami import AMI
 
 

@@ -1,13 +1,14 @@
-import boto3
 import os
 import time
+
+import boto3
 
 DISTRIBUTION_ID = os.environ["DISTRIBUTION_ID"]
 
 
 def handler(event, context):
     path = []
-    client = boto3.client("cloudfront")  # noqa: F841
+    client = boto3.client("cloudfront")
     for items in event["Records"]:
         if items["s3"]["object"]["key"] == "index.html":
             path.append("/")

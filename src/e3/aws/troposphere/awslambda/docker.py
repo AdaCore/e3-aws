@@ -1,18 +1,23 @@
 from __future__ import annotations
-from datetime import timezone, datetime
-import logging
-from typing import TYPE_CHECKING
-from troposphere import awslambda, GetAtt
 
+import logging
+from datetime import datetime, timezone
+
+from troposphere import GetAtt, awslambda
+
+from e3.aws.troposphere.awslambda import Architecture, Function, UnknownPlatform
 from e3.aws.troposphere.iam.role import Role
 from e3.aws.util.ecr import build_and_push_image
-from e3.aws.troposphere.awslambda import Function, Architecture, UnknownPlatform
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any
-    from troposphere import AWSObject
-    from e3.aws.troposphere import Stack
     from python_on_whales import DockerClient
+    from troposphere import AWSObject
+
+    from e3.aws.troposphere import Stack
+
+    from typing import Any
 
 logger = logging.getLogger(__name__)
 

@@ -1,9 +1,10 @@
 from __future__ import annotations
+
+from datetime import datetime
+
 import pytest
 
-from e3.aws import AWSEnv, AWSSessionRunError
-from e3.aws import Session
-from datetime import datetime
+from e3.aws import AWSEnv, AWSSessionRunError, Session
 
 from typing import TYPE_CHECKING
 

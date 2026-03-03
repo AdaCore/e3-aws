@@ -1,10 +1,13 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 import logging
 import re
 import time
-from botocore.exceptions import ClientError
+
 from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Any, Literal, Optional
@@ -34,7 +37,7 @@ class DynamoDB:
         items: list[dict[str, Any]],
         table_name: str,
         keys: list[str],
-        exist_ok: Optional[bool] = None,
+        exist_ok: bool | None = None,
     ) -> None:
         """Add multiple items to a table.
 
@@ -53,7 +56,7 @@ class DynamoDB:
         item: dict[str, Any],
         table_name: str,
         keys: list[str],
-        exist_ok: Optional[bool] = None,
+        exist_ok: bool | None = None,
     ) -> dict[str, Any]:
         """Add item to a table.
 
@@ -97,7 +100,7 @@ class DynamoDB:
         logger.info(f"Retrieving item {item} from {table_name}...")
         try:
             response = table.get_item(
-                Key={key: item[key] for key in keys if key in item.keys()}
+                Key={key: item[key] for key in keys if key in item}
             )
             logger.debug(f"Get_item response: {response}")
         except ClientError as e:
@@ -219,7 +222,7 @@ class DynamoDB:
         logger.debug(f"UpdateExpression: {update_exp}")
 
         params = {
-            "Key": {key: item[key] for key in keys if key in item.keys()},
+            "Key": {key: item[key] for key in keys if key in item},
             "ExpressionAttributeValues": exp_attr_values,
             "ExpressionAttributeNames": exp_attr_names,
             "UpdateExpression": update_exp,

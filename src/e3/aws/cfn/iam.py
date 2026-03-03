@@ -1,13 +1,17 @@
 from __future__ import annotations
+
 from enum import Enum
-from typing import TYPE_CHECKING
 
 from e3.aws.cfn import AWSType, GetAtt, Join, Resource, Stack
 
+from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
-    from typing import Any, Iterable, Self
+    from collections.abc import Iterable
 
     from e3.aws.cfn import Ref
+
+    from typing import Any, Self
 
 
 class PrincipalKind(Enum):
@@ -17,7 +21,7 @@ class PrincipalKind(Enum):
     EVERYONE = "*"
 
 
-class Principal(object):
+class Principal:
     """Represent a principal in an IAM policy."""
 
     def __init__(self, kind: PrincipalKind, value: str | None = None) -> None:
@@ -56,7 +60,7 @@ class Principal(object):
         return result
 
 
-class Statement(object):
+class Statement:
     """Statement of IAM Policy Document."""
 
     EFFECT: str = ""
@@ -206,7 +210,7 @@ class PolicyDocument:
         return self
 
     def __iadd__(self, statements: list[Statement]) -> PolicyDocument:  # type: ignore[misc]
-        """see extend."""
+        """See extend."""
         return self.extend(statements)
 
     def __add__(
@@ -264,7 +268,7 @@ class Policy(Resource):
         :param groups: list of groups to apply the policy to
         :param users: list of users to apply the policy to
         """
-        super(Policy, self).__init__(name, kind=AWSType.IAM_POLICY)
+        super().__init__(name, kind=AWSType.IAM_POLICY)
         self.roles = roles
         self.groups = groups
         self.users = users
@@ -298,7 +302,7 @@ class InstanceProfile(Resource):
         :param name: logical name in the stack
         :param role: name of the associated role
         """
-        super(InstanceProfile, self).__init__(name, kind=AWSType.IAM_INSTANCE_PROFILE)
+        super().__init__(name, kind=AWSType.IAM_INSTANCE_PROFILE)
         self.role = role
 
     @property
@@ -326,7 +330,7 @@ class Role(Resource):
         # update with cloudform. In that case RoleName is generated directly by
         # Cloud Formation. This is not related to the name of the resource as
         # part of a stack.
-        super(Role, self).__init__(name, kind=AWSType.IAM_ROLE)
+        super().__init__(name, kind=AWSType.IAM_ROLE)
         self.path = path
         self.policies: list[Policy] = []
         self.assume_role_policy = assume_role_policy
@@ -368,7 +372,7 @@ class Group(Resource):
             the IAM managed policies that you want to attach to the user.
         :param path: the path associated with this role (default: /)
         """
-        super(Group, self).__init__(name, kind=AWSType.IAM_GROUP)
+        super().__init__(name, kind=AWSType.IAM_GROUP)
         self.path = path
         self.policies: list[Policy] = []
         self.managed_policy_arns = managed_policy_arns or []
@@ -418,7 +422,7 @@ class User(Resource):
         :param permissions_boundary: The ARN of the policy that is used to set
             the permissions boundary for the user.
         """
-        super(User, self).__init__(name, kind=AWSType.IAM_USER)
+        super().__init__(name, kind=AWSType.IAM_USER)
         self.groups = groups or []
         self.path = path
         self.policies: list[Policy] = []
@@ -465,7 +469,7 @@ class InstanceRole(Stack):
             name + ``InstanceProfile``
         :param path: path associated with this role
         """
-        super(InstanceRole, self).__init__(name)
+        super().__init__(name)
         assume_role_policy = PolicyDocument()
         assume_role_policy.append(INSTANCE_ASSUME_ROLE)
         role = Role(name, assume_role_policy, path)

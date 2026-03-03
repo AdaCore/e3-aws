@@ -1,11 +1,12 @@
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Any
 
 
-class CfnConfig(object):
+class CfnConfig:
     """A cfn-ini config."""
 
     def __init__(self) -> None:
@@ -35,7 +36,7 @@ class CfnConfig(object):
         """
         assert content is None or path is None, "cannot set both path and content"
         if path is not None:
-            with open(path, "r") as fd:
+            with open(path) as fd:
                 content = fd.read()
         assert content is not None, "no content for file"
 
@@ -100,7 +101,7 @@ class CfnConfig(object):
         }
 
 
-class CfnIni(object):
+class CfnIni:
     """Represent an AWS::CloudFormation::Init resource."""
 
     def __init__(self) -> None:

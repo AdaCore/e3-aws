@@ -1,14 +1,14 @@
 """Provide AWS Config construct tests."""
 
-from e3.aws.troposphere.config.configuration_recorder import ConfigurationRecorder
+from e3.aws.troposphere import Stack
 from e3.aws.troposphere.config.config_rule import (
-    S3BucketPublicWriteProhibited,
+    IAMUserNoPoliciesCheck,
     S3BucketPublicReadProhibited,
+    S3BucketPublicWriteProhibited,
     S3BucketServerSideEncryptionEnabled,
     S3BucketSSLRequestsOnly,
-    IAMUserNoPoliciesCheck,
 )
-from e3.aws.troposphere import Stack
+from e3.aws.troposphere.config.configuration_recorder import ConfigurationRecorder
 
 EXPECTED_RULES = {
     "S3BucketPublicWriteProhibited": {

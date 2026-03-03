@@ -1,11 +1,14 @@
 """Test the deploy_simple_stack example."""
 
 from __future__ import annotations
-from pathlib import Path
-import pytest
+
 import sys
-from typing import TYPE_CHECKING
+from pathlib import Path
+
+import pytest
 import yaml
+
+from typing import TYPE_CHECKING
 
 TEST_DIR = Path(__file__).parent
 EXAMPLES_DIR = TEST_DIR.parent.parent.parent / "examples"

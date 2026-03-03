@@ -1,14 +1,13 @@
-from __future__ import absolute_import, division, print_function
 
 import pytest
-
 from botocore.stub import ANY
+
 from e3.aws import AWSEnv, default_region
-from e3.aws.cfn.arch import Fortress, AWSFortressError
+from e3.aws.cfn.arch import AWSFortressError, Fortress
+from e3.aws.cfn.ec2.security import SecurityGroup
 from e3.aws.cfn.iam import Allow, Policy, PolicyDocument
 from e3.aws.cfn.s3 import Bucket
 from e3.aws.ec2.ami import AMI
-from e3.aws.cfn.ec2.security import SecurityGroup
 
 AWS_IP_RANGES = {
     "syncToken": "1600978876",

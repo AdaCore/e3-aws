@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import pytest
-from troposphere import ec2, Ref
+from troposphere import Ref, ec2
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.ec2 import InternetGateway
-
 
 EXPECTED_TEMPLATE = {
     "VpcTest": {

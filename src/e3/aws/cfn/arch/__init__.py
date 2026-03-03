@@ -1,12 +1,13 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 from itertools import chain
 
-from e3.aws.cfn import Stack, Join, Resource
+from e3.aws.cfn import Join, Resource, Stack
 from e3.aws.cfn.arch.security import amazon_security_groups, github_security_groups
 from e3.aws.cfn.ec2 import (
-    EC2NetworkInterface,
     EIP,
+    VPC,
+    EC2NetworkInterface,
     Instance,
     InternetGateway,
     LaunchTemplate,
@@ -16,10 +17,9 @@ from e3.aws.cfn.ec2 import (
     RouteTable,
     Subnet,
     SubnetRouteTableAssociation,
-    VPC,
     VPCEndpoint,
-    VPCInterfaceEndpoint,
     VPCGatewayAttachment,
+    VPCInterfaceEndpoint,
 )
 from e3.aws.cfn.ec2.security import (
     Ipv4EgressRule,
@@ -27,8 +27,10 @@ from e3.aws.cfn.ec2.security import (
     PrefixListEgressRule,
     SecurityGroup,
 )
-from e3.aws.cfn.iam import PolicyDocument, Principal, PrincipalKind, InstanceRole, Allow
+from e3.aws.cfn.iam import Allow, InstanceRole, PolicyDocument, Principal, PrincipalKind
 from e3.aws.cfn.s3 import Bucket
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from e3.aws.cfn.iam import Policy
@@ -47,7 +49,6 @@ PREFIX_LISTS = {
 class AWSFortressError(Exception):
     """Error raised when Fortress configuration fails."""
 
-    pass
 
 
 class SubnetStack(Stack):
@@ -332,8 +333,7 @@ class Fortress(Stack):
                     self.name + "InternalSG",
                     self.vpc.vpc,
                     description=(
-                        "Allow ssh inside VPC and allow https "
-                        "to VPC endpoints subnet"
+                        "Allow ssh inside VPC and allow https to VPC endpoints subnet"
                     ),
                     rules=[
                         Ipv4IngressRule("ssh", self.public_subnet.cidr_block),
@@ -418,7 +418,7 @@ class Fortress(Stack):
                 to=["lambda:InvokeFunction"],
                 on=list(
                     chain.from_iterable(
-                        ((lambda_arn, lambda_arn + ":*") for lambda_arn in lambda_arns)
+                        (lambda_arn, lambda_arn + ":*") for lambda_arn in lambda_arns
                     )
                 ),
                 apply_to=Principal(PrincipalKind.EVERYONE),

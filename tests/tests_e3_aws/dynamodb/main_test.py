@@ -1,15 +1,20 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-import pytest
-from moto import mock_aws
-from botocore.exceptions import ClientError
+
 import boto3
+import pytest
+from botocore.exceptions import ClientError
+from moto import mock_aws
+
 from e3.aws.dynamodb import DynamoDB
 
+from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
-    from typing import Any, Generator
-    from collections.abc import Iterable
+    from collections.abc import Generator, Iterable
+
     from pytest import LogCaptureFixture
+
+    from typing import Any
 
 TABLE_NAME = "customer"
 PRIMARY_KEYS = ["name"]

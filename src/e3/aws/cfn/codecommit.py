@@ -1,7 +1,10 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
-from e3.aws.cfn import AWSType, Resource
+
 import re
+
+from e3.aws.cfn import AWSType, Resource
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Any
@@ -19,7 +22,7 @@ class Repository(Resource):
         :param description: description of the repository content
         """
         resource_name = re.sub(r"[^a-zA-Z0-9]+", "", name)
-        super(Repository, self).__init__(
+        super().__init__(
             resource_name, kind=AWSType.CODE_COMMIT_REPOSITORY
         )
         self.name = resource_name

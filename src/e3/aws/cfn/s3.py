@@ -1,14 +1,16 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 from enum import Enum
 
 from e3.aws.cfn import AWSType, Resource
 from e3.aws.cfn.iam import PolicyDocument
 
-if TYPE_CHECKING:
-    from typing import Any
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
     from e3.aws.cfn import GetAtt
+
+    from typing import Any
 
 
 class AccessControl(Enum):
@@ -36,7 +38,7 @@ class BucketPolicy(Resource):
         :param bucket: bucket on which to apply the policy
         :param policy_document: Policy document to apply
         """
-        super(BucketPolicy, self).__init__(name, kind=AWSType.S3_BUCKET_POLICY)
+        super().__init__(name, kind=AWSType.S3_BUCKET_POLICY)
         self.bucket = bucket
         self.policy_document = policy_document
 
@@ -74,7 +76,7 @@ class Bucket(Resource):
         :param bucket_name: the bucket name in AWS. If set cloud formation will
             not be able to update settings of the buckets automatically.
         """
-        super(Bucket, self).__init__(name, kind=AWSType.S3_BUCKET)
+        super().__init__(name, kind=AWSType.S3_BUCKET)
         if access_control is None:
             self.access_control = AccessControl.PRIVATE
         else:

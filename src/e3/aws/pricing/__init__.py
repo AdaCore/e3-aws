@@ -1,14 +1,17 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 import json
 
 from e3.aws.util import get_region_name
 
+from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
-    from typing import Any, Union
     import botocore
 
-    _CacheKey = tuple[Union[str, None], Union[str, None], Union[str, None]]
+    from typing import Any, Union
+
+    _CacheKey = tuple[str | None, str | None, str | None]
 
     # This is only to avoid repeating the type everywhere
     PriceInformation = dict[str, Any]

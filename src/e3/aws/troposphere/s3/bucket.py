@@ -1,23 +1,24 @@
 """Provide S3 buckets."""
 
 from __future__ import annotations
+
 from enum import Enum
-from typing import TYPE_CHECKING
 
-
-from troposphere import AccountId, AWSObject, s3, Ref, GetAtt
+from troposphere import AccountId, AWSObject, GetAtt, Ref, s3
 
 from e3.aws import name_to_id
-from e3.aws.troposphere.awslambda import Function
 from e3.aws.troposphere import Construct
+from e3.aws.troposphere.awslambda import Function
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 from e3.aws.troposphere.sns import Topic
 from e3.aws.troposphere.sqs import Queue
 
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
+
     from typing import Any
 
 # A default lifecycle rule to abort and delete incomplete multipart upload
@@ -104,9 +105,9 @@ class Bucket(Construct):
             )
         ]
 
-        assert (
-            self.authorized_encryptions
-        ), "At least one authorized s3 encryption should be provided"
+        assert self.authorized_encryptions, (
+            "At least one authorized s3 encryption should be provided"
+        )
 
     @property
     def policy_document(self) -> PolicyDocument:

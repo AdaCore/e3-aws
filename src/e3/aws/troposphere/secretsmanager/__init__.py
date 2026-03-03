@@ -1,15 +1,17 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
+from troposphere import Ref, secretsmanager
 
 from e3.aws.troposphere import Construct, Stack, name_to_id
 from e3.aws.troposphere.iam.managed_policy import ManagedPolicy
 from e3.aws.troposphere.iam.policy_statement import Allow
 
-from troposphere import secretsmanager, Ref
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from troposphere import AWSObject
-    from e3.aws.troposphere.awslambda import Function, Version, Alias
+
+    from e3.aws.troposphere.awslambda import Alias, Function, Version
 
 
 class Secret(Construct):

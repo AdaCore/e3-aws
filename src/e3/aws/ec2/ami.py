@@ -1,16 +1,19 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 import re
 from datetime import datetime
 
 from dateutil.parser import parse as parse_date
+
 from e3.aws import session
 from e3.aws.ec2 import BlockDeviceMapping, EC2Element
 
-if TYPE_CHECKING:
-    from typing import Any
+from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
     from e3.aws import Session
+
+    from typing import Any
 
 
 class AMI(EC2Element):
@@ -253,13 +256,14 @@ class AMI(EC2Element):
             owners=owners,
             **kwargs,
         )
-        assert (
-            len(result) == 1
-        ), "cannot find AMI %s (%s) of kind (%s) in region %s %s" % (
-            platform,
-            os_version,
-            kind,
-            region,
-            kwargs,
+        assert len(result) == 1, (
+            "cannot find AMI %s (%s) of kind (%s) in region %s %s"
+            % (
+                platform,
+                os_version,
+                kind,
+                region,
+                kwargs,
+            )
         )
         return result[0]

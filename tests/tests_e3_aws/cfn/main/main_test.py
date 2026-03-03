@@ -1,21 +1,23 @@
-from __future__ import annotations, absolute_import, division, print_function
+from __future__ import annotations
 
-from datetime import datetime
 import os
-import pytest
 import textwrap
-from typing import TYPE_CHECKING
+from datetime import datetime
 
+import pytest
 from botocore.stub import ANY
-from e3.mock.os.process import mock_run, CommandResult
-from e3.os.process import which
+
 from e3.aws import AWSEnv, default_region
 from e3.aws.cfn import Stack
 from e3.aws.cfn.main import CFNMain
+from e3.mock.os.process import CommandResult, mock_run
+from e3.os.process import which
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from _pytest.monkeypatch import MonkeyPatch
     from _pytest.capture import CaptureFixture
+    from _pytest.monkeypatch import MonkeyPatch
 
 
 DEFAULT_S3_ANSWER = {
@@ -218,15 +220,14 @@ def test_cfn_main_s3() -> None:
                 "ServerSideEncryption": "AES256",
             },
         )
-        with stubber:
-            with s3_stubber:
-                m = MyCFNMain(
-                    regions=["us-east-1"],
-                    data_dir="data",
-                    s3_bucket="superbucket",
-                    s3_key="test_key",
-                )
-                m.execute(args=["push", "--no-wait"], aws_env=aws_env)
+        with stubber, s3_stubber:
+            m = MyCFNMain(
+                regions=["us-east-1"],
+                data_dir="data",
+                s3_bucket="superbucket",
+                s3_key="test_key",
+            )
+            m.execute(args=["push", "--no-wait"], aws_env=aws_env)
 
 
 def test_cfn_local_changes_check_ko(
@@ -368,45 +369,49 @@ def test_cfn_branch_up_to_date_check(
     stubber.add_response("describe_stacks", {}, {"StackName": "teststack"})
 
     git_path = which("git", default="/usr/bin/git")
-    with default_region("us-east-1"), stubber, mock_run(
-        config={
-            "results": [
-                # Make CFNMain think we are on main
-                CommandResult(
-                    cmd=[
-                        git_path,
-                        "-c",
-                        "fetch.prune=false",
-                        "branch",
-                        "--show-current",
-                    ],
-                    raw_out=b"main",
-                ),
-                # Make CFNMain detect no local changes
-                CommandResult(
-                    cmd=[
-                        git_path,
-                        "-c",
-                        "fetch.prune=false",
-                        "status",
-                        "-s",
-                    ]
-                ),
-                # Make CFNMain detect an outdated branch
-                CommandResult(
-                    cmd=[
-                        git_path,
-                        "-c",
-                        "fetch.prune=false",
-                        "fetch",
-                        "origin",
-                        "main",
-                        "--dry-run",
-                    ],
-                    raw_out=fetch_out.encode(),
-                ),
-            ]
-        }
+    with (
+        default_region("us-east-1"),
+        stubber,
+        mock_run(
+            config={
+                "results": [
+                    # Make CFNMain think we are on main
+                    CommandResult(
+                        cmd=[
+                            git_path,
+                            "-c",
+                            "fetch.prune=false",
+                            "branch",
+                            "--show-current",
+                        ],
+                        raw_out=b"main",
+                    ),
+                    # Make CFNMain detect no local changes
+                    CommandResult(
+                        cmd=[
+                            git_path,
+                            "-c",
+                            "fetch.prune=false",
+                            "status",
+                            "-s",
+                        ]
+                    ),
+                    # Make CFNMain detect an outdated branch
+                    CommandResult(
+                        cmd=[
+                            git_path,
+                            "-c",
+                            "fetch.prune=false",
+                            "fetch",
+                            "origin",
+                            "main",
+                            "--dry-run",
+                        ],
+                        raw_out=fetch_out.encode(),
+                    ),
+                ]
+            }
+        ),
     ):
         # Activate the local checks
         monkeypatch.setenv("CI", "false")

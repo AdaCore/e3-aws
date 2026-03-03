@@ -1,23 +1,27 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
-from itertools import chain
-from troposphere import AWSObject, Output, Template, Parameter, Export
-from collections import deque
+
 import logging
 import os
+from abc import ABC, abstractmethod
+from collections import deque
+from itertools import chain
 
-from e3.aws import cfn, name_to_id, Session
-from e3.aws.s3 import S3
+from troposphere import AWSObject, Export, Output, Parameter, Template
+
+from e3.aws import Session, cfn, name_to_id
 from e3.aws.cfn.main import CFNMain
+from e3.aws.s3 import S3
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
+
 from typing import TYPE_CHECKING
 
-
 if TYPE_CHECKING:  # all: no cover
-    from typing import Union
     from collections.abc import Iterable
-    from troposphere import And, Condition, Equals, If, Not, Or
+
     import botocore.client
+    from troposphere import And, Condition, Equals, If, Not, Or
+
+    from typing import Union
 
     ConditionFunction = Union[And, Condition, Equals, If, Not, Or]
 
@@ -37,7 +41,6 @@ class Construct(ABC):
 
         :param stack: the stack that contains the construct
         """
-        pass
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         """Return the IAM policy needed by CloudFormation to manage the stack.
@@ -54,7 +57,6 @@ class Construct(ABC):
             target location is the one received by resources method. Note that
             the same root_dir is shared by all resources in your stack.
         """
-        pass
 
     def diff(self, stack: Stack) -> None:
         """Compare this construct with the currently deployed one.
@@ -243,15 +245,14 @@ class Stack(cfn.Stack):
         """
         if isinstance(construct, AWSObject):
             return [construct]
-        else:
-            return list(
-                chain.from_iterable(
-                    [
-                        self.construct_to_objects(el)
-                        for el in construct.resources(stack=self)
-                    ]
-                )
+        return list(
+            chain.from_iterable(
+                [
+                    self.construct_to_objects(el)
+                    for el in construct.resources(stack=self)
+                ]
             )
+        )
 
     def add(self, element: AWSObject | Construct | Stack) -> Stack:
         """Add a Construct or AWSObject to the stack.
@@ -399,8 +400,7 @@ class CFNProjectMain(CFNMain):
         regions: list[str],
         deploy_branch: str | None = None,
     ) -> None:
-        """
-        Initialize a CFNProjectMain instance.
+        """Initialize a CFNProjectMain instance.
 
         :param name: name of the project
         :param account_id: id of the account where to deploy the project

@@ -1,17 +1,21 @@
 # The following package is packaged automatically with Flask lambda.
 # Do not introduce dependencies outside Python standard library.
 from __future__ import annotations
-from typing import TYPE_CHECKING, cast
-import json
-import io
-import sys
+
 import base64
-from urllib.parse import urlencode, unquote_plus
+import io
+import json
+import sys
+from urllib.parse import unquote_plus, urlencode
+
 from werkzeug.datastructures import iter_multi_items
 
+from typing import TYPE_CHECKING, cast
+
 if TYPE_CHECKING:
-    from typing import Any, TypedDict
     from typing_extensions import NotRequired
+
+    from typing import Any, TypedDict
 
     class FlaskLambdaResponse(TypedDict):
         statusCode: int
@@ -69,14 +73,14 @@ class FlaskLambdaHandler:
             body = ""
 
         returndict: FlaskLambdaResponse = {
-            "statusCode": cast(int, self.status),
-            "headers": cast(dict, self.response_headers),
+            "statusCode": cast("int", self.status),
+            "headers": cast("dict", self.response_headers),
             "body": body,
         }
 
         # Extract the MIME type from Content-Type header
         mime_type = (
-            cast(dict, self.response_headers)
+            cast("dict", self.response_headers)
             .get("Content-Type", "text/plain")
             .split(";")[0]
         )
@@ -84,7 +88,7 @@ class FlaskLambdaHandler:
         # Base64 encode non-text response
         if (
             not mime_type.startswith("text/") and mime_type not in TEXT_MIME_TYPES
-        ) or cast(dict, self.response_headers).get("Content-Encoding", ""):
+        ) or cast("dict", self.response_headers).get("Content-Encoding", ""):
             returndict["body"] = base64.b64encode(body).decode("utf-8")
             returndict["isBase64Encoded"] = True
 
@@ -192,7 +196,7 @@ class FlaskLambdaHandler:
             "HTTP_HOST": headers["Host"],
             "SERVER_NAME": headers["Host"],
             "SERVER_PORT": headers.get("X-Forwarded-Port", "80"),
-            "SERVER_PROTOCOL": str("HTTP/1.1"),
+            "SERVER_PROTOCOL": "HTTP/1.1",
             "wsgi.version": (1, 0),
             "wsgi.url_scheme": headers.get("X-Forwarded-Proto", "http"),
             "wsgi.input": io.BytesIO(body),

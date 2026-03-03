@@ -1,14 +1,18 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 from enum import Enum
-from troposphere import dynamodb, GetAtt, Ref, Tags
+
+from troposphere import GetAtt, Ref, Tags, dynamodb
 from troposphere.dynamodb import PointInTimeRecoverySpecification
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 
+from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from troposphere import AWSObject
+
     from e3.aws.troposphere import Stack
 
 
@@ -37,7 +41,7 @@ INCLUDE_PROJECTION = ProjectionType.INCLUDE
 ALL_PROJECTION = ProjectionType.ALL
 
 
-class GlobalSecondaryIndex(object):
+class GlobalSecondaryIndex:
     """Global Secondary Index e3-aws abstraction class."""
 
     def __init__(
@@ -70,9 +74,9 @@ class GlobalSecondaryIndex(object):
         self.projection_type = projection_type
         self.non_key_attributes = non_key_attributes
         if self.projection_type is INCLUDE_PROJECTION:
-            assert (
-                self.non_key_attributes is not None
-            ), "non key attributes parameter is required when the projection "
+            assert self.non_key_attributes is not None, (
+                "non key attributes parameter is required when the projection "
+            )
             "type is INCLUDE"
         self.read_capacity_units = read_capacity_units
         self.write_capacity_units = write_capacity_units
@@ -221,9 +225,9 @@ class Table(Construct):
         )
 
         if self.time_to_live_enabled is not None:
-            assert (
-                self.time_to_live_attribute_name is not None
-            ), "time_to_live_attribute_name should be set"
+            assert self.time_to_live_attribute_name is not None, (
+                "time_to_live_attribute_name should be set"
+            )
             params["TimeToLiveSpecification"] = dynamodb.TimeToLiveSpecification(
                 AttributeName=self.time_to_live_attribute_name,
                 Enabled=self.time_to_live_enabled,

@@ -1,33 +1,38 @@
 from __future__ import annotations
+
+import json
+import logging
+from abc import abstractmethod
 from enum import Enum
 from functools import cached_property
-from typing import TYPE_CHECKING
-from abc import abstractmethod
-from e3.aws import name_to_id
-from e3.aws.troposphere import Construct
+
 from troposphere import (
-    apigatewayv2,
-    route53,
-    Ref,
-    logs,
+    AWSObject,
     GetAtt,
-    awslambda,
+    Ref,
     Sub,
     apigateway,
+    apigatewayv2,
+    awslambda,
+    logs,
+    route53,
 )
 from troposphere.apigateway import BasePathMapping
 from troposphere.apigatewayv2 import ApiMapping
+from troposphere.certificatemanager import Certificate, DomainValidationOption
+
+from e3.aws import name_to_id
+from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement, Trust
 from e3.aws.troposphere.iam.role import Role
-from troposphere import AWSObject
-from troposphere.certificatemanager import Certificate, DomainValidationOption
-import json
-import logging
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
-    from typing import Any, TypedDict, Literal
+
+    from typing import Any, Literal, TypedDict
 
     # Possible HTTP methods.
     HttpMethod = Literal[
@@ -218,7 +223,7 @@ class POST(Route):
         )
 
 
-class StageConfiguration(object):
+class StageConfiguration:
     """HTTP API stage configuration."""
 
     def __init__(
@@ -244,7 +249,7 @@ class StageConfiguration(object):
         self.variables = variables
 
 
-class Resource(object):
+class Resource:
     """REST API resource."""
 
     def __init__(
@@ -327,16 +332,14 @@ class Api(Construct):
         self.disable_execute_api_endpoint: bool = False
         if self.domain_name is not None:
             self.disable_execute_api_endpoint = True
-            assert (
-                hosted_zone_id is not None
-            ), "hosted zone id required when domain_name is not None"
+            assert hosted_zone_id is not None, (
+                "hosted zone id required when domain_name is not None"
+            )
         self.hosted_zone_id = hosted_zone_id
         self.authorizers: dict[str, Any] = {}
         # By default, make sure to have a $default stage
         self.stages_config = (
-            stages_config
-            if stages_config
-            else [StageConfiguration(self.DEFAULT_STAGE_NAME)]
+            stages_config or [StageConfiguration(self.DEFAULT_STAGE_NAME)]
         )
 
     @cached_property
@@ -396,7 +399,6 @@ class Api(Construct):
         :param stage_variables: variables for the different stages
         :return: the AWSObject corresponding to the Stage
         """
-        pass
 
     def _declare_certificate(
         self, domain_name: str, hosted_zone_id: str
@@ -428,7 +430,6 @@ class Api(Construct):
         :param certificate_arn: the ARN of the certificate
         :return: the domain name aws resource
         """
-        pass
 
     @abstractmethod
     def _declare_api_mapping(
@@ -439,12 +440,10 @@ class Api(Construct):
         :param domain_name: the custom domain name for the API
         return: a list api mapping aws object
         """
-        pass
 
     @abstractmethod
     def _get_alias_target_attributes(self) -> Api._AliasTargetAttributes:
         """Get atributes to pass to GetAtt for alias target."""
-        pass
 
     def declare_domain(self, domain_name: str, hosted_zone_id: str) -> list[AWSObject]:
         """Declare a custom domain for the API stages.
@@ -901,9 +900,9 @@ class RestApi(Api):
 
         # For backward compatibility
         if resource_list is None:
-            assert (
-                self.method_list is not None
-            ), "method_list can't be None when resource_list is None"
+            assert self.method_list is not None, (
+                "method_list can't be None when resource_list is None"
+            )
             # Add a default root resource to match everything
             resource_list = [Resource(path="{proxy+}", method_list=self.method_list)]
 
@@ -1096,9 +1095,9 @@ class RestApi(Api):
             if resource_lambda_arn_permission is not None:
                 # Use the lambda_arn_permission configured for resource
                 if isinstance(resource_lambda_arn_permission, dict):
-                    assert (
-                        config.name in resource_lambda_arn_permission
-                    ), f"missing lambda arn permission for stage {config.name}"
+                    assert config.name in resource_lambda_arn_permission, (
+                        f"missing lambda arn permission for stage {config.name}"
+                    )
                     lambda_arn = resource_lambda_arn_permission[config.name]
                 else:
                     lambda_arn = resource_lambda_arn_permission

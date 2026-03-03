@@ -1,18 +1,25 @@
 from __future__ import annotations
-from e3.env import Env
-from datetime import datetime
-from enum import Enum
-from typing import TYPE_CHECKING
+
+import logging
 import re
 import time
 import uuid
-import yaml
-import logging
+from datetime import datetime
+from enum import Enum
+
 import botocore.exceptions
+import yaml
+
+from e3.env import Env
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable, Iterator
+
     import botocore.client
-    from typing import Iterator, Iterable, Callable, Any
+
+    from typing import Any
 
 VALID_STACK_NAME = re.compile("^[a-zA-Z][a-zA-Z0-9-]*$")
 VALID_STACK_NAME_MAX_LEN = 128
@@ -98,7 +105,7 @@ class AWSType(Enum):
     CODE_COMMIT_REPOSITORY = "AWS::CodeCommit::Repository"
 
 
-class GetAtt(object):
+class GetAtt:
     """Intrinsic function Fn::Getatt."""
 
     def __init__(self, name: str, attribute: str) -> None:
@@ -111,7 +118,7 @@ class GetAtt(object):
         self.attribute = attribute
 
 
-class Ref(object):
+class Ref:
     """Intrinsic function Fn::Ref."""
 
     def __init__(self, name: str) -> None:
@@ -122,7 +129,7 @@ class Ref(object):
         self.name = name
 
 
-class Base64(object):
+class Base64:
     """Intrinsic function Fn::Base64."""
 
     def __init__(self, content: str | Sub) -> None:
@@ -133,7 +140,7 @@ class Base64(object):
         self.content = content
 
 
-class Join(object):
+class Join:
     """Intrinsic function Fn::Join."""
 
     def __init__(self, content: list[Any], delimiter: str = "") -> None:
@@ -146,7 +153,7 @@ class Join(object):
         self.delimiter = delimiter
 
 
-class Sub(object):
+class Sub:
     """Intrinsic function Fn::Sub."""
 
     def __init__(self, content: str, variables: dict[str, str] | None = None) -> None:
@@ -179,8 +186,7 @@ def sub_representer(
 ) -> yaml.SequenceNode | yaml.ScalarNode:
     if data.variables:
         return dumper.represent_sequence("!Sub", [data.content, data.variables])
-    else:
-        return dumper.represent_scalar("!Sub", data.content)
+    return dumper.represent_scalar("!Sub", data.content)
 
 
 def join_representer(dumper: CFNYamlDumper, data: Any) -> yaml.SequenceNode:
@@ -193,7 +199,7 @@ class CFNYamlDumper(yaml.Dumper):
 
         See yaml.Dumper documentation.
         """
-        super(CFNYamlDumper, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         self.add_representer(GetAtt, getatt_representer)
         self.add_representer(Ref, ref_representer)
@@ -281,7 +287,6 @@ class Resource:
         :param root_dir: local directory in which data should be stored. Data will
             be then uploaded to an S3 bucket accessible from the template.
         """
-        pass
 
 
 class StackEventOperation(Enum):
@@ -406,7 +411,7 @@ class StackEvent:
             resource_type=data["ResourceType"],
             timestamp=data["Timestamp"],
             resource_status=StackEventStatus.from_str(data["ResourceStatus"]),
-            client_token=data.get("ClientRequestToken", None),
+            client_token=data.get("ClientRequestToken"),
             resource_status_reason=data.get("ResourceStatusReason", ""),
             resource_properties=data.get("ResourceProperties", ""),
         )
@@ -414,11 +419,11 @@ class StackEvent:
     def __str__(self) -> str:
         return (
             f"{self.logical_resource_id:<32}: {self.resource_type:<32}: "
-            + f"{str(self.resource_status):<16} ({self.resource_status_reason})"
+             f"{self.resource_status!s:<16} ({self.resource_status_reason})"
         )
 
 
-class Stack(object):
+class Stack:
     """A CloudFormation stack."""
 
     def __init__(
@@ -441,7 +446,7 @@ class Stack(object):
         """
         assert (
             re.match(VALID_STACK_NAME, name) and len(name) <= VALID_STACK_NAME_MAX_LEN
-        ), ("invalid stack name: %s" % name)
+        ), "invalid stack name: %s" % name
         self.resources: dict[str, Resource | Stack] = {}
         self.name = name
 
@@ -627,8 +632,7 @@ class Stack(object):
         """
         if url is None:
             return client.validate_template(TemplateBody=self.body)
-        else:
-            return client.validate_template(TemplateURL=url)
+        return client.validate_template(TemplateURL=url)
 
     @client("cloudformation")
     def create_change_set(
@@ -662,11 +666,10 @@ class Stack(object):
                 TemplateBody=self.body,
                 **parameters,
             )
-        else:
-            return client.create_change_set(
-                TemplateURL=url,
-                **parameters,
-            )
+        return client.create_change_set(
+            TemplateURL=url,
+            **parameters,
+        )
 
     @client("cloudformation")
     def describe_change_set(self, name: str, client: botocore.client.BaseClient) -> Any:
@@ -705,7 +708,7 @@ class Stack(object):
         try:
             self.state()
         except Exception:
-            logging.error(f"Stack {self.name} does not exist")
+            logging.exception(f"Stack {self.name} does not exist")
             return
 
         client.delete_stack(StackName=self.name, ClientRequestToken=self.uuid)

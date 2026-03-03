@@ -1,23 +1,26 @@
 from __future__ import annotations
+
 import os
-from typing import TYPE_CHECKING, cast
 
-
-from troposphere import AccountId, cloudfront, GetAtt, Join, route53, Ref, Sub
+from troposphere import AccountId, GetAtt, Join, Ref, Sub, cloudfront, route53
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
-from e3.aws.troposphere.awslambda import Function, Alias
+from e3.aws.troposphere.awslambda import Alias, Function
 from e3.aws.troposphere.iam.managed_policy import ManagedPolicy
 from e3.aws.troposphere.iam.policy_statement import Allow, Trust
 from e3.aws.troposphere.iam.role import Role
 from e3.aws.troposphere.s3.bucket import Bucket
 from e3.aws.troposphere.sns import Topic
 
+from typing import TYPE_CHECKING, cast
+
 if TYPE_CHECKING:
-    from typing import Any
     from troposphere import AWSObject
+
     from e3.aws.troposphere import Stack
+
+    from typing import Any
 
 
 class S3WebsiteDistribution(Construct):
@@ -83,13 +86,13 @@ class S3WebsiteDistribution(Construct):
         :param iam_path: IAM path for cloudwatch permission and role
             (must be either / or a string starting and ending with /)
         """
-        assert (
-            bucket is not None or bucket_name is not None
-        ), "either bucket or bucket_name should be provided"
+        assert bucket is not None or bucket_name is not None, (
+            "either bucket or bucket_name should be provided"
+        )
         self.name = name
         self.aliases = aliases
         # bucket_name can't be None if bucket is None
-        self.bucket = Bucket(name=cast(str, bucket_name)) if bucket is None else bucket
+        self.bucket = Bucket(name=cast("str", bucket_name)) if bucket is None else bucket
         # If the bucket must be created by this Construct
         self._create_bucket = bucket is None
         self.certificate_arn = certificate_arn

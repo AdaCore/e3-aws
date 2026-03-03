@@ -1,16 +1,17 @@
 """Provide a VPC construct to run ECS tasks."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
-
-from troposphere import AWSObject, ec2, Ref, Tags
+from troposphere import AWSObject, Ref, Tags, ec2
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
@@ -31,7 +32,7 @@ class EcsVPC(Construct):
     region: str
     cidr_block: str = "10.0.0.0/16"
     subnet_cidr_block: str = "10.0.0.0/24"
-    tags: dict[str, str] = field(default_factory=lambda: {})
+    tags: dict[str, str] = field(default_factory=dict)
 
     @property
     def vpc(self) -> ec2.VPC:

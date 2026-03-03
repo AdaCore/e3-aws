@@ -1,21 +1,23 @@
 """Provide IAM Role classes."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import TYPE_CHECKING
 
-from troposphere import AWSObject, iam, Tags, GetAtt, Ref
+from troposphere import AWSObject, GetAtt, Ref, Tags, iam
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import (
-    AssumeRole,
-    Trust,
     Allow,
+    AssumeRole,
     PolicyStatement,
+    Trust,
 )
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
@@ -50,7 +52,7 @@ class Role(Construct):
     trust: PrincipalType | Trust | PolicyDocument
     managed_policy_arns: list[str] | None = None
     max_session_duration: int | None = None
-    tags: dict[str, str] = field(default_factory=lambda: {})
+    tags: dict[str, str] = field(default_factory=dict)
     path: str = "/"
     boundary: str | None = None
     condition: str | dict[str, dict] | None = None
@@ -61,10 +63,9 @@ class Role(Construct):
         """Return the trust policy for the role."""
         if isinstance(self.trust, Trust):
             return PolicyDocument(statements=[self.trust])
-        elif isinstance(self.trust, PolicyDocument):
+        if isinstance(self.trust, PolicyDocument):
             return self.trust
-        else:
-            return PolicyDocument(statements=[AssumeRole(principal=self.trust)])
+        return PolicyDocument(statements=[AssumeRole(principal=self.trust)])
 
     @property
     def policies(self) -> list[iam.Policy] | None:

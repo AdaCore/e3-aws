@@ -4,7 +4,7 @@ from e3.aws.cfn.s3 import AccessControl, Bucket, BucketPolicy
 
 def test_create_bucket_policy():
     p = PolicyDocument().append(
-        (Allow(to="s3:GetObject", on=["arn:aws:s3:::mybucket"]))
+        Allow(to="s3:GetObject", on=["arn:aws:s3:::mybucket"])
     )
     b = BucketPolicy(name="mypolicy", bucket="mybucket", policy_document=p)
     assert b.properties

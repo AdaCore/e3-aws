@@ -3,13 +3,12 @@
 import json
 import os
 
-from troposphere import ec2, Ref
+from troposphere import Ref, ec2
 
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.ec2 import VPC, VPCv2
-from e3.aws.troposphere.iam.policy_statement import Allow
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
-
+from e3.aws.troposphere.iam.policy_statement import Allow
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 

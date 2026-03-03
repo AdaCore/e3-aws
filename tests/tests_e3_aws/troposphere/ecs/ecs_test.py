@@ -7,7 +7,6 @@ from e3.aws.troposphere.ecs.cluster import FargateCluster
 from e3.aws.troposphere.ecs.task_definition import FargateTaskDefinition
 from e3.aws.troposphere.ecs.vpc import EcsVPC
 
-
 EXPECTED_FARGATE_CLUSTER = {
     "TestCluster": {
         "Properties": {

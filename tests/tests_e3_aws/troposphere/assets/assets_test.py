@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 from pathlib import Path
+
 import pytest
 
 from e3.aws.troposphere import Stack
-from e3.aws.troposphere.asset import FileAsset, DirectoryAsset, AssetLayout
+from e3.aws.troposphere.asset import AssetLayout, DirectoryAsset, FileAsset
 
 CONFIG_DIR = Path(__file__).parent / "example"
 

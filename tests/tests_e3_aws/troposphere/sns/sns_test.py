@@ -1,10 +1,12 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 import pytest
 
 from e3.aws.troposphere import Stack
+from e3.aws.troposphere.awslambda import Alias, PyFunction, Version
 from e3.aws.troposphere.sns import Topic
-from e3.aws.troposphere.awslambda import PyFunction, Version, Alias
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Any

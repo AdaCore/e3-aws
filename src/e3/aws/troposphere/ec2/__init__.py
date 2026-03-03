@@ -1,16 +1,19 @@
 from __future__ import annotations
-from ipaddress import IPv4Network
-from functools import cached_property
-from typing import TYPE_CHECKING
 
-from troposphere import ec2, GetAtt, Ref, Tags
+from functools import cached_property
+from ipaddress import IPv4Network
+
+from troposphere import GetAtt, Ref, Tags, ec2
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 
+from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
     from troposphere import AWSObject
+
     from e3.aws.troposphere import Stack
 
 
@@ -305,9 +308,9 @@ class Subnet(Construct):
         self.nat_to = nat_to
 
         if use_nat:
-            assert (
-                internet_gateway is not None
-            ), "a NAT Gateway can only be added to a public subnet"
+            assert internet_gateway is not None, (
+                "a NAT Gateway can only be added to a public subnet"
+            )
 
         self._subnet: ec2.Subnet | None = None
         self._route_table: ec2.RouteTable | None = None
@@ -332,10 +335,9 @@ class Subnet(Construct):
             # By default only one route table is used to route traffic
             # from public subnets to the Internet Gateway.
             return self.internet_gateway.route_table
-        else:
-            return ec2.RouteTable(
-                name_to_id(f"{self.name}RouteTable"), VpcId=Ref(self.vpc)
-            )
+        return ec2.RouteTable(
+            name_to_id(f"{self.name}RouteTable"), VpcId=Ref(self.vpc)
+        )
 
     @cached_property
     def route_table_assoc(self) -> ec2.SubnetRouteTableAssociation:
@@ -523,8 +525,7 @@ class VPC(Construct):
         """
         if self.private_subnet and self.nat_gateway:
             return self.private_subnet.subnet
-        else:
-            return self.public_subnet.subnet
+        return self.public_subnet.subnet
 
     # Security groups and traffic control
     @cached_property
@@ -610,8 +611,7 @@ class VPC(Construct):
                 IpProtocol="tcp",
                 GroupId=Ref(self.security_group),
             )
-        else:
-            return None
+        return None
 
     @cached_property
     def s3_route_table(self) -> ec2.RouteTable:
@@ -621,8 +621,7 @@ class VPC(Construct):
         """
         if self.nat_gateway and self.private_subnet:
             return self.private_subnet.route_table
-        else:
-            return self.public_subnet.route_table
+        return self.public_subnet.route_table
 
     @cached_property
     def s3_vpc_endpoint(self) -> ec2.VPCEndPoint | None:
@@ -640,8 +639,7 @@ class VPC(Construct):
                 VpcEndpointType="Gateway",
                 VpcId=Ref(self.vpc),
             )
-        else:
-            return None
+        return None
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return VPC Construct resources."""

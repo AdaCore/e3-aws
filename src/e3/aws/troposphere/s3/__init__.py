@@ -2,25 +2,26 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.managed_policy import ManagedPolicy
-
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import (
     Allow,
-    Trust,
     AssumeRole,
     PolicyStatement,
+    Trust,
 )
 from e3.aws.troposphere.iam.role import Role
 from e3.aws.troposphere.s3.bucket import Bucket
 
+from typing import TYPE_CHECKING
+
 if TYPE_CHECKING:
-    from typing import Any
     from troposphere import AWSObject, Stack
+
     from e3.aws.troposphere.iam.policy_statement import PrincipalType
+
+    from typing import Any
 
 
 class BucketWithRoles(Construct):

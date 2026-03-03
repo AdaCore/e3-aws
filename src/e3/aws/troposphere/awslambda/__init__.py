@@ -1,38 +1,44 @@
 from __future__ import annotations
 
-from enum import Enum
+import difflib
 import logging
 import os
 import sys
-from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING
-from zipfile import ZipFile
-from hashlib import sha256
-import difflib
 import zipfile
+from enum import Enum
 from functools import cached_property
+from hashlib import sha256
+from tempfile import TemporaryDirectory
+from zipfile import ZipFile
+
+import botocore.client
 import botocore.exceptions
+from troposphere import GetAtt, Ref, Sub, awslambda, logs
 
 from e3.archive import create_archive
-from e3.fs import sync_tree, rm, mv
-from e3.os.process import Run
-from e3.net.http import HTTPSession
-from troposphere import awslambda, logs, GetAtt, Ref, Sub
-
 from e3.aws import name_to_id
 from e3.aws.cfn import client
-from e3.aws.troposphere import Construct, Asset
+from e3.aws.troposphere import Asset, Construct
 from e3.aws.troposphere.asset import AssetLayout
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 from e3.aws.troposphere.iam.role import Role
 from e3.aws.util import color_diff, modified_diff_lines
+from e3.fs import mv, rm, sync_tree
+from e3.net.http import HTTPSession
+from e3.os.process import Run
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable
+    from collections.abc import Callable
+
     from troposphere import AWSObject
-    import botocore.client
+
     from e3.aws.troposphere import Stack
+
+    from types import TracebackType
+    from typing import Any
 
 logger = logging.getLogger("e3.aws.troposphere.awslambda")
 
@@ -144,10 +150,15 @@ class PyFunctionAsset(Asset):
 
         return self
 
-    def __exit__(self, *args: Any, **kwargs: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Delete the temporary archive directory."""
         if self._archive_tmpd is not None:
-            self._archive_tmpd.__exit__(*args, **kwargs)
+            self._archive_tmpd.__exit__(exc_type, exc_val, exc_tb)
 
         self._archive_dir = None
         self._archive_tmpd = None
@@ -716,9 +727,9 @@ class PyFunction(Function):
         if code_asset is not None:
             self.code_asset = code_asset
         else:
-            assert (
-                code_dir is not None
-            ), "code_dir must be provided when code_asset is None"
+            assert code_dir is not None, (
+                "code_dir must be provided when code_asset is None"
+            )
 
             self.code_asset = PyFunctionAsset(
                 name=name_to_id(f"{name}Sources"),
@@ -1118,12 +1129,12 @@ class AutoVersion(Construct):
             supported for this property
         """
         assert version > 0, "version should be greater than 0"
-        assert (
-            min_version is None or min_version > 0
-        ), "min_version should be greater than 0"
-        assert (
-            min_version is None or min_version <= version
-        ), "min_version can't be greater than version"
+        assert min_version is None or min_version > 0, (
+            "min_version should be greater than 0"
+        )
+        assert min_version is None or min_version <= version, (
+            "min_version can't be greater than version"
+        )
         if lambda_function is not None:
             logger.warning("lambda_function is deprecated, use lambda_name instead")
         if lambda_arn is not None:
@@ -1236,7 +1247,7 @@ class BlueGreenVersions(AutoVersion):
         return self.get_version(self.green_version)
 
 
-class BlueGreenAliasConfiguration(object):
+class BlueGreenAliasConfiguration:
     """Blue/Green alias configuration."""
 
     def __init__(

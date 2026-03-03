@@ -1,6 +1,8 @@
 from __future__ import annotations
-import json
+
 import importlib.resources
+import json
+
 from colorama import Fore, Style
 
 
@@ -13,9 +15,11 @@ def get_region_name(region_code: str) -> str | None:
     :param region_code: region code
     :return: region name or None if the region code is not found
     """
-    with importlib.resources.files("botocore.data").joinpath(
-        "endpoints.json"
-    ).open() as f:
+    with (
+        importlib.resources.files("botocore.data")
+        .joinpath("endpoints.json")
+        .open() as f
+    ):
         data = json.load(f)
 
     return data["partitions"][0]["regions"].get(region_code, {}).get("description")
@@ -41,11 +45,10 @@ def color_diff(lines: list[str]) -> list[str]:
         """
         if line.startswith("-"):
             return Fore.RED
-        elif line.startswith("+"):
+        if line.startswith("+"):
             return Fore.GREEN
-        elif line.startswith("@"):
+        if line.startswith("@"):
             return Fore.CYAN
-        else:
-            return ""
+        return ""
 
     return [f"{color(line)}{line}{Style.RESET_ALL}" for line in lines]

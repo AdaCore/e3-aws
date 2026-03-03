@@ -30,22 +30,26 @@ The resulting lambda can then be added into an HttpAPI::
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 import os
 
 from troposphere import GetAtt
 from troposphere.awslambda import LoggingConfig, VPCConfig
+
 from e3.aws import name_to_id
 from e3.aws.troposphere.iam.role import Role
 from e3.fs import cp
+
 from . import PyFunction, PyFunctionAsset
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from e3.aws.troposphere.awslambda import (
-        Version,
-        AutoVersion,
         Alias,
+        AutoVersion,
         BlueGreenAliases,
+        Version,
     )
 
 
@@ -174,9 +178,9 @@ class PyFlaskFunction(PyFunction):
             through that VPC
         """
         if code_asset is None:
-            assert (
-                code_dir is not None
-            ), "code_dir must be provided when code_asset is None"
+            assert code_dir is not None, (
+                "code_dir must be provided when code_asset is None"
+            )
 
             code_asset = PyFlaskFunctionAsset(
                 name=name_to_id(f"{name}Sources"),

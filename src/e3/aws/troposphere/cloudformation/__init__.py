@@ -1,13 +1,13 @@
 from __future__ import annotations
+
 import os
-from typing import TYPE_CHECKING
 
 from troposphere import cloudformation
 
 from e3.aws import name_to_id
-from e3.aws.troposphere import Construct
-from e3.aws.troposphere import Stack
+from e3.aws.troposphere import Construct, Stack
 
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:  # all: no cover
     from troposphere import AWSHelperFn, AWSObject

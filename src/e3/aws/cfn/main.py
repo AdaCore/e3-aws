@@ -1,25 +1,26 @@
 from __future__ import annotations
+
 import abc
+import difflib
+import json
 import logging
 import os
+import re
 import tempfile
 import time
-import json
 from datetime import datetime
-import re
-import difflib
 
 import botocore.exceptions
 
-from e3.os.process import PIPE
-from e3.vcs.git import GitRepository
 from e3.aws import AWSEnv, Session
-from e3.aws.util import color_diff, modified_diff_lines
-from e3.aws.s3 import bucket
 from e3.aws.cfn import Stack, get_stack_template
+from e3.aws.s3 import bucket
+from e3.aws.util import color_diff, modified_diff_lines
 from e3.env import Env
 from e3.fs import find, sync_tree
 from e3.main import Main
+from e3.os.process import PIPE
+from e3.vcs.git import GitRepository
 
 
 class CFNMain(Main, metaclass=abc.ABCMeta):
@@ -57,7 +58,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             to Session.assume_role() for deploy
         :param deploy_branch: git branch the script is allowed to deploy from
         """
-        super(CFNMain, self).__init__(platform_args=False)
+        super().__init__(platform_args=False)
         self.argument_parser.add_argument(
             "--profile",
             help="choose AWS profile{}".format(
@@ -427,8 +428,8 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     try:
                         stack.validate(url=self.s3_template_url)
                     except Exception:
-                        logging.error("Invalid cloud formation template")
-                        logging.error(stack.body)
+                        logging.exception("Invalid cloud formation template")
+                        logging.exception(stack.body)
                         raise
 
                     return self._push_stack_changeset(
@@ -464,7 +465,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
             return 0
         except botocore.exceptions.ClientError as e:
-            logging.error(str(e))
+            logging.exception(str(e))
             return 1
 
     def execute(
@@ -477,7 +478,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         See parse_args arguments.
         """
-        super(CFNMain, self).parse_args(args, known_args_only)
+        super().parse_args(args, known_args_only)
         assert self.args is not None
 
         # Some checks in case of deployment.
@@ -496,7 +497,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     ["branch", "--show-current"], output=PIPE
                 ).out.strip()
             except Exception as e:
-                logging.error(f"Failed to get the current branch: {e}")
+                logging.exception(f"Failed to get the current branch: {e}")
                 return 1
 
             # Check we are on the correct branch
@@ -514,7 +515,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     )
                     return 1
             except Exception as e:
-                logging.error(f"Failed to check local changes: {e}")
+                logging.exception(f"Failed to check local changes: {e}")
                 return 1
 
             # Check the branch is up to date
@@ -523,13 +524,13 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     ["fetch", "origin", branch, "--dry-run"], output=PIPE
                 ).out
                 # Check if there is a line indicating a commit
-                if re.search(r"{}\s*\-\>\s*origin\/".format(branch), fetch_out):
+                if re.search(rf"{branch}\s*\-\>\s*origin\/", fetch_out):
                     print(
                         "Can only deploy from up to date branch, please do a git pull"
                     )
                     return 1
             except Exception as e:
-                logging.error(f"Failed to fetch {branch}: {e}")
+                logging.exception(f"Failed to fetch {branch}: {e}")
                 return 1
 
         return_val = 0
@@ -552,7 +553,6 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         :return: Stack on which the application will operate
         """
-        pass
 
     @property
     def stack_policy_body(self) -> str | None:

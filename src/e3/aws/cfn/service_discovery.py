@@ -1,7 +1,9 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+
 from e3.aws.cfn import AWSType, Resource
 from e3.aws.cfn.ec2 import VPC
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Any
@@ -18,7 +20,7 @@ class PrivateDnsNamespace(Resource):
         :param domain: domain
         :param description: optional description
         """
-        super(PrivateDnsNamespace, self).__init__(
+        super().__init__(
             name, kind=AWSType.SERVICE_DISCOVERY_PRIVATE_DNS_NAMESPACE
         )
         self.domain = domain

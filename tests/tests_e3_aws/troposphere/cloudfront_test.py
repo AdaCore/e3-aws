@@ -1,13 +1,13 @@
 """Provide Cloudformation construct tests."""
 
 from __future__ import annotations
+
 import json
 import os
 
 from e3.aws.troposphere import Stack
-from e3.aws.troposphere.s3 import Bucket
 from e3.aws.troposphere.cloudfront import S3WebsiteDistribution
-
+from e3.aws.troposphere.s3 import Bucket
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 

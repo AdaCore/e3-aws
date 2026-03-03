@@ -1,20 +1,21 @@
 from __future__ import annotations
 
-from email.mime.multipart import MIMEMultipart
+from abc import abstractmethod
 from email.contentmanager import raw_data_manager
 from email.message import EmailMessage
-from typing import TYPE_CHECKING
-from abc import abstractmethod
+from email.mime.multipart import MIMEMultipart
 
-from e3.aws.cfn import Resource, AWSType, GetAtt, Base64, Join, Ref, Sub
+from e3.aws.cfn import AWSType, Base64, GetAtt, Join, Ref, Resource, Sub
 from e3.aws.cfn.iam import PolicyDocument
 from e3.aws.ec2.ami import AMI
 
-if TYPE_CHECKING:
-    from typing import Any
+from typing import TYPE_CHECKING
 
-    from e3.aws.cfn.iam import InstanceProfile
+if TYPE_CHECKING:
     from e3.aws.cfn.ec2.security import SecurityGroup
+    from e3.aws.cfn.iam import InstanceProfile
+
+    from typing import Any
 
 CFN_INIT_STARTUP_SCRIPT = """#!/bin/sh
 sed -i 's/scripts-user$/[scripts-user, always]/' /etc/cloud/cloud.cfg
@@ -27,10 +28,10 @@ ${Cfninit} -v --stack ${AWS::StackName} \\
 
 CFN_INIT_STARTUP_SCRIPT_WIN = (
     "C:\\ProgramData\\Amazon\\EC2-Windows\\"
-    + "Launch\\Scripts\\InitializeInstance.ps1 -schedule \n"
-    + "${Cfninit} -v --stack ${AWS::StackName} --region "
-    + "${AWS::Region} --resource ${Resource} --configsets ${Config} "
-    + "${CfninitOptions}\n\n"
+     "Launch\\Scripts\\InitializeInstance.ps1 -schedule \n"
+     "${Cfninit} -v --stack ${AWS::StackName} --region "
+     "${AWS::Region} --resource ${Resource} --configsets ${Config} "
+     "${CfninitOptions}\n\n"
 )
 
 
@@ -127,9 +128,9 @@ class EC2NetworkInterface:
             public_ip and groups should be set to None
         """
         if subnet is not None:
-            assert (
-                interface is None
-            ), "cannot specify a network interface if subnet is set"
+            assert interface is None, (
+                "cannot specify a network interface if subnet is set"
+            )
             self.subnet: Subnet | None = subnet
             self.public_ip: bool | None = public_ip
             self.groups: list[SecurityGroup] | None = groups

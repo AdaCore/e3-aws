@@ -1,17 +1,18 @@
 """Provide Event Rules constructs."""
 
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
-
-from troposphere import AWSObject, events, GetAtt, Ref
+from troposphere import AWSObject, GetAtt, Ref, events
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.ec2 import VPC
 from e3.aws.troposphere.ecs.cluster import FargateCluster
 from e3.aws.troposphere.ecs.vpc import EcsVPC
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
