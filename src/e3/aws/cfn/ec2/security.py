@@ -87,22 +87,32 @@ class GroupSecurityRule:
 
 
 class EgressRule(GroupSecurityRule):
+    """Represent an outbound security group rule."""
+
     pass
 
 
 class IngressRule(GroupSecurityRule):
+    """Represent an inbound security group rule."""
+
     pass
 
 
 class Ipv4EgressRule(EgressRule):
+    """Represent an IPv4 outbound security group rule."""
+
     RULE_TYPE: str = "CidrIp"
 
 
 class PrefixListEgressRule(EgressRule):
+    """Represent a prefix list outbound security group rule."""
+
     RULE_TYPE: str = "DestinationPrefixListId"
 
 
 class Ipv4IngressRule(IngressRule):
+    """Represent an IPv4 inbound security group rule."""
+
     RULE_TYPE: str = "CidrIp"
 
 

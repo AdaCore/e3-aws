@@ -54,6 +54,8 @@ if TYPE_CHECKING:
 
 
 class AWSSessionRunError(E3Error):
+    """Represent an error raised when an AWS session command fails."""
+
     def __init__(self, message: str, origin: str, process: Run | None = None) -> None:
         """Initialize an AWSSessionRunError.
 

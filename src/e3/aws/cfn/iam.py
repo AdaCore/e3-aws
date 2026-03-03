@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
 
 class PrincipalKind(Enum):
+    """Represent the kinds of IAM policy principals."""
+
     AWS = "AWS"
     FEDERATED = "Federated"
     SERVICE = "Service"

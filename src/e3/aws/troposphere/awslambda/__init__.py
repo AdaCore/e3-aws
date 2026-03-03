@@ -45,6 +45,8 @@ logger = logging.getLogger("e3.aws.troposphere.awslambda")
 
 
 class Architecture(Enum):
+    """Represent supported Lambda CPU architectures."""
+
     X86_64 = "x86_64"
     ARM64 = "arm64"
 

@@ -195,6 +195,8 @@ def join_representer(dumper: CFNYamlDumper, data: Any) -> yaml.SequenceNode:
 
 
 class CFNYamlDumper(yaml.Dumper):
+    """Provide a YAML dumper for CloudFormation templates."""
+
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Yaml dumper for cloud formation templates.
 

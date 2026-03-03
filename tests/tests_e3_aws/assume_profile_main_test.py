@@ -33,6 +33,8 @@ EXPECTED_JSON_OUTPUT = (
 
 
 class MockSession:
+    """Represent a mock boto3 session for testing."""
+
     def __init__(self, *args: list[Any], **kwargs: dict[str, Any]) -> None:
         """Mock the boto3.Session class."""
 

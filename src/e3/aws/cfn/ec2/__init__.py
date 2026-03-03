@@ -288,6 +288,8 @@ class NetworkInterface(Resource):
 
 
 class TemplateOrInstance(Resource):
+    """Represent a base class for EC2 launch templates and instances."""
+
     def __init__(self, name: str, image: AMI, kind: AWSType) -> None:
         """Initialize TemplateOrInstance.
 
@@ -671,6 +673,8 @@ class VPCEndpoint(Resource):
 
 
 class VPCInterfaceEndpoint(Resource):
+    """Represent a VPC interface endpoint resource."""
+
     def __init__(
         self,
         name: str,

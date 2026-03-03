@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 
 
 class PrivateDnsNamespace(Resource):
+    """Represent a private DNS namespace for service discovery."""
+
     def __init__(
         self, name: str, vpc: VPC, domain: str, description: str | None = None
     ) -> None:

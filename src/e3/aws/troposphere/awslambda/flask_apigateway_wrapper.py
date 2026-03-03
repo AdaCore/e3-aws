@@ -19,6 +19,8 @@ if TYPE_CHECKING:
     from typing import Any, TypedDict
 
     class FlaskLambdaResponse(TypedDict):
+        """Provide a type for API Gateway Lambda proxy response."""
+
         statusCode: int
         headers: dict[str, Any]
         body: Any

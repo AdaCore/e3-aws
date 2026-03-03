@@ -256,6 +256,8 @@ class VPCStack(Stack):
 
 
 class Fortress(Stack):
+    """Represent a fortress network architecture stack."""
+
     def __init__(
         self,
         name: str,

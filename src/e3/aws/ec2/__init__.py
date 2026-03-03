@@ -429,6 +429,8 @@ class Volume(EC2Element):
 
 
 class Snapshot(EC2Element):
+    """Represent an EBS snapshot."""
+
     PROPERTIES = {"Encrypted": "encrypted", "SnapshotId": "snapshot_id"}
 
     encrypted: bool
