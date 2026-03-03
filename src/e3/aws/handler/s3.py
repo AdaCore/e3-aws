@@ -1,4 +1,5 @@
 """Provide S3-based event handler for logging and storing events."""
+
 from __future__ import annotations
 
 import json
@@ -90,6 +91,7 @@ class S3Handler(EventHandler):
         :param event: the event to send
         :return: True if the event was sent successfully
         """
+
         def s3_cp(
             from_path: str,
             s3_key: str,

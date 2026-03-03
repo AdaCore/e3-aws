@@ -1,4 +1,5 @@
 """Provide CloudFormation stack and template management."""
+
 from __future__ import annotations
 
 import logging
@@ -456,7 +457,7 @@ class StackEvent:
         """Return string representation of the stack event."""
         return (
             f"{self.logical_resource_id:<32}: {self.resource_type:<32}: "
-             f"{self.resource_status!s:<16} ({self.resource_status_reason})"
+            f"{self.resource_status!s:<16} ({self.resource_status_reason})"
         )
 
 

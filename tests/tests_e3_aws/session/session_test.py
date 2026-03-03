@@ -1,4 +1,5 @@
 """Provide tests for AWS session management."""
+
 from __future__ import annotations
 
 from datetime import datetime

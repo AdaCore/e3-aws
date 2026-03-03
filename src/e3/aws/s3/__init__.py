@@ -1,4 +1,5 @@
 """Provide S3 client for bucket and object operations."""
+
 from __future__ import annotations
 
 import logging

@@ -1,4 +1,5 @@
 """Provide tests for SQS troposphere resources."""
+
 from __future__ import annotations
 
 import pytest

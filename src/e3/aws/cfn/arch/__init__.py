@@ -1,4 +1,5 @@
 """Provide CloudFormation architecture patterns for VPC and fortress stacks."""
+
 from __future__ import annotations
 
 from itertools import chain
@@ -49,7 +50,6 @@ PREFIX_LISTS = {
 
 class AWSFortressError(Exception):
     """Error raised when Fortress configuration fails."""
-
 
 
 class SubnetStack(Stack):

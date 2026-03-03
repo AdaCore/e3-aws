@@ -1,4 +1,5 @@
 """Provide EC2 AMI and instance management utilities."""
+
 from __future__ import annotations
 
 from dateutil.parser import parse as parse_date

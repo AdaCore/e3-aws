@@ -1,4 +1,5 @@
 """Provide DynamoDB table troposphere resource constructs."""
+
 from __future__ import annotations
 
 from enum import Enum

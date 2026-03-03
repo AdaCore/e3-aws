@@ -1,4 +1,5 @@
 """Provide EC2 AMI lookup and management utilities."""
+
 from __future__ import annotations
 
 import re

@@ -1,4 +1,5 @@
 """Provide CloudFormation EC2 resource definitions for instances, VPCs, and networking."""
+
 from __future__ import annotations
 
 from abc import abstractmethod
@@ -29,10 +30,10 @@ ${Cfninit} -v --stack ${AWS::StackName} \\
 
 CFN_INIT_STARTUP_SCRIPT_WIN = (
     "C:\\ProgramData\\Amazon\\EC2-Windows\\"
-     "Launch\\Scripts\\InitializeInstance.ps1 -schedule \n"
-     "${Cfninit} -v --stack ${AWS::StackName} --region "
-     "${AWS::Region} --resource ${Resource} --configsets ${Config} "
-     "${CfninitOptions}\n\n"
+    "Launch\\Scripts\\InitializeInstance.ps1 -schedule \n"
+    "${Cfninit} -v --stack ${AWS::StackName} --region "
+    "${AWS::Region} --resource ${Resource} --configsets ${Config} "
+    "${CfninitOptions}\n\n"
 )
 
 

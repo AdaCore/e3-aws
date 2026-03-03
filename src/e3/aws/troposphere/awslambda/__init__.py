@@ -1,4 +1,5 @@
 """Provide Lambda function troposphere resource constructs."""
+
 from __future__ import annotations
 
 import difflib

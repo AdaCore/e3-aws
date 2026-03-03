@@ -1,4 +1,5 @@
 """Provide tests for DynamoDB troposphere resources."""
+
 from __future__ import annotations
 
 import json
@@ -41,21 +42,20 @@ EXPECTED_TABLE_TEMPLATE = {
     "Mytable": {
         "Properties": {
             **cast(
-                "dict[str, Any]", EXPECTED_TABLE_DEFAULT_TEMPLATE["Mytable"]["Properties"]
+                "dict[str, Any]",
+                EXPECTED_TABLE_DEFAULT_TEMPLATE["Mytable"]["Properties"],
             ),
-
-                "Tags": [{"Key": "tagkey", "Value": "tagvalue"}],
-                "TimeToLiveSpecification": {
-                    "AttributeName": "ExpirationTime",
-                    "Enabled": True,
-                },
-                "BillingMode": "PROVISIONED",
-                "ProvisionedThroughput": {
-                    "ReadCapacityUnits": 20,
-                    "WriteCapacityUnits": {"Ref": "WriteCapacityUnits"},
-                },
-                "StreamSpecification": {"StreamViewType": "NEW_IMAGE"}
-            ,
+            "Tags": [{"Key": "tagkey", "Value": "tagvalue"}],
+            "TimeToLiveSpecification": {
+                "AttributeName": "ExpirationTime",
+                "Enabled": True,
+            },
+            "BillingMode": "PROVISIONED",
+            "ProvisionedThroughput": {
+                "ReadCapacityUnits": 20,
+                "WriteCapacityUnits": {"Ref": "WriteCapacityUnits"},
+            },
+            "StreamSpecification": {"StreamViewType": "NEW_IMAGE"},
         },
         "Type": "AWS::DynamoDB::Table",
     },

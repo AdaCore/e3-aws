@@ -1,4 +1,5 @@
 """Provide tests for CloudFormation service discovery resources."""
+
 from e3.aws.cfn.ec2 import VPC
 from e3.aws.cfn.service_discovery import PrivateDnsNamespace
 

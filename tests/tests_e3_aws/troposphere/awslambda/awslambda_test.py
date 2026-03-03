@@ -1,4 +1,5 @@
 """Provide tests for Lambda troposphere resources."""
+
 from __future__ import annotations
 
 import base64

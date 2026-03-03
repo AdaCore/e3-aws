@@ -1,4 +1,5 @@
 """Provide DynamoDB client for table operations and queries."""
+
 from __future__ import annotations
 
 import logging

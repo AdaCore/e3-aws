@@ -1,4 +1,5 @@
 """Provide Route53 DNS record and hosted zone CloudFormation resources."""
+
 from __future__ import annotations
 
 from e3.aws.cfn import AWSType, Resource

@@ -1,4 +1,5 @@
 """Provide tests for AWS pricing retrieval."""
+
 from __future__ import annotations
 
 import json

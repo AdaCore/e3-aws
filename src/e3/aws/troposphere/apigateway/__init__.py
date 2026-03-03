@@ -1,4 +1,5 @@
 """Provide API Gateway troposphere resource constructs."""
+
 from __future__ import annotations
 
 import json
@@ -339,9 +340,9 @@ class Api(Construct):
         self.hosted_zone_id = hosted_zone_id
         self.authorizers: dict[str, Any] = {}
         # By default, make sure to have a $default stage
-        self.stages_config = (
-            stages_config or [StageConfiguration(self.DEFAULT_STAGE_NAME)]
-        )
+        self.stages_config = stages_config or [
+            StageConfiguration(self.DEFAULT_STAGE_NAME)
+        ]
 
     @cached_property
     def logical_id(self) -> str:

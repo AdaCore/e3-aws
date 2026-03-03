@@ -1,4 +1,5 @@
 """Provide a Lambda handler to invalidate CloudFront cache on S3 events."""
+
 import os
 import time
 

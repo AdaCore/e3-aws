@@ -1,4 +1,5 @@
 """Provide tests for CloudFormation main entry point."""
+
 from __future__ import annotations
 
 import os
@@ -30,6 +31,7 @@ DEFAULT_S3_ANSWER = {
 
 def test_cfn_main() -> None:
     """Test CloudFormation main single stack."""
+
     class MyCFNMain(CFNMain):
         def create_stack(self) -> Stack:
             return Stack(name="teststack")
@@ -58,6 +60,7 @@ def test_cfn_main() -> None:
 
 def test_cfn_main_multiple_stacks() -> None:
     """Test CloudFormation main with multiple stacks."""
+
     class MyCFNMain(CFNMain):
         def create_stack(self) -> list[Stack]:
             return [Stack(name="first-stack"), Stack(name="second-stack")]
@@ -189,6 +192,7 @@ def test_cfn_main_push_existing_stack(
 
 def test_cfn_main_s3() -> None:
     """Test CloudFormation main with S3 upload."""
+
     class MyCFNMain(CFNMain):
         def create_stack(self) -> Stack:
             return Stack(name="teststack")
@@ -238,6 +242,7 @@ def test_cfn_local_changes_check_ko(
     capfd: CaptureFixture, monkeypatch: MonkeyPatch
 ) -> None:
     """Test CloudFormation local changes check failure."""
+
     class MyCFNMain(CFNMain):
         def create_stack(self) -> Stack:
             return Stack(name="teststack")
@@ -284,6 +289,7 @@ def test_cfn_correct_branch_check_ko(
     capfd: CaptureFixture, monkeypatch: MonkeyPatch
 ) -> None:
     """Test CloudFormation correct branch check failure."""
+
     class MyCFNMain(CFNMain):
         def create_stack(self) -> Stack:
             return Stack(name="teststack")
