@@ -55,6 +55,10 @@ class UnknownPlatform(Exception):
     """Unknown platform exception."""
 
     def __init__(self, architecture: Architecture):
+        """Initialize an UnknownPlatform error.
+
+        :param architecture: the unsupported CPU architecture
+        """
         super().__init__(f"Unknown platform for architecture {architecture}.")
 
 
