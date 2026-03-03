@@ -117,6 +117,7 @@ class AMI(EC2Element):
         return result
 
     def __str__(self) -> str:
+        """Return string representation of the AMI."""
         return "%-12s %-24s: %s" % (
             self.region,
             self.data["ImageId"],

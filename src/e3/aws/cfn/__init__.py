@@ -334,6 +334,7 @@ class StackEventOperation(Enum):
     rollback = "ROLLBACK"
 
     def __str__(self) -> str:
+        """Return string representation of the operation."""
         return {
             "CREATE": "creation",
             "DELETE": "deletion",
@@ -354,6 +355,7 @@ class StackEventState(Enum):
     skipped = "SKIPPED"
 
     def __str__(self) -> str:
+        """Return string representation of the state."""
         return {
             "IN_PROGRESS": "started",
             "FAILED": "failed",
@@ -399,6 +401,7 @@ class StackEventStatus:
         )
 
     def __str__(self) -> str:
+        """Return string representation of the stack status."""
         return f"{self.operation} {self.state}"
 
 
@@ -450,6 +453,7 @@ class StackEvent:
         )
 
     def __str__(self) -> str:
+        """Return string representation of the stack event."""
         return (
             f"{self.logical_resource_id:<32}: {self.resource_type:<32}: "
              f"{self.resource_status!s:<16} ({self.resource_status_reason})"
@@ -533,11 +537,22 @@ class Stack:
         return self.add(element)
 
     def __getitem__(self, key: str) -> Resource | Stack:
+        """Return a resource by its logical name.
+
+        :param key: the logical resource name
+        :return: the resource or nested stack
+        :raise KeyError: if the resource does not exist
+        """
         if key not in self.resources:
             raise KeyError
         return self.resources[key]
 
     def __contains__(self, key: str) -> bool:
+        """Check whether a resource exists in the stack.
+
+        :param key: the logical resource name
+        :return: True if the resource exists
+        """
         return key in self.resources
 
     def create_data_dir(self, root_dir: str) -> None:

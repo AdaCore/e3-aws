@@ -34,6 +34,7 @@ class ProjectionType(Enum):
     ALL = "ALL"
 
     def __str__(self):
+        """Return string representation of the projection type."""
         return str(self.value)
 
 
