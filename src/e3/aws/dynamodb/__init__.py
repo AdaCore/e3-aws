@@ -12,7 +12,7 @@ from botocore.exceptions import ClientError
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Literal, Optional
+    from typing import Any, Literal
 
     OperationType = Literal["or", "between", "contains"]
     """Operations supported by DynamoDB.scan."""

@@ -1,4 +1,4 @@
-"""Provide CloudFormation EC2 resource definitions for instances, VPCs, and networking."""
+"""Provide CloudFormation EC2 resource definitions."""
 
 from __future__ import annotations
 

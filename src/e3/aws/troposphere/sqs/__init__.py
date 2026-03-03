@@ -17,8 +17,6 @@ if TYPE_CHECKING:
     from e3.aws.troposphere import Stack
     from e3.aws.troposphere.iam.policy_statement import ConditionType
 
-    from typing import Optional
-
 
 class Queue(Construct):
     """A SQS Queue."""

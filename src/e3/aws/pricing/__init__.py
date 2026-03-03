@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import botocore
 
-    from typing import Any, Union
+    from typing import Any
 
     _CacheKey = tuple[str | None, str | None, str | None]
 
