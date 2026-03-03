@@ -40,7 +40,6 @@ from e3.aws.util.ecr import get_ecr_credentials
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
     from pathlib import Path
 
     from flask import Response
@@ -1126,7 +1125,7 @@ def test_create_flask_wsgi_environ_with_event(event_source: str) -> None:
 
 
 @pytest.fixture
-def base64_response_server() -> Iterable[Flask]:
+def base64_response_server() -> Flask:
     """Create a server returning a text or base64 encoded response."""
     app = Flask("base64-response")
 

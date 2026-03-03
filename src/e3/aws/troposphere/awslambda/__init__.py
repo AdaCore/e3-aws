@@ -11,6 +11,7 @@ from hashlib import sha256
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
+import botocore.client
 import botocore.exceptions
 from troposphere import GetAtt, Ref, Sub, awslambda, logs
 
@@ -32,11 +33,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    import botocore.client
     from troposphere import AWSObject
 
     from e3.aws.troposphere import Stack
 
+    from types import TracebackType
     from typing import Any
 
 logger = logging.getLogger("e3.aws.troposphere.awslambda")
@@ -149,10 +150,15 @@ class PyFunctionAsset(Asset):
 
         return self
 
-    def __exit__(self, *args: object, **kwargs: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Delete the temporary archive directory."""
         if self._archive_tmpd is not None:
-            self._archive_tmpd.__exit__(*args, **kwargs)
+            self._archive_tmpd.__exit__(exc_type, exc_val, exc_tb)
 
         self._archive_dir = None
         self._archive_tmpd = None

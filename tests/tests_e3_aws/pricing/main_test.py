@@ -8,12 +8,6 @@ from botocore.stub import Stubber
 
 from e3.aws.pricing import Pricing
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable
-
-
 # EC2 instance price
 INSTANCE_PRICE = 0.177
 
@@ -75,7 +69,7 @@ ON_DEMAND_GET_PRODUCTS_PARAMS = {
 
 
 @pytest.fixture
-def client() -> Iterable[Pricing]:
+def client() -> Pricing:
     """Return a client for Pricing."""
     client = boto3.client("pricing", region_name="us-east-1")
 
