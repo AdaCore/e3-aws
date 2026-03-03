@@ -74,6 +74,7 @@ class GroupSecurityRule:
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         result: dict[str, Any] = {"IpProtocol": self.ip_protocol}
         if self.RULE_TYPE is not None:
             result[self.RULE_TYPE] = self.target
@@ -161,6 +162,7 @@ class SecurityGroup(Resource):
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         result: dict[str, Any] = {"VpcId": self.vpc.ref}
 
         if self.egress:

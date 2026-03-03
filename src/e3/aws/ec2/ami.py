@@ -75,26 +75,32 @@ class AMI(EC2Element):
 
     @property
     def os_version(self) -> str:
+        """Return the OS version tag."""
         return self.tags.get("os_version", "unknown")
 
     @property
     def platform(self) -> str:
+        """Return the platform tag."""
         return self.tags.get("platform", "unknown")
 
     @property
     def kind(self) -> str:
+        """Return the kind tag."""
         return self.tags.get("kind", "unknown")
 
     @property
     def is_windows(self) -> bool:
+        """Return whether the AMI is a Windows image."""
         return "windows" in self.data.get("Platform", "unknown")
 
     @property
     def timestamp(self) -> int:
+        """Return the timestamp tag as an integer."""
         return int(self.tags.get("timestamp", "0"))
 
     @property
     def block_device_mappings(self) -> list[BlockDeviceMapping]:
+        """Return the list of block device mappings."""
         return [
             BlockDeviceMapping(bdm, region=self.region)
             for bdm in self.data.get("BlockDeviceMappings", [])
@@ -102,6 +108,7 @@ class AMI(EC2Element):
 
     @property
     def snapshot_ids(self) -> list[str]:
+        """Return the list of EBS snapshot IDs."""
         result: list[str] = []
         for device in self.block_device_mappings:
             if device.is_ebs:

@@ -587,6 +587,11 @@ class Stack:
 
     @client("cloudformation")
     def wait(self, client: botocore.client.Client) -> str:
+        """Wait for the stack operation to complete.
+
+        :param client: the CloudFormation client
+        :return: the final stack status string
+        """
         status = self.state()
         while "PROGRESS" in status["StackStatus"]:
             for event in self.events(mark_as_read=True):

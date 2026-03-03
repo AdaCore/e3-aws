@@ -59,6 +59,11 @@ class ManagedPolicy(Construct):
         return [iam.ManagedPolicy(name_to_id(self.name), **params)]
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
+        """Return the CloudFormation policy document for this managed policy.
+
+        :param stack: the stack requesting the policy
+        :return: a policy document with required IAM permissions
+        """
         return PolicyDocument(
             statements=[
                 Allow(

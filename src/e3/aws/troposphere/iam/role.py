@@ -93,6 +93,7 @@ class Role(Construct):
 
     @property
     def arn(self):
+        """Return the role ARN."""
         return GetAtt(name_to_id(self.name), "Arn")
 
     @cached_property
@@ -122,6 +123,11 @@ class Role(Construct):
         return [iam.Role(name_to_id(self.name), **attr)]
 
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
+        """Return the CloudFormation policy document for this role.
+
+        :param stack: the stack requesting the policy
+        :return: a policy document with required IAM permissions
+        """
         return PolicyDocument(
             statements=[
                 Allow(

@@ -87,6 +87,7 @@ class Bucket(Resource):
 
     @property
     def arn(self) -> GetAtt:
+        """Return the bucket ARN attribute."""
         return self.getatt("Arn")
 
     @property

@@ -205,6 +205,7 @@ class BucketWithRoles(Construct):
 
     @property
     def all_objects_arn(self):
+        """Return the ARN for all objects in the bucket."""
         return self.bucket.all_objects_arn
 
     def resources(self, stack: Stack) -> list[AWSObject | Construct]:

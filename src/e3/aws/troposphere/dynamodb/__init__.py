@@ -152,6 +152,7 @@ class Table(Construct):
 
     @property
     def ref(self) -> Ref:
+        """Return a CloudFormation Ref to this table."""
         return Ref(name_to_id(self.name))
 
     @property

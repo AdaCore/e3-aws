@@ -42,6 +42,7 @@ class RecordSet(Resource):
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         result = {
             "Name": self.dns_name,
             "Type": self.dns_type,
@@ -73,6 +74,7 @@ class HostedZone(Resource):
 
     @property
     def properties(self) -> dict[str, Any]:
+        """Return the CloudFormation properties dict."""
         result: dict[str, Any] = {"Name": self.domain}
         if self.vpcs is not None:
             result["VPCs"] = [
