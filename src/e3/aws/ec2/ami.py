@@ -151,8 +151,10 @@ class AMI(EC2Element):
         for r in session.regions:
             c = session.client("ec2", r)
             region_result = c.describe_images(Owners=owners, Filters=filters)
-            for ami in region_result["Images"]:
-                result.append(AMI(ami["ImageId"], r, data=ami, session=session))
+            result.extend(
+                AMI(ami["ImageId"], r, data=ami, session=session)
+                for ami in region_result["Images"]
+            )
         return result
 
     @classmethod

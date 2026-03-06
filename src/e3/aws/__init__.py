@@ -540,10 +540,11 @@ class IAMAuth(requests.auth.AuthBase):
 
         # Split back the url in order to be able to call AWSRequest
         aws_headers = dict(request.headers)
-        key_to_delete = []
-        for key in aws_headers:
-            if key.lower() in ("accept", "accept-encoding", "connection"):
-                key_to_delete.append(key)
+        key_to_delete = [
+            key
+            for key in aws_headers
+            if key.lower() in ("accept", "accept-encoding", "connection")
+        ]
 
         for key in key_to_delete:
             del aws_headers[key]

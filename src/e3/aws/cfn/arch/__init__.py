@@ -509,8 +509,7 @@ class Fortress(Stack):
                 for sg in self.amazon_groups.values():
                     self.add(sg)
 
-            for group in self.amazon_groups.values():
-                groups.append(group)
+            groups.extend(self.amazon_groups.values())
 
         if github_access:
             if not self.github_groups:
@@ -520,8 +519,7 @@ class Fortress(Stack):
                 for sg in self.github_groups.values():
                     self.add(sg)
 
-            for group in self.github_groups.values():
-                groups.append(group)
+            groups.extend(self.github_groups.values())
 
         if extra_groups:
             # Register the groups if necesssary

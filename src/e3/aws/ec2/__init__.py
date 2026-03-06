@@ -114,8 +114,10 @@ class SecurityGroup(EC2Element):
         for r in session.regions:
             c = session.client("ec2", r)
             region_result = c.describe_security_groups(Filters=filters)
-            for sg in region_result["SecurityGroups"]:
-                result.append(SecurityGroup(sg["GroupId"], r, data=sg))
+            result.extend(
+                SecurityGroup(sg["GroupId"], r, data=sg)
+                for sg in region_result["SecurityGroups"]
+            )
         return result
 
 
@@ -421,8 +423,10 @@ class Volume(EC2Element):
         for r in session.regions:
             c = session.client("ec2", r)
             region_result = c.describe_volumes(Filters=filters)
-            for volume in region_result.get("Volumes", []):
-                result.append(Volume(volume["VolumeId"], r, data=volume))
+            result.extend(
+                Volume(volume["VolumeId"], r, data=volume)
+                for volume in region_result.get("Volumes", [])
+            )
         return result
 
 
@@ -487,8 +491,10 @@ class Snapshot(EC2Element):
         for r in session.regions:
             c = session.client("ec2", r)
             region_result = c.describe_snapshots(OwnerIds=["self"], Filters=filters)
-            for snapshot in region_result.get("Snapshots", []):
-                result.append(Snapshot(snapshot["SnapshotId"], r, data=snapshot))
+            result.extend(
+                Snapshot(snapshot["SnapshotId"], r, data=snapshot)
+                for snapshot in region_result.get("Snapshots", [])
+            )
         return result
 
 

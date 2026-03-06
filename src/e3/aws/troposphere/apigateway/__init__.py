@@ -651,32 +651,32 @@ class HttpApi(Api):
 
         result.append(apigatewayv2.Route(id_prefix + "Route", **route_params))
 
-        for config in self.stages_config:
-            result.append(
-                awslambda.Permission(
-                    # Retain old behavior for the $default stage
-                    name_to_id(
-                        "{}-{}LambdaPermission".format(
-                            id_prefix, "" if config.name == "$default" else config.name
-                        )
-                    ),
-                    Action="lambda:InvokeFunction",
-                    FunctionName=(
-                        config.lambda_arn_permission
-                        if config.lambda_arn_permission is not None
-                        else self.lambda_arn
-                    ),
-                    Principal="apigateway.amazonaws.com",
-                    SourceArn=Sub(
-                        "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:"
-                        f"${{api}}/{config.name}/${{route_arn}}",
-                        dict_values={
-                            "api": self.ref,
-                            "route_arn": f"{route.method}{route.route}",
-                        },
-                    ),
-                )
+        result.extend(
+            awslambda.Permission(
+                # Retain old behavior for the $default stage
+                name_to_id(
+                    "{}-{}LambdaPermission".format(
+                        id_prefix, "" if config.name == "$default" else config.name
+                    )
+                ),
+                Action="lambda:InvokeFunction",
+                FunctionName=(
+                    config.lambda_arn_permission
+                    if config.lambda_arn_permission is not None
+                    else self.lambda_arn
+                ),
+                Principal="apigateway.amazonaws.com",
+                SourceArn=Sub(
+                    "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:"
+                    f"${{api}}/{config.name}/${{route_arn}}",
+                    dict_values={
+                        "api": self.ref,
+                        "route_arn": f"{route.method}{route.route}",
+                    },
+                ),
             )
+            for config in self.stages_config
+        )
         return result
 
     def _declare_domain_name(
@@ -753,14 +753,14 @@ class HttpApi(Api):
         result.append(apigatewayv2.Api(self.logical_id, **api_params))
 
         # Declare the different stages
-        for config in self.stages_config:
-            result.append(
-                self.declare_stage(
-                    stage_name=config.name,
-                    log_arn=GetAtt(self.log_group_id, "Arn"),
-                    stage_variables=config.variables,
-                )
+        result.extend(
+            self.declare_stage(
+                stage_name=config.name,
+                log_arn=GetAtt(self.log_group_id, "Arn"),
+                stage_variables=config.variables,
             )
+            for config in self.stages_config
+        )
 
         # Declare one integration
         result.append(
