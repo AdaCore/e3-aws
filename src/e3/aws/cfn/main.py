@@ -25,6 +25,9 @@ from e3.os.process import PIPE
 from e3.vcs.git import GitRepository
 
 
+logger = logging.getLogger(__name__)
+
+
 class CFNMain(Main, metaclass=abc.ABCMeta):
     """Main to handle CloudFormation stack from command line."""
 
@@ -241,7 +244,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         for f in find(root_dir):
             subkey = os.path.relpath(f, root_dir).replace("\\", "/")
 
-            logging.info(
+            logger.info(
                 "Upload %s to %s:%s%s",
                 subkey,
                 s3_bucket,
@@ -262,7 +265,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 if check_exists and upload_bucket.object_exists(
                     s3_object_key, ignore_error_403=True
                 ):
-                    logging.info(
+                    logger.info(
                         "Skip already existing %s",
                         subkey,
                     )
@@ -301,7 +304,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 )
 
         if self.s3_template_key is not None:
-            logging.info(
+            logger.info(
                 "Upload template to %s:%s",
                 self.s3_bucket,
                 self.s3_template_key,
@@ -327,7 +330,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
         if stack.exists():
             changeset_name = f"changeset{int(time.time())}"
-            logging.info(f"Push changeset: {changeset_name}")
+            logger.info(f"Push changeset: {changeset_name}")
             stack.create_change_set(changeset_name, url=s3_template_url)
             result = stack.describe_change_set(changeset_name)
             while result["Status"] in (
@@ -343,10 +346,10 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     "The submitted information didn't contain changes"
                     in result["StatusReason"]
                 ):
-                    logging.warning(result["StatusReason"])
+                    logger.warning(result["StatusReason"])
                     change_executed = True
                 else:
-                    logging.error(result["StatusReason"])
+                    logger.error(result["StatusReason"])
 
                 stack.delete_change_set(changeset_name)
                 if not change_executed:
@@ -355,7 +358,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 for el in result["Changes"]:
                     if "ResourceChange" not in el:
                         continue
-                    logging.info(
+                    logger.info(
                         "%-8s %-32s: (replacement:%s)",
                         el["ResourceChange"].get("Action"),
                         el["ResourceChange"].get("LogicalResourceId"),
@@ -375,7 +378,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                             else 1
                         )
         else:
-            logging.info("Create new stack")
+            logger.info("Create new stack")
             stack.create(url=s3_template_url, wait=self.args.wait_stack_creation)
 
         return 0
@@ -425,13 +428,13 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 # Synchronize resources to the S3 bucket
                 self._upload_stack(stack)
 
-                logging.info(f"Validate template for stack {stack.name}")
+                logger.info(f"Validate template for stack {stack.name}")
                 if not self.args.dry_run:
                     try:
                         stack.validate(url=self.s3_template_url)
                     except Exception:
-                        logging.exception("Invalid cloud formation template")
-                        logging.exception(stack.body)
+                        logger.exception("Invalid cloud formation template")
+                        logger.exception(stack.body)
                         raise
 
                     return self._push_stack_changeset(
@@ -467,7 +470,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
             return 0
         except botocore.exceptions.ClientError as e:
-            logging.exception(str(e))
+            logger.exception(str(e))
             return 1
 
     def execute(
@@ -499,7 +502,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     ["branch", "--show-current"], output=PIPE
                 ).out.strip()
             except Exception as e:
-                logging.exception(f"Failed to get the current branch: {e}")
+                logger.exception(f"Failed to get the current branch: {e}")
                 return 1
 
             # Check we are on the correct branch
@@ -517,7 +520,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     )
                     return 1
             except Exception as e:
-                logging.exception(f"Failed to check local changes: {e}")
+                logger.exception(f"Failed to check local changes: {e}")
                 return 1
 
             # Check the branch is up to date
@@ -532,7 +535,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     )
                     return 1
             except Exception as e:
-                logging.exception(f"Failed to fetch {branch}: {e}")
+                logger.exception(f"Failed to fetch {branch}: {e}")
                 return 1
 
         return_val = 0

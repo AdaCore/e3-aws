@@ -26,6 +26,9 @@ if TYPE_CHECKING:  # all: no cover
     ConditionFunction = And | Condition | Equals | If | Not | Or
 
 
+logger = logging.getLogger(__name__)
+
+
 class Construct(ABC):
     """Represent one or multiple troposphere AWSObject.
 
@@ -158,7 +161,7 @@ class Asset(Construct):
         :param check_exists: check if an S3 object exists before uploading it
         :param dry_run: don't upload the file if set
         """
-        logging.info(
+        logger.info(
             "Upload {} to {}:{}".format(
                 os.path.relpath(file, root_dir).replace("\\", "/"), s3_bucket, s3_key
             )
@@ -169,7 +172,7 @@ class Asset(Construct):
 
         s3 = S3(client=client, bucket=s3_bucket)
         if check_exists and s3.object_exists(s3_key, ignore_error_403=True):
-            logging.info("Skip already existing %s", s3_key)
+            logger.info("Skip already existing %s", s3_key)
             return
 
         if not dry_run:

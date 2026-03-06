@@ -23,6 +23,8 @@ if TYPE_CHECKING:
 
     from typing import Any
 
+logger = logging.getLogger(__name__)
+
 VALID_STACK_NAME = re.compile("^[a-zA-Z][a-zA-Z0-9-]*$")
 VALID_STACK_NAME_MAX_LEN = 128
 
@@ -499,7 +501,7 @@ class Stack:
 
         # Emit a warning to the user if no role is passed for Cloud Formation
         if cfn_role_arn is None:
-            logging.warning(
+            logger.warning(
                 "Consider using a separate role for CloudFormation to "
                 "reduce permissions needed by the entity in charge of "
                 "deploying the stack (see Stack cfn_role_arn parameter)"
@@ -628,8 +630,8 @@ class Stack:
         client.create_stack(**parameters)
 
         if wait:
-            logging.info("Waiting for stack creation...")
-            logging.info(f"Done (status: {self.wait()})")
+            logger.info("Waiting for stack creation...")
+            logger.info(f"Done (status: {self.wait()})")
 
     @client("cloudformation")
     def wait(self, client: botocore.client.Client) -> str:
@@ -641,13 +643,13 @@ class Stack:
         status = self.state()
         while "PROGRESS" in status["StackStatus"]:
             for event in self.events(mark_as_read=True):
-                logging.info(str(event))
+                logger.info(str(event))
             time.sleep(5.0)
             status = self.state()
 
         # Get last eents
         for event in self.events(mark_as_read=True):
-            logging.info(str(event))
+            logger.info(str(event))
         return status["StackStatus"]
 
     def exists(self) -> bool:
@@ -762,13 +764,13 @@ class Stack:
         try:
             self.state()
         except Exception:
-            logging.exception(f"Stack {self.name} does not exist")
+            logger.exception(f"Stack {self.name} does not exist")
             return
 
         client.delete_stack(StackName=self.name, ClientRequestToken=self.uuid)
         if wait:
-            logging.info("Wait for stack deletion")
-            logging.info(f"Done (status: {self.wait()})")
+            logger.info("Wait for stack deletion")
+            logger.info(f"Done (status: {self.wait()})")
 
     @client("cloudformation")
     def events(
@@ -840,8 +842,8 @@ class Stack:
         )
 
         if wait:
-            logging.info("Waiting for stack update...")
-            logging.info(f"Done (status: {self.wait()})")
+            logger.info("Waiting for stack update...")
+            logger.info(f"Done (status: {self.wait()})")
 
     @client("cloudformation")
     def resource_status(
