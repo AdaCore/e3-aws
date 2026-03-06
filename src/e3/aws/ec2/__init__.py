@@ -182,10 +182,7 @@ class Instance(EC2Element):
 
         :return: True if at least one interface has a public IP
         """
-        for ni in self.network_interfaces:
-            if ni.public_ip is not None:
-                return True
-        return False
+        return any(ni.public_ip is not None for ni in self.network_interfaces)
 
     @property
     def block_device_mappings(self) -> list[BlockDeviceMapping]:

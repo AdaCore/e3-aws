@@ -221,10 +221,7 @@ class VPCEndpointsSubnet(Construct):
         endpoints = []
 
         for service_name, pd in self.interface_endpoints:
-            if pd is not None:
-                opt_params = {"PolicyDocument": pd.as_dict}
-            else:
-                opt_params = {}
+            opt_params = {"PolicyDocument": pd.as_dict} if pd is not None else {}
 
             if service_name == "email-smtp":
                 security_group_id = Ref(self.ses_security_group)

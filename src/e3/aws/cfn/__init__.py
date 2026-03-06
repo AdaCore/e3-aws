@@ -519,7 +519,7 @@ class Stack:
             merge its resources into the current stack.
         :return: the current stack
         """
-        assert isinstance(element, Resource) or isinstance(element, Stack), (
+        assert isinstance(element, (Resource, Stack)), (
             f"a resource or a stack is expected. got {element}"
         )
         assert element.name not in self.resources, (

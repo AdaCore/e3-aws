@@ -129,7 +129,7 @@ class Statement:
         :param actions: one or several action for the statement
         :return: the modified statement
         """
-        if isinstance(actions, str) or isinstance(actions, GetAtt):
+        if isinstance(actions, (str, GetAtt)):
             self.actions.append(actions)
         else:
             self.actions += actions

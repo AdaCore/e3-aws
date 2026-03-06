@@ -475,10 +475,7 @@ class Function(Construct):
             code_params = {"ImageUri": image_uri}
             params["PackageType"] = "Image"
 
-        if isinstance(self.role, Role):
-            role = self.role.arn
-        else:
-            role = self.role
+        role = self.role.arn if isinstance(self.role, Role) else self.role
 
         params.update(
             {

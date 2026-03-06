@@ -452,10 +452,7 @@ def assume_role_main() -> None:
     if session_duration is not None:
         session_duration = int(session_duration)
 
-    if args.role_session_name:
-        role_session_name = args.role_session_name
-    else:
-        role_session_name = str(uuid4()).replace("-", "")
+    role_session_name = args.role_session_name or str(uuid4()).replace("-", "")
 
     credentials = s.assume_role_get_credentials(
         args.role_arn, role_session_name, session_duration=session_duration

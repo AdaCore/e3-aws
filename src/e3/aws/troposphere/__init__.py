@@ -260,11 +260,7 @@ class Stack(cfn.Stack):
         :param element: if a resource an AWSObject or Construct add the resource
              to the stack. If a stack merge its resources into the current stack.
         """
-        if isinstance(element, Stack):
-            constructs = element.constructs
-
-        else:
-            constructs = [element]
+        constructs = element.constructs if isinstance(element, Stack) else [element]
 
         # Add the new constructs (non expanded)
         self.constructs += constructs
