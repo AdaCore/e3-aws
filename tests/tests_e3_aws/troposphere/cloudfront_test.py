@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import json
-import os
+from pathlib import Path
 
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.cloudfront import S3WebsiteDistribution
 from e3.aws.troposphere.s3 import Bucket
 
-TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+TEST_DIR = Path(__file__).resolve().parent
 
 
 def test_s3_website_distribution(stack: Stack) -> None:
@@ -26,7 +26,7 @@ def test_s3_website_distribution(stack: Stack) -> None:
         )
     )
 
-    with open(os.path.join(TEST_DIR, "s3websitedistribution.json")) as fd:
+    with (TEST_DIR / "s3websitedistribution.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -49,9 +49,7 @@ def test_s3_website_distribution_logging_default(stack: Stack) -> None:
         )
     )
 
-    with open(
-        os.path.join(TEST_DIR, "s3websitedistribution_logging_default.json")
-    ) as fd:
+    with (TEST_DIR / "s3websitedistribution_logging_default.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -76,7 +74,7 @@ def test_s3_website_distribution_logging(stack: Stack) -> None:
         )
     )
 
-    with open(os.path.join(TEST_DIR, "s3websitedistribution_logging.json")) as fd:
+    with (TEST_DIR / "s3websitedistribution_logging.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -99,7 +97,7 @@ def test_s3_website_distribution_bucket(stack: Stack) -> None:
     stack.add(bucket)
     stack.add(s3_website_distribution)
 
-    with open(os.path.join(TEST_DIR, "s3websitedistribution_bucket.json")) as fd:
+    with (TEST_DIR / "s3websitedistribution_bucket.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -120,7 +118,7 @@ def test_s3_website_distribution_iam_path(stack: Stack) -> None:
         )
     )
 
-    with open(os.path.join(TEST_DIR, "s3websitedistribution_iam_path.json")) as fd:
+    with (TEST_DIR / "s3websitedistribution_iam_path.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -141,7 +139,7 @@ def test_s3_website_distribution_python313(stack: Stack) -> None:
         )
     )
 
-    with open(os.path.join(TEST_DIR, "s3websitedistribution_py313.json")) as fd:
+    with (TEST_DIR / "s3websitedistribution_py313.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -165,7 +163,7 @@ def test_s3_website_distribution_alias(stack: Stack) -> None:
         )
     )
 
-    with open(os.path.join(TEST_DIR, "s3websitedistribution_alias.json")) as fd:
+    with (TEST_DIR / "s3websitedistribution_alias.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template

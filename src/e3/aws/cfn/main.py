@@ -11,6 +11,7 @@ import re
 import tempfile
 import time
 from datetime import datetime
+from pathlib import Path
 
 import botocore.exceptions
 
@@ -23,7 +24,6 @@ from e3.fs import find, sync_tree
 from e3.main import Main
 from e3.os.process import PIPE
 from e3.vcs.git import GitRepository
-
 
 logger = logging.getLogger(__name__)
 
@@ -272,7 +272,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     continue
 
                 if not self.args.dry_run:
-                    with open(f, "rb") as fd:
+                    with Path(f).open("rb") as fd:
                         upload_bucket.push(key=s3_object_key, content=fd, exist_ok=True)
 
     def _upload_stack(self, stack: Stack) -> None:

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import difflib
 import logging
-import os
 import sys
 import zipfile
 from enum import Enum
 from functools import cached_property
 from hashlib import sha256
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
@@ -186,7 +186,7 @@ class PyFunctionAsset(Asset):
         assert self._archive_dir is not None
 
         # Create a temporary packaging directory
-        package_dir = os.path.join(self._archive_dir, "package")
+        package_dir = str(Path(self._archive_dir) / "package")
 
         # Package the code with dependencies
         raw_archive_name = f"{self.name}.zip"
@@ -199,8 +199,8 @@ class PyFunctionAsset(Asset):
             requirement_file=self.requirement_file,
         )
 
-        raw_archive_path = os.path.abspath(
-            os.path.join(self._archive_dir, raw_archive_name)
+        raw_archive_path = str(
+            (Path(self._archive_dir) / raw_archive_name).resolve()
         )
 
         # Compute the checksum
@@ -223,7 +223,7 @@ class PyFunctionAsset(Asset):
         checksum = sha.hexdigest()
 
         # Rename the archive with the checksum
-        archive_path = os.path.join(self._archive_dir, f"{self.name}_{checksum}.zip")
+        archive_path = str(Path(self._archive_dir) / f"{self.name}_{checksum}.zip")
         mv(raw_archive_path, archive_path)
 
         return checksum
@@ -232,7 +232,7 @@ class PyFunctionAsset(Asset):
     def archive_path(self) -> str:
         """Return the path of the archive with the checksum."""
         assert self._archive_dir is not None
-        return os.path.join(self._archive_dir, self.archive_name)
+        return str(Path(self._archive_dir) / self.archive_name)
 
     @cached_property
     def archive_name(self) -> str:
@@ -888,7 +888,7 @@ class PyFunction(Function):
 
                 # Output lines of the code archive
                 active_archive_files = self._show_archive_files(
-                    os.path.join(tmpd, archive_name)
+                    str(Path(tmpd) / archive_name)
                 )
         except botocore.exceptions.ClientError as e:
             # We can get a genuine AccessDeniedException depending on conditions

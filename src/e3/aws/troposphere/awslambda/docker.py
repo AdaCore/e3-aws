@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 
 from troposphere import GetAtt, awslambda
 
@@ -32,7 +33,7 @@ class DockerFunction(Function):
         name: str,
         description: str,
         role: str | GetAtt | Role,
-        source_dir: str,
+        source_dir: str | Path,
         repository_name: str,
         image_tag: str,
         timeout: int = 3,
@@ -81,7 +82,7 @@ class DockerFunction(Function):
             logging_config=logging_config,
             dl_config=dl_config,
         )
-        self.source_dir: str = source_dir
+        self.source_dir: str | Path = source_dir
         self.repository_name: str = repository_name
         timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d-%H-%M-%S-%f")
         self.image_tag: str = f"{image_tag}-{timestamp}"

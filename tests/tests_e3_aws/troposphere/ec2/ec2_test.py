@@ -1,7 +1,7 @@
 """Provide ecr construct tests."""
 
 import json
-import os
+from pathlib import Path
 
 from troposphere import Ref, ec2
 
@@ -10,7 +10,7 @@ from e3.aws.troposphere.ec2 import VPC, VPCv2
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import Allow
 
-TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+TEST_DIR = Path(__file__).resolve().parent
 
 
 def test_vpc(stack: Stack) -> None:
@@ -88,7 +88,7 @@ def test_vpc(stack: Stack) -> None:
     )
     stack.add(sg)
 
-    with open(os.path.join(TEST_DIR, "vpc.json")) as fd:
+    with (TEST_DIR / "vpc.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -106,7 +106,7 @@ def test_vpc_with_ses_endpoint(stack: Stack) -> None:
     )
     stack.add(vpc)
 
-    with open(os.path.join(TEST_DIR, "vpc_ses_endpoint.json")) as fd:
+    with (TEST_DIR / "vpc_ses_endpoint.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -126,7 +126,7 @@ def test_vpc_with_ses_and_other_endpoints(stack: Stack) -> None:
     )
     stack.add(vpc)
 
-    with open(os.path.join(TEST_DIR, "vpc_ses_and_other_endpoints.json")) as fd:
+    with (TEST_DIR / "vpc_ses_and_other_endpoints.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -147,9 +147,7 @@ def test_vpc_with_vpc_prefixed_endpoints(stack: Stack) -> None:
     )
     stack.add(vpc)
 
-    with open(
-        os.path.join(TEST_DIR, "vpc_ses_and_other_endpoints_prefixed.json")
-    ) as fd:
+    with (TEST_DIR / "vpc_ses_and_other_endpoints_prefixed.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -162,7 +160,7 @@ def test_vpc_v2(stack: Stack) -> None:
         availability_zones=["eu-west-1a", "eu-west-1b"],
     )
     stack.add(vpc)
-    with open(os.path.join(TEST_DIR, "vpc_v2.json")) as fd:
+    with (TEST_DIR / "vpc_v2.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -200,7 +198,7 @@ def test_vpc_v2_with_endpoints(stack: Stack) -> None:
         s3_endpoint_policy_document=s3_endpoint_pd,
     )
     stack.add(vpc)
-    with open(os.path.join(TEST_DIR, "vpc_v2_with_endpoints.json")) as fd:
+    with (TEST_DIR / "vpc_v2_with_endpoints.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -224,6 +222,6 @@ def test_vpc_v2_without_priv_subnets(stack: Stack) -> None:
         with_private_subnets=False,
     )
     stack.add(vpc)
-    with open(os.path.join(TEST_DIR, "vpc_v2_without_priv_subnets.json")) as fd:
+    with (TEST_DIR / "vpc_v2_without_priv_subnets.json").open() as fd:
         expected_template = json.load(fd)
     assert stack.export()["Resources"] == expected_template

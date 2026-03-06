@@ -5,8 +5,8 @@ from __future__ import annotations
 import base64
 import io
 import json
-import os
 import sys
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -42,12 +42,10 @@ from e3.aws.util.ecr import get_ecr_credentials
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flask import Response
 
 
-SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "source_dir")
+SOURCE_DIR = Path(__file__).resolve().parent / "source_dir"
 
 
 EXPECTED_STACK_TEMPLATE = {
@@ -1106,7 +1104,7 @@ def test_create_flask_wsgi_environ_with_event(event_source: str) -> None:
     :param event_source: source of the lambda event
     """
     # get lambda event
-    with open(os.path.join(SOURCE_DIR, f"event-{event_source}.json")) as fd:
+    with (SOURCE_DIR / f"event-{event_source}.json").open() as fd:
         event = json.load(fd)
 
     handler = FlaskLambdaHandler("app")
@@ -1120,9 +1118,7 @@ def test_create_flask_wsgi_environ_with_event(event_source: str) -> None:
     # serialize to a JSON dict
     flask_environment = json.loads(json.dumps(flask_environment))
 
-    with open(
-        os.path.join(SOURCE_DIR, f"{event_source}_api_wsgi_flask_environment.json"),
-    ) as fd:
+    with (SOURCE_DIR / f"{event_source}_api_wsgi_flask_environment.json").open() as fd:
         expected_flask_environment = json.load(fd)
 
     assert flask_environment == expected_flask_environment
@@ -1166,11 +1162,9 @@ def base64_response_server() -> Flask:
 
 def test_text_response(base64_response_server: Flask) -> None:
     """Query a route sending back a plain text response."""
-    with open(
-        os.path.join(
-            SOURCE_DIR, "event-http-text-response.json"
-        ),  # an event from a HTTP API
-    ) as fd:
+    with (
+        SOURCE_DIR / "event-http-text-response.json"  # an event from a HTTP API
+    ).open() as fd:
         http_api_event = json.load(fd)
 
     handler = FlaskLambdaHandler(base64_response_server)
@@ -1183,11 +1177,9 @@ def test_text_response(base64_response_server: Flask) -> None:
 
 def test_base64_response(base64_response_server: Flask) -> None:
     """Query a route sending back a base64 encoded response."""
-    with open(
-        os.path.join(
-            SOURCE_DIR, "event-http-base64-response.json"
-        ),  # an event from a HTTP API
-    ) as fd:
+    with (
+        SOURCE_DIR / "event-http-base64-response.json"  # an event from a HTTP API
+    ).open() as fd:
         http_api_event = json.load(fd)
 
     handler = FlaskLambdaHandler(base64_response_server)

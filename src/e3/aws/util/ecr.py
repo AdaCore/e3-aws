@@ -6,6 +6,7 @@ import base64
 import logging
 import tempfile
 from collections.abc import Iterator
+from pathlib import Path
 
 from python_on_whales import DockerClient
 
@@ -35,7 +36,7 @@ def get_ecr_credentials(session: Session) -> tuple[str, str, str]:
 
 
 def build_and_push_image(
-    source_dir: str,
+    source_dir: str | Path,
     repository_name: str,
     image_tag: str,
     session: Session,

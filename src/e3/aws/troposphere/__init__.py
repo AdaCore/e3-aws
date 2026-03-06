@@ -7,6 +7,7 @@ import os
 from abc import ABC, abstractmethod
 from collections import deque
 from itertools import chain
+from pathlib import Path
 
 from troposphere import AWSObject, Export, Output, Parameter, Template
 
@@ -176,7 +177,7 @@ class Asset(Construct):
             return
 
         if not dry_run:
-            with open(file, "rb") as f:
+            with Path(file).open("rb") as f:
                 s3.push(key=s3_key, content=f, exist_ok=True)
 
     @abstractmethod

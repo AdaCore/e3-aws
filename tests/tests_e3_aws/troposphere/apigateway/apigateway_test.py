@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-import os
+from pathlib import Path
 
 import pytest
 
@@ -34,7 +34,7 @@ from e3.aws.troposphere.iam.policy_statement import Allow, PolicyStatement
 
 from typing import Any, cast
 
-TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+TEST_DIR = Path(__file__).resolve().parent
 
 # Generic template without any stage
 COMMON_TEMPLATE = {
@@ -420,7 +420,7 @@ def test_http_api_custom_domain(stack: Stack, lambda_fun: PyFunction) -> None:
     )
     stack.add(http_api)
 
-    with open(os.path.join(TEST_DIR, "apigateway_test_custom_domain.json")) as fd:
+    with (TEST_DIR / "apigateway_test_custom_domain.json").open() as fd:
         expected = json.load(fd)
 
     print(stack.export()["Resources"])
@@ -447,7 +447,7 @@ def test_http_api_multi_domains(stack: Stack, lambda_fun: PyFunction) -> None:
     ):
         stack.add(el)
 
-    with open(os.path.join(TEST_DIR, "apigateway_test_multi_domains.json")) as fd:
+    with (TEST_DIR / "apigateway_test_multi_domains.json").open() as fd:
         expected = json.load(fd)
 
     print(stack.export()["Resources"])
@@ -480,9 +480,7 @@ def test_http_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> 
     )
     stack.add(http_api)
 
-    with open(
-        os.path.join(TEST_DIR, "apigateway_test_custom_domain_stages.json")
-    ) as fd:
+    with (TEST_DIR / "apigateway_test_custom_domain_stages.json").open() as fd:
         expected = json.load(fd)
 
     print(stack.export()["Resources"])
@@ -503,9 +501,7 @@ def test_rest_api(stack: Stack, lambda_fun: PyFunction) -> None:
     stack.add(lambda_fun)
     stack.add(rest_api)
 
-    with open(
-        os.path.join(TEST_DIR, "apigatewayv1_test.json"),
-    ) as fd:
+    with (TEST_DIR / "apigatewayv1_test.json").open() as fd:
         expected = json.load(fd)
 
     print(stack.export()["Resources"])
@@ -532,9 +528,7 @@ def test_rest_api_stages(stack: Stack, lambda_fun: PyFunction) -> None:
     stack.add(lambda_fun)
     stack.add(rest_api)
 
-    with open(
-        os.path.join(TEST_DIR, "apigatewayv1_test_stages.json"),
-    ) as fd:
+    with (TEST_DIR / "apigatewayv1_test_stages.json").open() as fd:
         expected = json.load(fd)
 
     print(stack.export()["Resources"])
@@ -582,9 +576,7 @@ def test_rest_api_lambda_alias(stack: Stack, lambda_fun: PyFunction) -> None:
     stack.add(lambda_fun)
     stack.add(rest_api)
 
-    with open(
-        os.path.join(TEST_DIR, "apigatewayv1_test_lambda_alias.json"),
-    ) as fd:
+    with (TEST_DIR / "apigatewayv1_test_lambda_alias.json").open() as fd:
         expected = json.load(fd)
 
     print(stack.export()["Resources"])
@@ -634,9 +626,7 @@ def test_rest_api_custom_domain(stack: Stack, lambda_fun: PyFunction) -> None:
     stack.add(lambda_fun)
     stack.add(rest_api)
 
-    with open(
-        os.path.join(TEST_DIR, "apigatewayv1_test_custom_domain.json"),
-    ) as fd:
+    with (TEST_DIR / "apigatewayv1_test_custom_domain.json").open() as fd:
         expected = json.load(fd)
 
     print(stack.export()["Resources"])
@@ -692,9 +682,7 @@ def test_rest_api_custom_domain_stages(stack: Stack, lambda_fun: PyFunction) -> 
     stack.add(lambda_fun)
     stack.add(rest_api)
 
-    with open(
-        os.path.join(TEST_DIR, "apigatewayv1_test_custom_domain_stages.json"),
-    ) as fd:
+    with (TEST_DIR / "apigatewayv1_test_custom_domain_stages.json").open() as fd:
         expected = json.load(fd)
 
     print(stack.export()["Resources"])
@@ -719,9 +707,7 @@ def test_rest_api_nested_resources(stack: Stack, lambda_fun: PyFunction) -> None
     stack.add(lambda_fun)
     stack.add(rest_api)
 
-    with open(
-        os.path.join(TEST_DIR, "apigatewayv1_test_nested_resources.json"),
-    ) as fd:
+    with (TEST_DIR / "apigatewayv1_test_nested_resources.json").open() as fd:
         expected = json.load(fd)
 
     print(stack.export()["Resources"])
@@ -810,9 +796,7 @@ def test_rest_api_multi_lambdas_stages(stack: Stack) -> None:
     stack.add(products_lambda_aliases)
     stack.add(rest_api)
 
-    with open(
-        os.path.join(TEST_DIR, "apigatewayv1_test_multi_lambdas_stages.json"),
-    ) as fd:
+    with (TEST_DIR / "apigatewayv1_test_multi_lambdas_stages.json").open() as fd:
         expected = json.load(fd)
 
     print(stack.export()["Resources"])
@@ -835,9 +819,7 @@ def test_rest_api_endpoint_configuration_regional(
     stack.add(lambda_fun)
     stack.add(rest_api)
 
-    with open(
-        os.path.join(TEST_DIR, "apigatewayv1_test_regional_endpoint.json"),
-    ) as fd:
+    with (TEST_DIR / "apigatewayv1_test_regional_endpoint.json").open() as fd:
         expected = json.load(fd)
 
     assert stack.export()["Resources"] == expected
@@ -859,9 +841,7 @@ def test_rest_api_endpoint_configuration_edge(
     stack.add(lambda_fun)
     stack.add(rest_api)
 
-    with open(
-        os.path.join(TEST_DIR, "apigatewayv1_test_edge_endpoint.json"),
-    ) as fd:
+    with (TEST_DIR / "apigatewayv1_test_edge_endpoint.json").open() as fd:
         expected = json.load(fd)
 
     assert stack.export()["Resources"] == expected
@@ -881,9 +861,7 @@ def test_rest_api_endpoint_access_mode(stack: Stack, lambda_fun: PyFunction) -> 
     stack.add(lambda_fun)
     stack.add(rest_api)
 
-    with open(
-        os.path.join(TEST_DIR, "apigatewayv1_test_endpoint_access_mode.json"),
-    ) as fd:
+    with (TEST_DIR / "apigatewayv1_test_endpoint_access_mode.json").open() as fd:
         expected = json.load(fd)
 
     assert stack.export()["Resources"] == expected
@@ -902,9 +880,7 @@ def test_rest_api_integration_timeout(stack: Stack, lambda_fun: PyFunction) -> N
     stack.add(lambda_fun)
     stack.add(rest_api)
 
-    with open(
-        os.path.join(TEST_DIR, "apigatewayv1_test_integration_timeout.json"),
-    ) as fd:
+    with (TEST_DIR / "apigatewayv1_test_integration_timeout.json").open() as fd:
         expected = json.load(fd)
 
     assert stack.export()["Resources"] == expected
@@ -927,9 +903,7 @@ def test_rest_api_regional_custom_domain(stack: Stack, lambda_fun: PyFunction) -
     stack.add(lambda_fun)
     stack.add(rest_api)
 
-    with open(
-        os.path.join(TEST_DIR, "apigatewayv1_test_regional_custom_domain.json"),
-    ) as fd:
+    with (TEST_DIR / "apigatewayv1_test_regional_custom_domain.json").open() as fd:
         expected = json.load(fd)
 
     assert stack.export()["Resources"] == expected
@@ -1003,9 +977,7 @@ def test_rest_api_endpoint_configuration_type_only(
     stack.add(lambda_fun)
     stack.add(rest_api)
 
-    with open(
-        os.path.join(TEST_DIR, "apigatewayv1_test_private_endpoint.json"),
-    ) as fd:
+    with (TEST_DIR / "apigatewayv1_test_private_endpoint.json").open() as fd:
         expected = json.load(fd)
 
     assert stack.export()["Resources"] == expected

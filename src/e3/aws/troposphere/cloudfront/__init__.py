@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+from pathlib import Path
 
 from troposphere import AccountId, GetAtt, Join, Ref, Sub, cloudfront, route53
 
@@ -281,13 +281,9 @@ class S3WebsiteDistribution(Construct):
         )
 
         # Get first part of invalidation lambda code from a file
-        with open(
-            os.path.join(
-                os.path.dirname(os.path.abspath(__file__)),
-                "data",
-                "lambda_invalidate_head.py",
-            )
-        ) as lf:
+        with (
+            Path(__file__).resolve().parent / "data" / "lambda_invalidate_head.py"
+        ).open() as lf:
             lambda_code = lf.read().splitlines()
 
         lambda_function = Function(

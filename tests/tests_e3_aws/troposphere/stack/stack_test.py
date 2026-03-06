@@ -54,7 +54,7 @@ def test_add_parameters() -> None:
         ]
     )
 
-    with open(TEST_DIR / "stack_with_parameters.json") as fd:
+    with (TEST_DIR / "stack_with_parameters.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Parameters"] == expected_template
@@ -102,7 +102,7 @@ def test_add_outputs() -> None:
         ]
     )
 
-    with open(TEST_DIR / "stack_with_outputs.json") as fd:
+    with (TEST_DIR / "stack_with_outputs.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template

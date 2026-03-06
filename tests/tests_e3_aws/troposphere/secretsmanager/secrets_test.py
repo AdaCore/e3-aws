@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-import os
+from pathlib import Path
 
 import pytest
 
@@ -11,7 +11,7 @@ from e3.aws.troposphere import Stack
 from e3.aws.troposphere.awslambda import Alias, PyFunction
 from e3.aws.troposphere.secretsmanager import RotationSchedule, Secret
 
-TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+TEST_DIR = Path(__file__).resolve().parent
 
 
 @pytest.mark.parametrize(
@@ -53,12 +53,10 @@ def test_secret_rotation_schedule(alias: str | None, stack: Stack) -> None:
     )
     for el in (secret, rotation_policy, rotation_function, rotation_schedule):
         stack.add(el)
-    with open(
-        os.path.join(
-            TEST_DIR,
-            "secret_rotation_schedule{}.json".format(f"_{alias}" if alias else ""),
-        )
-    ) as fd:
+    with (
+        TEST_DIR
+        / "secret_rotation_schedule{}.json".format(f"_{alias}" if alias else "")
+    ).open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -75,7 +73,7 @@ def test_secret_iam_path(stack: Stack) -> None:
     for el in (secret, rotation_policy):
         stack.add(el)
 
-    with open(os.path.join(TEST_DIR, "secret_iam_path.json")) as fd:
+    with (TEST_DIR / "secret_iam_path.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template

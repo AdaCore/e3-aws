@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -38,7 +40,7 @@ class CfnConfig:
         """
         assert content is None or path is None, "cannot set both path and content"
         if path is not None:
-            with open(path) as fd:
+            with Path(path).open() as fd:
                 content = fd.read()
         assert content is not None, "no content for file"
 

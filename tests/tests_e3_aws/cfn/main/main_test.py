@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import os
 import textwrap
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 from botocore.stub import ANY
@@ -197,7 +197,7 @@ def test_cfn_main_s3() -> None:
         def create_stack(self) -> Stack:
             return Stack(name="teststack")
 
-    os.mkdir("data")
+    Path("data").mkdir()
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
     with default_region("us-east-1"):
         aws_env.client("cloudformation", region="us-east-1")
