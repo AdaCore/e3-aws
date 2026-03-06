@@ -6,7 +6,7 @@ from dateutil.parser import parse as parse_date
 
 from e3.aws import session
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -22,7 +22,7 @@ class EC2Element:
     All objects returned by EC2 API
     """
 
-    PROPERTIES: dict[str, Any] = {}
+    PROPERTIES: ClassVar[dict[str, Any]] = {}
 
     def __init__(self, data: dict[str, Any], region: str | None = None) -> None:
         """Initialize an EC2 Element.
@@ -60,7 +60,7 @@ class EC2Element:
 class SecurityGroup(EC2Element):
     """Security Group description."""
 
-    PROPERTIES = {"GroupName": "group_name", "GroupId": "group_id"}
+    PROPERTIES: ClassVar[dict[str, Any]] = {"GroupName": "group_name", "GroupId": "group_id"}
 
     group_name: str
     """The name of the security group."""
@@ -124,7 +124,7 @@ class SecurityGroup(EC2Element):
 class Instance(EC2Element):
     """EC2 Instance."""
 
-    PROPERTIES = {"InstanceId": "instance_id"}
+    PROPERTIES: ClassVar[dict[str, Any]] = {"InstanceId": "instance_id"}
 
     instance_id: str
     """The ID of the instance."""
@@ -240,7 +240,7 @@ class Instance(EC2Element):
 class BlockDeviceMapping(EC2Element):
     """Block Device Mappping."""
 
-    PROPERTIES = {"DeviceName": "device_name"}
+    PROPERTIES: ClassVar[dict[str, Any]] = {"DeviceName": "device_name"}
 
     device_name: str
     """The device name."""
@@ -275,7 +275,7 @@ class BlockDeviceMapping(EC2Element):
 class VolumeAttachment(EC2Element):
     """Volume Attachment."""
 
-    PROPERTIES = {
+    PROPERTIES: ClassVar[dict[str, Any]] = {
         "InstanceId": "instance_id",
         "Device": "device",
         "State": "state",
@@ -332,7 +332,7 @@ class VolumeAttachment(EC2Element):
 class Volume(EC2Element):
     """EC2 Volume."""
 
-    PROPERTIES = {
+    PROPERTIES: ClassVar[dict[str, Any]] = {
         "VolumeId": "volume_id",
         "AvailabilityZone": "availability_zone",
         "Size": "size",
@@ -433,7 +433,7 @@ class Volume(EC2Element):
 class Snapshot(EC2Element):
     """Represent an EBS snapshot."""
 
-    PROPERTIES = {"Encrypted": "encrypted", "SnapshotId": "snapshot_id"}
+    PROPERTIES: ClassVar[dict[str, Any]] = {"Encrypted": "encrypted", "SnapshotId": "snapshot_id"}
 
     encrypted: bool
     """Indicates whether the snapshot is encrypted."""

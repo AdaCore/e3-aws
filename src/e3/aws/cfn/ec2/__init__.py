@@ -324,7 +324,7 @@ class TemplateOrInstance(Resource):
         if isinstance(device, EC2NetworkInterface):
             if device.device_index is None:
                 # Assign automatically a device index
-                index = max(list(self.network_interfaces.keys()) + [-1]) + 1
+                index = max([*list(self.network_interfaces.keys()), -1]) + 1
                 device.device_index = index
             else:
                 # Ensure the device is not already present

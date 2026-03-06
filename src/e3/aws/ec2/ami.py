@@ -10,7 +10,7 @@ from dateutil.parser import parse as parse_date
 from e3.aws import session
 from e3.aws.ec2 import BlockDeviceMapping, EC2Element
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     from e3.aws import Session
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class AMI(EC2Element):
     """Represent an AMI."""
 
-    PROPERTIES = {
+    PROPERTIES: ClassVar[dict[str, Any]] = {
         "ImageId": "id",
         "OwnerId": "owner_id",
         "Public": "public",

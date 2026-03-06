@@ -30,7 +30,7 @@ from e3.fs import mv, rm, sync_tree
 from e3.net.http import HTTPSession
 from e3.os.process import Run
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -329,7 +329,7 @@ class Function(Construct):
         :param architecture: x86_64 or arm64. (default: x86_64)
         :param memory_size: the amount of memory available to the function at
             runtime. The value can be any multiple of 1 MB.
-        :param ephemeral_storage_size: The size of the function’s /tmp directory
+        :param ephemeral_storage_size: The size of the function's /tmp directory
             in MB. The default value is 512, but can be any whole number between
             512 and 10240 MB
         :param logs_retention_in_days: The number of days to retain the log events
@@ -631,7 +631,7 @@ class PyFunction(Function):
 
     AMAZON_LINUX_2_RUNTIMES = ("3.9", "3.10", "3.11")
     AMAZON_LINUX_2023_RUNTIMES = ("3.12", "3.13")
-    RUNTIME_CONFIGS = {
+    RUNTIME_CONFIGS: ClassVar[dict[str, dict[str, str | tuple[str, ...]]]] = {
         f"python{version}": {
             "implementation": "cp",
             # Amazon Linux 2 glibc version is 2.26 and we support only x86_64
@@ -699,7 +699,7 @@ class PyFunction(Function):
         :param timeout: maximum execution time (default: 3s)
         :param memory_size: the amount of memory available to the function at
             runtime. The value can be any multiple of 1 MB.
-        :param ephemeral_storage_size: The size of the function’s /tmp directory
+        :param ephemeral_storage_size: The size of the function's /tmp directory
             in MB. The default value is 512, but can be any whole number between
             512 and 10240 MB
         :param logs_retention_in_days: The number of days to retain the log events
@@ -759,12 +759,12 @@ class PyFunction(Function):
     def resources(self, stack: Stack) -> list[AWSObject | Construct]:
         """Compute AWS resources for the construct."""
         assert isinstance(stack.s3_bucket, str)
-        return [self.code_asset] + self.lambda_resources(
+        return [self.code_asset, *self.lambda_resources(
             code_bucket=stack.s3_bucket,
             code_key=Sub(
                 f"{stack.s3_assets_key}${{{self.code_asset.s3_key_parameter_name}}}"
             ),
-        )
+        )]
 
     @client("lambda")
     def _exist_version(

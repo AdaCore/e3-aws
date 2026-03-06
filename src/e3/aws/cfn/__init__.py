@@ -60,7 +60,7 @@ def get_stack_template(
 ) -> str | None:
     """Get the template of a stack.
 
-    :param stack_name: the name or the unique stack ID that’s associated with
+    :param stack_name: the name or the unique stack ID that's associated with
         the stack
     :param client: AWS client
     :return: the template, or None if the stack doesn't exist

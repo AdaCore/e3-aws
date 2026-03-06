@@ -74,7 +74,7 @@ class Bucket(Construct):
 
         if add_multipart_lifecycle_rule:
             self.lifecycle_rules = (
-                self.lifecycle_rules + [DEFAULT_LIFECYCLE_RULE]
+                [*self.lifecycle_rules, DEFAULT_LIFECYCLE_RULE]
                 if self.lifecycle_rules
                 else [DEFAULT_LIFECYCLE_RULE]
             )
