@@ -269,6 +269,7 @@ class AMI(EC2Element):
             **kwargs,
         )
         assert len(result) == 1, (
-            f"cannot find AMI {platform} ({os_version}) of kind ({kind}) in region {region} {kwargs}"
+            f"cannot find AMI {platform} ({os_version}) of kind ({kind})"
+            f" in region {region} {kwargs}"
         )
         return result[0]

@@ -49,7 +49,7 @@ class MockSession:
 
 
 @pytest.mark.parametrize(
-    ('json', 'expected_output'),
+    ("json", "expected_output"),
     [(False, EXPECTED_DEFAULT_OUTPUT), (True, EXPECTED_JSON_OUTPUT)],
 )
 def test_assume_profile_main_json(

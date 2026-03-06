@@ -60,7 +60,10 @@ class EC2Element:
 class SecurityGroup(EC2Element):
     """Security Group description."""
 
-    PROPERTIES: ClassVar[dict[str, Any]] = {"GroupName": "group_name", "GroupId": "group_id"}
+    PROPERTIES: ClassVar[dict[str, Any]] = {
+        "GroupName": "group_name",
+        "GroupId": "group_id",
+    }
 
     group_name: str
     """The name of the security group."""
@@ -437,7 +440,10 @@ class Volume(EC2Element):
 class Snapshot(EC2Element):
     """Represent an EBS snapshot."""
 
-    PROPERTIES: ClassVar[dict[str, Any]] = {"Encrypted": "encrypted", "SnapshotId": "snapshot_id"}
+    PROPERTIES: ClassVar[dict[str, Any]] = {
+        "Encrypted": "encrypted",
+        "SnapshotId": "snapshot_id",
+    }
 
     encrypted: bool
     """Indicates whether the snapshot is encrypted."""
