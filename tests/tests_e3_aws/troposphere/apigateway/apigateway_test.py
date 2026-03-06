@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-from e3.aws.troposphere import Stack
 from e3.aws.troposphere.apigateway import (
     GET,
     JWT_AUTH,
@@ -32,7 +31,10 @@ from e3.aws.troposphere.awslambda import (
 )
 from e3.aws.troposphere.iam.policy_statement import Allow, PolicyStatement
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from e3.aws.troposphere import Stack
 
 TEST_DIR = Path(__file__).resolve().parent
 

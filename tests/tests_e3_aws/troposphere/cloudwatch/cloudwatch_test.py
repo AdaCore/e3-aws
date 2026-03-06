@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from troposphere import Ref
 
-from e3.aws.troposphere import Stack
 from e3.aws.troposphere.cloudwatch import Alarm
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from e3.aws.troposphere import Stack
 
 EXPECTED_ALARM_DEFAULT_TEMPLATE = {
     "Myalarm": {

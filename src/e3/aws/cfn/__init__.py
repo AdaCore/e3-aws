@@ -16,10 +16,10 @@ from e3.env import Env
 
 from typing import TYPE_CHECKING
 
+import botocore.client
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
-
-    import botocore.client
 
     from typing import Any
 

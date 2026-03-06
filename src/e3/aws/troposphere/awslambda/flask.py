@@ -33,11 +33,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from troposphere import GetAtt
-from troposphere.awslambda import LoggingConfig, VPCConfig
-
 from e3.aws import name_to_id
-from e3.aws.troposphere.iam.role import Role
 from e3.fs import cp
 
 from . import PyFunction, PyFunctionAsset
@@ -45,12 +41,16 @@ from . import PyFunction, PyFunctionAsset
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from troposphere import GetAtt
+    from troposphere.awslambda import LoggingConfig, VPCConfig
+
     from e3.aws.troposphere.awslambda import (
         Alias,
         AutoVersion,
         BlueGreenAliases,
         Version,
     )
+    from e3.aws.troposphere.iam.role import Role
 
 
 STARTUP_CODE = """

@@ -8,14 +8,13 @@ from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 
 from e3.aws.cfn import AWSType, Base64, GetAtt, Join, Ref, Resource, Sub
-from e3.aws.cfn.iam import PolicyDocument
-from e3.aws.ec2.ami import AMI
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from e3.aws.cfn.ec2.security import SecurityGroup
-    from e3.aws.cfn.iam import InstanceProfile
+    from e3.aws.cfn.iam import InstanceProfile, PolicyDocument
+    from e3.aws.ec2.ami import AMI
 
     from typing import Any
 

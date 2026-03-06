@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from e3.aws.cfn import AWSType, Resource
-from e3.aws.cfn.ec2 import VPC
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from e3.aws.cfn.ec2 import VPC
+
     from typing import Any
 
 

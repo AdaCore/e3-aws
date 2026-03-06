@@ -5,12 +5,12 @@ from __future__ import annotations
 from enum import Enum
 
 from e3.aws.cfn import AWSType, Resource
-from e3.aws.cfn.iam import PolicyDocument
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from e3.aws.cfn import GetAtt
+    from e3.aws.cfn.iam import PolicyDocument
 
     from typing import Any
 

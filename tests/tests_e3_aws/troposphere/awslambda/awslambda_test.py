@@ -21,7 +21,6 @@ from troposphere.awslambda import (
 )
 
 from e3.aws import AWSEnv
-from e3.aws.troposphere import Stack
 from e3.aws.troposphere.awslambda import (
     Alias,
     Architecture,
@@ -43,6 +42,8 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from flask import Response
+
+    from e3.aws.troposphere import Stack
 
 
 SOURCE_DIR = Path(__file__).resolve().parent / "source_dir"

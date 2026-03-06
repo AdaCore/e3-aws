@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from troposphere import AccountId, Equals
 
-from e3.aws.troposphere import Stack
 from e3.aws.troposphere.cloudformation import StackSet
 from e3.aws.troposphere.iam.role import Role
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from e3.aws.troposphere import Stack
 
 EXPECTED_TEMPLATE = {
     "StackSetTest": {

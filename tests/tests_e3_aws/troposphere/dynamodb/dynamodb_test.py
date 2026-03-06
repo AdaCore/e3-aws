@@ -7,7 +7,6 @@ from pathlib import Path
 
 from troposphere import Ref
 
-from e3.aws.troposphere import Stack
 from e3.aws.troposphere.dynamodb import (
     ALL_PROJECTION,
     INCLUDE_PROJECTION,
@@ -15,7 +14,10 @@ from e3.aws.troposphere.dynamodb import (
     Table,
 )
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from e3.aws.troposphere import Stack
 
 TEST_DIR = Path(__file__).resolve().parent
 SOURCE_DIR = TEST_DIR / "source_dir"

@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import pytest
 
-from e3.aws.troposphere import Stack
 from e3.aws.troposphere.sqs import Queue
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from e3.aws.troposphere import Stack
 
 EXPECTED_QUEUE_DEFAULT_TEMPLATE = {
     "Myqueue": {

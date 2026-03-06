@@ -19,8 +19,6 @@ from troposphere import (
     logs,
     route53,
 )
-from troposphere.apigateway import BasePathMapping
-from troposphere.apigatewayv2 import ApiMapping
 from troposphere.certificatemanager import Certificate, DomainValidationOption
 
 from e3.aws import name_to_id
@@ -32,6 +30,9 @@ from e3.aws.troposphere.iam.role import Role
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from troposphere.apigateway import BasePathMapping
+    from troposphere.apigatewayv2 import ApiMapping
+
     from e3.aws.troposphere import Stack
 
     from typing import Any, Literal, TypedDict

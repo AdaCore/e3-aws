@@ -6,8 +6,12 @@ import pytest
 from troposphere import Ref, ec2
 
 from e3.aws import name_to_id
-from e3.aws.troposphere import Stack
 from e3.aws.troposphere.ec2 import InternetGateway
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from e3.aws.troposphere import Stack
 
 EXPECTED_TEMPLATE = {
     "VpcTest": {

@@ -5,9 +5,13 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from e3.aws.troposphere import Stack
 from e3.aws.troposphere.cloudfront import S3WebsiteDistribution
 from e3.aws.troposphere.s3 import Bucket
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from e3.aws.troposphere import Stack
 
 TEST_DIR = Path(__file__).resolve().parent
 

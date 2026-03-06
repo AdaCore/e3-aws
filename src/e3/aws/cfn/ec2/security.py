@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from e3.aws.cfn import AWSType, GetAtt, Resource
-from e3.aws.cfn.ec2 import VPC
 
 from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
+    from e3.aws.cfn.ec2 import VPC
+
     from typing import Any
 
 
@@ -92,10 +93,8 @@ class EgressRule(GroupSecurityRule):
     """Represent an outbound security group rule."""
 
 
-
 class IngressRule(GroupSecurityRule):
     """Represent an inbound security group rule."""
-
 
 
 class Ipv4EgressRule(EgressRule):

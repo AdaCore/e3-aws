@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import pytest
 
-from e3.aws.troposphere import Stack
 from e3.aws.troposphere.awslambda import Alias, PyFunction, Version
 from e3.aws.troposphere.sns import Topic
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from e3.aws.troposphere import Stack
+
     from typing import Any
 
 

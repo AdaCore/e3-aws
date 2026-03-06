@@ -22,6 +22,8 @@ from e3.env import Env
 from e3.error import E3Error
 from e3.os.process import Run
 
+import botocore.client
+
 from typing import TYPE_CHECKING
 
 logger = logging.getLogger(__name__)
@@ -29,9 +31,6 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from collections.abc import Callable
     from datetime import datetime
-
-    import botocore.client
-    import botocore.stub
 
     from typing import Any, TypedDict
 

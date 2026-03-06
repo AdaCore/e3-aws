@@ -7,12 +7,12 @@ import os
 from contextlib import contextmanager
 
 import boto3
-import botocore
 from botocore.exceptions import ClientError
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    import botocore
     from collections.abc import Iterable, Iterator
 
     from typing import IO, Any, BinaryIO

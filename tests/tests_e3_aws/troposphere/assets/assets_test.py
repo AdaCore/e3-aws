@@ -6,8 +6,12 @@ from pathlib import Path
 
 import pytest
 
-from e3.aws.troposphere import Stack
 from e3.aws.troposphere.asset import AssetLayout, DirectoryAsset, FileAsset
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from e3.aws.troposphere import Stack
 
 CONFIG_DIR = Path(__file__).parent / "example"
 

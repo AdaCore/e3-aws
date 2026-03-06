@@ -7,9 +7,13 @@ from pathlib import Path
 
 import pytest
 
-from e3.aws.troposphere import Stack
 from e3.aws.troposphere.awslambda import Alias, PyFunction
 from e3.aws.troposphere.secretsmanager import RotationSchedule, Secret
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from e3.aws.troposphere import Stack
 
 TEST_DIR = Path(__file__).resolve().parent
 
