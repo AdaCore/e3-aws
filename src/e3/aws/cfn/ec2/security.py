@@ -91,13 +91,11 @@ class GroupSecurityRule:
 class EgressRule(GroupSecurityRule):
     """Represent an outbound security group rule."""
 
-    pass
 
 
 class IngressRule(GroupSecurityRule):
     """Represent an inbound security group rule."""
 
-    pass
 
 
 class Ipv4EgressRule(EgressRule):
