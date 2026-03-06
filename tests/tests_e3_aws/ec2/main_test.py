@@ -180,5 +180,5 @@ def test_find_with_owners():
 
 def test_session_without_args():
     """Raise error when no arguments."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="region should be specified"):
         Session()

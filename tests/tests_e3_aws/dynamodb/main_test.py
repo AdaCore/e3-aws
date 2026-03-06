@@ -14,8 +14,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
 
-    from pytest import LogCaptureFixture
-
     from typing import Any
 
 TABLE_NAME = "customer"
@@ -101,7 +99,7 @@ def test_batch_get_item(client: DynamoDB) -> None:
 
 
 def test_batch_get_item_error(
-    client: DynamoDB, caplog: Generator[LogCaptureFixture, Any, Any]
+    client: DynamoDB, caplog: Generator[pytest.LogCaptureFixture, Any, Any]
 ) -> None:
     """Test getting an item that doesn't exist."""
     items = client.batch_get_items(
@@ -162,7 +160,7 @@ def test_query_items(client: DynamoDB) -> None:
     assert items[0] == CUSTOMERS[0]
 
 
-def test_query_items_error(client: DynamoDB, caplog: LogCaptureFixture) -> None:
+def test_query_items_error(client: DynamoDB, caplog: pytest.LogCaptureFixture) -> None:
     """Test querying items."""
     items = client.query_items(table_name=TABLE_NAME, query={"name": ["John", "Doe"]})
     assert (

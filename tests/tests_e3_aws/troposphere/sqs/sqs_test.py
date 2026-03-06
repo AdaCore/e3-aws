@@ -198,10 +198,10 @@ def test_allow_service_to_write_not_unique_sid(stack: Stack) -> None:
     queue.add_allow_service_to_write_statement(service="sns", applicant="SomeApplicant")
     queue.add_allow_service_to_write_statement(service="s3", applicant="SomeApplicant")
 
-    with pytest.raises(Exception) as ex:
+    with pytest.raises(
+        Exception, match="Unique Sid is required for QueuePolicy statements"
+    ):
         stack.add(queue)
-
-    assert str(ex.value) == "Unique Sid is required for QueuePolicy statements"
 
 
 def test_subscribe_to_sns_topic_with_policy_filter(stack: Stack) -> None:
@@ -252,7 +252,7 @@ def test_multi_subscription_to_sns_topic_without_prefix(stack: Stack) -> None:
         applicant="SomeApplicant",
     )
 
-    with pytest.raises(Exception) as ex:
+    with pytest.raises(
+        Exception, match="Unique Sid is required for QueuePolicy statements"
+    ):
         stack.add(queue)
-
-    assert str(ex.value) == "Unique Sid is required for QueuePolicy statements"

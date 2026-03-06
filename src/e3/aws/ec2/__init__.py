@@ -85,7 +85,9 @@ class SecurityGroup(EC2Element):
             region
         """
         if data is None:
-            assert region is not None and group_id is not None and session is not None
+            assert region is not None
+            assert group_id is not None
+            assert session is not None
             data = session.client("ec2", region).describe_security_groups(
                 GroupIds=[group_id]
             )["SecurityGroups"][0]
@@ -147,9 +149,9 @@ class Instance(EC2Element):
             region
         """
         if data is None:
-            assert (
-                instance_id is not None and region is not None and session is not None
-            )
+            assert instance_id is not None
+            assert region is not None
+            assert session is not None
             data = session.client("ec2", region).describe_instances(
                 InstanceIds=[instance_id]
             )["Reservations"]["Instances"][0]
@@ -375,7 +377,9 @@ class Volume(EC2Element):
             region
         """
         if data is None:
-            assert volume_id is not None and region is not None and session is not None
+            assert volume_id is not None
+            assert region is not None
+            assert session is not None
             data = session.client("ec2", region).describe_volumes(
                 InstanceIds=[volume_id]
             )["Volumes"][0]
@@ -458,9 +462,9 @@ class Snapshot(EC2Element):
             region
         """
         if data is None:
-            assert (
-                snapshot_id is not None and region is not None and session is not None
-            )
+            assert snapshot_id is not None
+            assert region is not None
+            assert session is not None
             data = session.client("ec2", region).describe_snapshots(
                 SnapshotIds=[snapshot_id]
             )["Snapshots"][0]

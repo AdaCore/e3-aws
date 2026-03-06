@@ -322,7 +322,7 @@ def test_cfn_correct_branch_check_ko(
 
 
 @pytest.mark.parametrize(
-    "fetch_out, expected_status",
+    ("fetch_out", "expected_status"),
     [
         # No commit present on the remote branch
         (

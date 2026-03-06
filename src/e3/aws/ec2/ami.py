@@ -54,7 +54,8 @@ class AMI(EC2Element):
             download AMI description using EC2 api
         """
         if data is None:
-            assert ami_id is not None and session is not None
+            assert ami_id is not None
+            assert session is not None
             data = session.client("ec2", region).describe_images(ImageIds=[ami_id])[
                 "Images"
             ][0]

@@ -688,7 +688,7 @@ def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
 
 
 @pytest.mark.parametrize(
-    "python_version, platform_list",
+    ("python_version", "platform_list"),
     [
         ("3.9", ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
         ("3.10", ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
@@ -871,7 +871,7 @@ def test_docker_function(stack: Stack) -> None:
 
 
 @pytest.mark.parametrize(
-    "architecture, build_args, expected_platform",
+    ("architecture", "build_args", "expected_platform"),
     [
         (Architecture.X86_64, {}, ["linux/amd64"]),
         (Architecture.ARM64, {}, ["linux/arm64"]),
@@ -972,7 +972,7 @@ def test_autoversion_default(stack: Stack, simple_lambda_function: PyFunction) -
     assert auto_version.previous.name == "mypylambdaVersion1"
     assert auto_version.latest.name == "mypylambdaVersion2"
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="version 3 if out of range"):
         auto_version.get_version(3)
 
 
@@ -1199,7 +1199,7 @@ def test_base64_response(base64_response_server: Flask) -> None:
 
 
 @pytest.mark.parametrize(
-    "version, expected_function_name_ref",
+    ("version", "expected_function_name_ref"),
     [
         # Add the permission on the function itself
         (

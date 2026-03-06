@@ -484,9 +484,8 @@ class Stack:
         :param s3_bucket: s3 bucket used to store data needed by the stack
         :param s3_key: s3 prefix in s3_bucket in which data is stored
         """
-        assert (
-            re.match(VALID_STACK_NAME, name) and len(name) <= VALID_STACK_NAME_MAX_LEN
-        ), f"invalid stack name: {name}"
+        assert re.match(VALID_STACK_NAME, name), f"invalid stack name: {name}"
+        assert len(name) <= VALID_STACK_NAME_MAX_LEN, f"invalid stack name: {name}"
         self.resources: dict[str, Resource | Stack] = {}
         self.name = name
 

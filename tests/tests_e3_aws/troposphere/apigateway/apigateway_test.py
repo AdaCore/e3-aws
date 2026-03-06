@@ -1012,7 +1012,7 @@ def test_rest_api_endpoint_configuration_type_only(
 
 
 @pytest.mark.parametrize(
-    "endpoint_type,security_policy,should_be_valid",
+    ("endpoint_type", "security_policy", "should_be_valid"),
     [
         # Valid REGIONAL policies
         (

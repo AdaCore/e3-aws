@@ -15,7 +15,7 @@ ASSET_URI_PREFIX = "s3://cfn_bucket/assets/"
 
 
 @pytest.mark.parametrize(
-    "versioning, layout, expected_s3_key",
+    ("versioning", "layout", "expected_s3_key"),
     [
         # Without versioning
         (False, AssetLayout.TREE, "MyFileAsset/config_file.yaml"),
@@ -70,7 +70,7 @@ def test_file_asset(
 
 
 @pytest.mark.parametrize(
-    "versioning, ignore, layout, expected_s3_key",
+    ("versioning", "ignore", "layout", "expected_s3_key"),
     [
         # Without versioning
         (False, None, AssetLayout.TREE, "MyDirectoryAsset/asset_dir"),

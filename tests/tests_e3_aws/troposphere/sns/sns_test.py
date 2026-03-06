@@ -65,14 +65,14 @@ def test_allow_service_to_publish_not_unique_sid(stack: Stack) -> None:
         service="lambda",
     )
 
-    with pytest.raises(Exception) as ex:
+    with pytest.raises(
+        Exception, match="Unique Sid is required for TopicPolicy statements"
+    ):
         stack.add(topic)
-
-    assert str(ex.value) == "Unique Sid is required for TopicPolicy statements"
 
 
 @pytest.mark.parametrize(
-    "version, expected_endpoint, expected_function_name_ref",
+    ("version", "expected_endpoint", "expected_function_name_ref"),
     [
         # Add the subscription to the function itself
         (
