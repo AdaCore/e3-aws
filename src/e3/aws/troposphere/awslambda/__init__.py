@@ -52,11 +52,11 @@ class Architecture(Enum):
     ARM64 = "arm64"
 
 
-class UnknownPlatform(Exception):
+class UnknownPlatform(Exception):  # noqa: N818
     """Unknown platform exception."""
 
     def __init__(self, architecture: Architecture):
-        """Initialize an UnknownPlatform error.
+        """Initialize an UnknownPlatform.
 
         :param architecture: the unsupported CPU architecture
         """

@@ -4,7 +4,7 @@ import pytest
 import yaml
 from botocore.stub import ANY
 
-from e3.aws import AWSEnv, default_region
+from e3.aws import AWSEnv, DefaultRegion
 from e3.aws.cfn import Stack
 from e3.aws.cfn.ec2 import (
     EIP,
@@ -57,7 +57,7 @@ def test_create_network():
 def test_create_instance():
     """Test EC2 instance creation."""
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         stub = aws_env.stub("ec2", region="us-east-1")
         stub.add_response(
             "describe_images",
@@ -110,7 +110,7 @@ def test_user_data_creation():
     assert yaml.dump(a.properties)
 
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         stub = aws_env.stub("ec2", region="us-east-1")
         stub.add_response(
             "describe_images",
@@ -135,7 +135,7 @@ def test_win_user_data_creation():
     assert yaml.dump(a.properties)
 
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         stub = aws_env.stub("ec2", region="us-east-1")
         stub.add_response(
             "describe_images",
@@ -162,7 +162,7 @@ def test_cfn_init_set():
     s = Stack(name="teststack")
 
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         stub = aws_env.stub("ec2", region="us-east-1")
         stub.add_response(
             "describe_images",

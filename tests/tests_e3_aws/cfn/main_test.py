@@ -3,7 +3,7 @@
 import pytest
 from botocore.stub import ANY, Stubber
 
-from e3.aws import AWSEnv, default_region
+from e3.aws import AWSEnv, DefaultRegion
 from e3.aws.cfn import Stack
 from e3.aws.cfn.s3 import Bucket
 
@@ -33,7 +33,7 @@ def test_create_stack():
     s = Stack(name="teststack")
 
     aws_env = AWSEnv(regions=["us-east-1"])
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         cfn_client = aws_env.client("cloudformation", region="us-east-1")
 
         stubber = Stubber(cfn_client)
@@ -67,7 +67,7 @@ def test_create_change_set():
     s = Stack(name="teststack")
 
     aws_env = AWSEnv(regions=["us-east-1"])
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         cfn_client = aws_env.client("cloudformation", region="us-east-1")
 
         stubber = Stubber(cfn_client)
@@ -101,7 +101,7 @@ def test_create_change_set_role_arn():
     s = Stack(name="teststack", cfn_role_arn="arn:aws:iam::123456789012:role/S3Access")
 
     aws_env = AWSEnv(regions=["us-east-1"])
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         cfn_client = aws_env.client("cloudformation", region="us-east-1")
 
         stubber = Stubber(cfn_client)
@@ -125,7 +125,7 @@ def test_validate():
     s = Stack(name="teststack")
 
     aws_env = AWSEnv(regions=["us-east-1"])
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         cfn_client = aws_env.client("cloudformation", region="us-east-1")
 
         stubber = Stubber(cfn_client)

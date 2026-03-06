@@ -337,7 +337,7 @@ class AWSEnv(Session):
         env.aws_env = self
 
 
-class default_region:
+class DefaultRegion:
     """Context manager used to set a default region."""
 
     def __init__(self, region: str):

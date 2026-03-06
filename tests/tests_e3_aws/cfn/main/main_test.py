@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 from botocore.stub import ANY
 
-from e3.aws import AWSEnv, default_region
+from e3.aws import AWSEnv, DefaultRegion
 from e3.aws.cfn import Stack
 from e3.aws.cfn.main import CFNMain
 from e3.mock.os.process import CommandResult, mock_run
@@ -37,7 +37,7 @@ def test_cfn_main() -> None:
             return Stack(name="teststack")
 
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         aws_env.client("cloudformation", region="us-east-1")
 
         stubber = aws_env.stub("cloudformation")
@@ -66,7 +66,7 @@ def test_cfn_main_multiple_stacks() -> None:
             return [Stack(name="first-stack"), Stack(name="second-stack")]
 
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         aws_env.client("cloudformation", region="us-east-1")
 
         stubber = aws_env.stub("cloudformation")
@@ -117,7 +117,7 @@ def test_cfn_main_push_existing_stack(
 
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
 
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         aws_env.client("cloudformation", region="us-east-1")
 
         stack_name = "existing-stack"
@@ -199,7 +199,7 @@ def test_cfn_main_s3() -> None:
 
     Path("data").mkdir()
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         aws_env.client("cloudformation", region="us-east-1")
 
         stubber = aws_env.stub("cloudformation")
@@ -382,7 +382,7 @@ def test_cfn_branch_up_to_date_check(
 
     git_path = which("git", default="/usr/bin/git")
     with (
-        default_region("us-east-1"),
+        DefaultRegion("us-east-1"),
         stubber,
         mock_run(
             config={

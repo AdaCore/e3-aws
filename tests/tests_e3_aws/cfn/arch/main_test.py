@@ -3,7 +3,7 @@
 import pytest
 from botocore.stub import ANY
 
-from e3.aws import AWSEnv, default_region
+from e3.aws import AWSEnv, DefaultRegion
 from e3.aws.cfn.arch import AWSFortressError, Fortress
 from e3.aws.cfn.ec2.security import SecurityGroup
 from e3.aws.cfn.iam import Allow, Policy, PolicyDocument
@@ -56,7 +56,7 @@ def test_create_fortress(enable_github, requests_mock):
         "https://ip-ranges.amazonaws.com/ip-ranges.json", json=AWS_IP_RANGES
     )
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         stub = aws_env.stub("ec2", region="us-east-1")
         stub.add_response(
             "describe_images",
@@ -118,7 +118,7 @@ def test_create_fortress(enable_github, requests_mock):
 def test_create_fortress_no_bastion():
     """Test fortress stack creation without bastion."""
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         stub = aws_env.stub("ec2", region="us-east-1")
         stub.add_response(
             "describe_images",
@@ -164,7 +164,7 @@ def test_create_fortress_no_bastion():
 def test_create_fortress_with_too_much_sgs():
     """Test fortress creation with too many security groups."""
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         stub = aws_env.stub("ec2", region="us-east-1")
         stub.add_response(
             "describe_images",

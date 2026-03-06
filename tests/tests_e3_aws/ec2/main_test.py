@@ -2,7 +2,7 @@
 
 import pytest
 
-from e3.aws import AWSEnv, Session, default_region
+from e3.aws import AWSEnv, DefaultRegion, Session
 from e3.aws.ec2.ami import AMI
 
 
@@ -38,7 +38,7 @@ def test_select():
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
     stub = aws_env.stub("ec2", region="us-east-1")
 
-    Images = {
+    images = {
         "Images": [
             {
                 "ImageId": "ami-1",
@@ -99,7 +99,7 @@ def test_select():
 
     stub.add_response(
         "describe_images",
-        Images,
+        images,
         {
             "Filters": [
                 {"Name": "tag-key", "Values": ["platform"]},
@@ -111,7 +111,7 @@ def test_select():
     )
     stub.add_response(
         "describe_images",
-        Images,
+        images,
         {
             "Filters": [
                 {"Name": "tag-key", "Values": ["platform"]},
@@ -123,7 +123,7 @@ def test_select():
         },
     )
 
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         ami = AMI.select(platform="x86_64-linux", os_version="suse11")
         assert ami.id == "ami-2"
         ami = AMI.select(platform="x86_64-linux", os_version="suse11", kind="build")
@@ -135,7 +135,7 @@ def test_find_with_owners():
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
     stub = aws_env.stub("ec2", region="us-east-1")
 
-    Images = {
+    images = {
         "Images": [
             {
                 "ImageId": "ami-1",
@@ -162,7 +162,7 @@ def test_find_with_owners():
 
     stub.add_response(
         "describe_images",
-        Images,
+        images,
         {
             "Filters": [
                 {"Name": "tag-key", "Values": ["platform"]},
@@ -173,7 +173,7 @@ def test_find_with_owners():
         },
     )
 
-    with default_region("us-east-1"):
+    with DefaultRegion("us-east-1"):
         ami = AMI.select(platform="x86_64-linux", os_version="suse11", owners=["2222"])
         assert ami.owner_id == "2222"
 

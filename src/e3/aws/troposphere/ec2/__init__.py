@@ -360,7 +360,7 @@ class Subnet(Construct):
         )
 
     @cached_property
-    def ID(self) -> Ref:
+    def ID(self) -> Ref:  # noqa: N802
         """Return subnet's ID."""
         return Ref(self.subnet)
 
