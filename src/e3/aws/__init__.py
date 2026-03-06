@@ -505,8 +505,7 @@ def name_to_id(name: str) -> str:
         return match.group(1)[1].upper()
 
     resource_id = re.sub(r"[^a-zA-Z0-9]", "", re.sub(r"(-[a-z])", replacement, name))
-    resource_id = resource_id[0].upper() + resource_id[1:]
-    return resource_id
+    return resource_id[0].upper() + resource_id[1:]
 
 
 class IAMAuth(requests.auth.AuthBase):

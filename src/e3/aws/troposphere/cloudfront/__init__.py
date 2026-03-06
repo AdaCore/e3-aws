@@ -314,12 +314,11 @@ class S3WebsiteDistribution(Construct):
             delivery_policy={"throttlePolicy": {"maxReceivesPerSecond": 10}},
             version=lambda_alias,
         )
-        result = [
+        return [
             resource
             for construct in (lambda_policy, lambda_role, lambda_function)
             for resource in construct.resources(stack)
         ]
-        return result
 
     @property
     def domain_name(self) -> GetAtt:
