@@ -119,10 +119,9 @@ class AMI(EC2Element):
 
     def __str__(self) -> str:
         """Return string representation of the AMI."""
-        return "%-12s %-24s: %s" % (
-            self.region,
-            self.data["ImageId"],
-            self.data.get("Description", ""),
+        return (
+            f"{self.region:<12s} {self.data['ImageId']:<24s}:"
+            f" {self.data.get('Description', '')}"
         )
 
     @classmethod
@@ -267,13 +266,6 @@ class AMI(EC2Element):
             **kwargs,
         )
         assert len(result) == 1, (
-            "cannot find AMI %s (%s) of kind (%s) in region %s %s"
-            % (
-                platform,
-                os_version,
-                kind,
-                region,
-                kwargs,
-            )
+            f"cannot find AMI {platform} ({os_version}) of kind ({kind}) in region {region} {kwargs}"
         )
         return result[0]

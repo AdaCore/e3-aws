@@ -187,8 +187,7 @@ class S3:
 
         paginator = self.client.get_paginator("list_objects_v2")
         for page in paginator.paginate(**params):
-            for content in page.get("Contents", []):
-                yield content
+            yield from page.get("Contents", [])
 
     def delete(self, key: str) -> None:
         """Delete content from S3.

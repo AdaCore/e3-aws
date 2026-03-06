@@ -97,7 +97,7 @@ class CfnConfig:
         return {
             "files": self.files,
             "commands": {
-                ("%04d" % index): {"command": command}
+                f"{index:04d}": {"command": command}
                 for index, command in enumerate(self.commands)
             },
         }

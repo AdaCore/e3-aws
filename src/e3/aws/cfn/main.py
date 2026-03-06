@@ -72,7 +72,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         if len(regions) > 1:
             self.argument_parser.add_argument(
                 "--region",
-                help="choose region (default: %s)" % regions[0],
+                help=f"choose region (default: {regions[0]})",
                 default=regions[0],
             )
         else:
@@ -326,8 +326,8 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         assert self.args is not None
 
         if stack.exists():
-            changeset_name = "changeset%s" % int(time.time())
-            logging.info("Push changeset: %s" % changeset_name)
+            changeset_name = f"changeset{int(time.time())}"
+            logging.info(f"Push changeset: {changeset_name}")
             stack.create_change_set(changeset_name, url=s3_template_url)
             result = stack.describe_change_set(changeset_name)
             while result["Status"] in (
@@ -425,7 +425,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 # Synchronize resources to the S3 bucket
                 self._upload_stack(stack)
 
-                logging.info("Validate template for stack %s" % stack.name)
+                logging.info(f"Validate template for stack {stack.name}")
                 if not self.args.dry_run:
                     try:
                         stack.validate(url=self.s3_template_url)

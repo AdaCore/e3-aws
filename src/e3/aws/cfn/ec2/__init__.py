@@ -65,7 +65,7 @@ class EphemeralDisk(BlockDevice):
 
         Can be used to transform to CloudFormation Yaml format.
         """
-        return {"DeviceName": self.device_name, "VirtualName": "ephemeral%s" % self.id}
+        return {"DeviceName": self.device_name, "VirtualName": f"ephemeral{self.id}"}
 
 
 class EBSDisk(BlockDevice):
@@ -246,7 +246,7 @@ class WinUserData:
         """
         props = ""
         for kind, part in self.parts:
-            props += "<%s>\n%s\n</%s>" % (kind, part, kind)
+            props += f"<{kind}>\n{part}\n</{kind}>"
         return Base64(Sub(props, self.variables))
 
 
@@ -335,7 +335,7 @@ class TemplateOrInstance(Resource):
         elif isinstance(device, BlockDevice):
             self.block_devices.append(device)
         else:
-            raise AssertionError("invalid device %s" % device)
+            raise AssertionError(f"invalid device {device}")
         return self
 
     def add_user_data(
@@ -663,7 +663,7 @@ class VPCEndpoint(Resource):
         :param policy_document: policy document attached to the endpoint.
         """
         super().__init__(name, kind=AWSType.EC2_VPC_ENDPOINT)
-        assert service in ("dynamodb", "s3"), "Invalid service: %s" % service
+        assert service in ("dynamodb", "s3"), f"Invalid service: {service}"
         self.service = service
         self.vpc = vpc
         self.route_tables = route_tables

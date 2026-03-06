@@ -178,7 +178,7 @@ def getatt_representer(dumper: CFNYamlDumper, data: Any) -> yaml.ScalarNode:
     :param data: the GetAtt data to serialize
     :return: a YAML scalar node with the !GetAtt tag
     """
-    return dumper.represent_scalar("!GetAtt", "%s.%s" % (data.name, data.attribute))
+    return dumper.represent_scalar("!GetAtt", f"{data.name}.{data.attribute}")
 
 
 def ref_representer(dumper: CFNYamlDumper, data: Any) -> yaml.ScalarNode:
@@ -259,9 +259,9 @@ class Resource:
         :param kind: resource kind
         """
         assert isinstance(kind, AWSType), (
-            "resource kind should be an AWSType: found %s" % kind
+            f"resource kind should be an AWSType: found {kind}"
         )
-        assert name.isalnum(), "resource name should be alphanumeric: found %s" % name
+        assert name.isalnum(), f"resource name should be alphanumeric: found {name}"
         self.name = name
         self.kind = kind
         self.depends: str | None = None
@@ -282,7 +282,7 @@ class Resource:
         :return: a getatt object
 
         """
-        assert name in self.ATTRIBUTES, "invalid attribute %s" % name
+        assert name in self.ATTRIBUTES, f"invalid attribute {name}"
         return GetAtt(self.name, name)
 
     @property
@@ -484,7 +484,7 @@ class Stack:
         """
         assert (
             re.match(VALID_STACK_NAME, name) and len(name) <= VALID_STACK_NAME_MAX_LEN
-        ), "invalid stack name: %s" % name
+        ), f"invalid stack name: {name}"
         self.resources: dict[str, Resource | Stack] = {}
         self.name = name
 
@@ -520,10 +520,10 @@ class Stack:
         :return: the current stack
         """
         assert isinstance(element, Resource) or isinstance(element, Stack), (
-            "a resource or a stack is expected. got %s" % element
+            f"a resource or a stack is expected. got {element}"
         )
         assert element.name not in self.resources, (
-            "resource already exist: %s" % element.name
+            f"resource already exist: {element.name}"
         )
         self.resources[element.name] = element
         return self
