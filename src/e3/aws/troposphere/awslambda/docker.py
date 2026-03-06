@@ -13,8 +13,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from python_on_whales import DockerClient
-    from troposphere import AWSObject, GetAtt
-    from troposphere import awslambda
+    from troposphere import AWSObject, GetAtt, awslambda
 
     from e3.aws.troposphere import Stack
     from e3.aws.troposphere.iam.role import Role

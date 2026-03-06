@@ -9,14 +9,13 @@ import uuid
 from datetime import datetime
 from enum import Enum
 
+import botocore.client
 import botocore.exceptions
 import yaml
 
 from e3.env import Env
 
 from typing import TYPE_CHECKING
-
-import botocore.client
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator

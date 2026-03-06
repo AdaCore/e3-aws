@@ -11,6 +11,7 @@ import urllib.parse
 from uuid import uuid4
 
 import boto3
+import botocore.client
 import botocore.session
 import requests
 import requests.auth
@@ -21,8 +22,6 @@ from botocore.stub import Stubber
 from e3.env import Env
 from e3.error import E3Error
 from e3.os.process import Run
-
-import botocore.client
 
 from typing import TYPE_CHECKING
 

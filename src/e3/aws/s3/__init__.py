@@ -12,8 +12,9 @@ from botocore.exceptions import ClientError
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import botocore
     from collections.abc import Iterable, Iterator
+
+    import botocore
 
     from typing import IO, Any, BinaryIO
 
