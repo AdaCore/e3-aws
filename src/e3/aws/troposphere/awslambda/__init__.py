@@ -34,12 +34,12 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from types import TracebackType
 
     from troposphere import AWSObject
 
     from e3.aws.troposphere import Stack
 
-    from types import TracebackType
     from typing import Any
 
 logger = logging.getLogger("e3.aws.troposphere.awslambda")
