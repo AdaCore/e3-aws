@@ -111,10 +111,7 @@ def test_batch_get_item_error(
     # capture logs and ensure that are what we expect
     messages.extend([x.message for x in caplog.get_records("call")])  # type: ignore
 
-    assert (
-        "An error occurred (ResourceNotFoundException) when "
-        "calling the BatchGetItem operation: Requested resource not found" in messages
-    )
+    assert "Failed to batch get items" in messages
 
     assert items == []
 

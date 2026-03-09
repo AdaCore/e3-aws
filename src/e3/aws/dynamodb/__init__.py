@@ -106,8 +106,8 @@ class DynamoDB:
                 Key={key: item[key] for key in keys if key in item}
             )
             logger.debug(f"Get_item response: {response}")
-        except ClientError as e:
-            logger.error(e)
+        except ClientError:
+            logger.exception("Failed to get item")
             return {}
         else:
             return response.get("Item", {})
@@ -168,8 +168,8 @@ class DynamoDB:
                         sleepy_time = min(sleepy_time * 2, 32)
                 else:
                     break
-            except ClientError as e:
-                logger.error(e)
+            except ClientError:
+                logger.exception("Failed to batch get items")
                 return []
         return res
 

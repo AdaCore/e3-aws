@@ -467,8 +467,8 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     print(f"command supported only with troposphere stacks: {attr_e}")
             elif self.args.command == "delete":
                 stack.delete(wait=self.args.wait_stack_creation)
-        except botocore.exceptions.ClientError as e:
-            logger.exception(str(e))
+        except botocore.exceptions.ClientError:
+            logger.exception("ClientError encountered")
             return 1
         else:
             return 0
@@ -501,8 +501,8 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                 branch = repo.git_cmd(
                     ["branch", "--show-current"], output=PIPE
                 ).out.strip()
-            except Exception as e:
-                logger.exception(f"Failed to get the current branch: {e}")
+            except Exception:
+                logger.exception("Failed to get the current branch")
                 return 1
 
             # Check we are on the correct branch
@@ -519,8 +519,8 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                         "no modified files"
                     )
                     return 1
-            except Exception as e:
-                logger.exception(f"Failed to check local changes: {e}")
+            except Exception:
+                logger.exception("Failed to check local changes")
                 return 1
 
             # Check the branch is up to date
@@ -534,8 +534,8 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                         "Can only deploy from up to date branch, please do a git pull"
                     )
                     return 1
-            except Exception as e:
-                logger.exception(f"Failed to fetch {branch}: {e}")
+            except Exception:
+                logger.exception(f"Failed to fetch {branch}")
                 return 1
 
         return_val = 0
