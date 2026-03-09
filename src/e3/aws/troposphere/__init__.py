@@ -24,7 +24,9 @@ if TYPE_CHECKING:  # all: no cover
     import botocore.client
     from troposphere import And, Condition, Equals, If, Not, Or
 
-    ConditionFunction = And | Condition | Equals | If | Not | Or
+    from typing import TypeAlias
+
+    ConditionFunction: TypeAlias = And | Condition | Equals | If | Not | Or
 
 
 logger = logging.getLogger(__name__)
