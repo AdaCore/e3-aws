@@ -334,7 +334,7 @@ class TemplateOrInstance(Resource):
         elif isinstance(device, BlockDevice):
             self.block_devices.append(device)
         else:
-            msg = f"invalid device {device}"
+            msg = f"invalid device {device}"  # type: ignore[unreachable]
             raise TypeError(msg)
         return self
 

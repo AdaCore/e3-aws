@@ -98,7 +98,7 @@ def test_create_instance():
         )
         assert i.properties
 
-        with pytest.raises(AssertionError):
+        with pytest.raises(TypeError):
             i.add("non valid ec2 device")
 
 
