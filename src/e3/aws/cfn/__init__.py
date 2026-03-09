@@ -658,11 +658,11 @@ class Stack:
         """
         try:
             self.state()
-            return True
         except Exception:
             # Documentation does not specify the right exception that is raised
             # by botocore.
             return False
+        return True
 
     @client("cloudformation")
     def state(self, client: botocore.client.BaseClient) -> Any:

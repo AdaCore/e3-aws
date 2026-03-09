@@ -201,11 +201,12 @@ class S3:
         """Return if the bucket exists."""
         try:
             self.client.head_bucket(Bucket=self.bucket)
-            return True
         except ClientError as e:
             if e.response["Error"]["Code"] == "404":
                 return False
             raise
+        else:
+            return True
 
     def object_exists(self, key: str, /, ignore_error_403: bool = False) -> bool:
         """Check if an object exists.
@@ -222,12 +223,13 @@ class S3:
         """
         try:
             self.client.head_object(Bucket=self.bucket, Key=key)
-            return True
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             if error_code == "404" or (error_code == "403" and ignore_error_403):
                 return False
             raise
+        else:
+            return True
 
     @property
     def key_count(self) -> int:

@@ -467,11 +467,11 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
                     print(f"command supported only with troposphere stacks: {attr_e}")
             elif self.args.command == "delete":
                 stack.delete(wait=self.args.wait_stack_creation)
-
-            return 0
         except botocore.exceptions.ClientError as e:
             logger.exception(str(e))
             return 1
+        else:
+            return 0
 
     def execute(
         self,
