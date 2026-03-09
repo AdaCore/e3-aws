@@ -115,7 +115,7 @@ class SecurityGroup(EC2Element):
         assert session is not None
         if filters is None:
             filters = []
-        result = []
+        result: list[SecurityGroup] = []
         for r in session.regions:
             c = session.client("ec2", r)
             region_result = c.describe_security_groups(Filters=filters)
@@ -426,7 +426,7 @@ class Volume(EC2Element):
 
         if filters is None:
             filters = []
-        result = []
+        result: list[Volume] = []
         for r in session.regions:
             c = session.client("ec2", r)
             region_result = c.describe_volumes(Filters=filters)
@@ -497,7 +497,7 @@ class Snapshot(EC2Element):
         assert session is not None
         if filters is None:
             filters = []
-        result = []
+        result: list[Snapshot] = []
         for r in session.regions:
             c = session.client("ec2", r)
             region_result = c.describe_snapshots(OwnerIds=["self"], Filters=filters)

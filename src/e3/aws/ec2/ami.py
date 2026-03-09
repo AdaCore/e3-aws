@@ -148,7 +148,7 @@ class AMI(EC2Element):
             filters = []
         if owners is None:
             owners = ["self"]
-        result = []
+        result: list[AMI] = []
         for r in session.regions:
             c = session.client("ec2", r)
             region_result = c.describe_images(Owners=owners, Filters=filters)
