@@ -146,7 +146,7 @@ class S3:
             if e.response["Error"]["Code"] == "NoSuchKey":
                 raise KeyNotFoundError(key) from e
 
-            raise e
+            raise
 
     def get_body(self, key: str) -> IO[bytes]:
         """Get the body of an object from S3.
@@ -168,11 +168,11 @@ class S3:
         """
         try:
             return self.get_body(key).read()
-        except KeyNotFoundError as e:
+        except KeyNotFoundError:
             if default is not None:
                 return default
 
-            raise e
+            raise
 
     def iterate(self, *, prefix: str | None = None) -> Iterable[dict[str, Any]]:
         """Iterate all objects from S3.
