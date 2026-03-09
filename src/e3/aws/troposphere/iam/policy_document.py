@@ -45,4 +45,3 @@ class PolicyDocument:
             "Version": self.version,
             "Statement": [statement.as_dict for statement in self.statements],
         }
-
