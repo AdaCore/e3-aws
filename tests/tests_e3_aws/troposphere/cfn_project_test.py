@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from textwrap import dedent
 from unittest.mock import patch
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
     from e3.aws.cfn import Stack
 
 
-TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+TEST_DIR = Path(__file__).resolve().parent
 
 
 class MyCFNProject(CFNProjectMain):
@@ -79,7 +79,7 @@ def test_cfn_project_main(capfd: pytest.CaptureFixture[str]) -> None:
 
     captured = capfd.readouterr()
     print(captured.out)
-    with open(os.path.join(TEST_DIR, "cfn_project_test.out")) as f_out:
+    with (TEST_DIR / "cfn_project_test.out").open() as f_out:
         assert captured.out == f_out.read()
 
 
@@ -106,7 +106,7 @@ def test_cfn_project_main_extend(capfd: pytest.CaptureFixture[str]) -> None:
 
     captured = capfd.readouterr()
     print(captured.out)
-    with open(os.path.join(TEST_DIR, "cfn_project_test_extend.out")) as f_out:
+    with (TEST_DIR / "cfn_project_test_extend.out").open() as f_out:
         assert captured.out == f_out.read()
 
 
@@ -129,7 +129,7 @@ def test_cfn_project_main_pyfunction(capfd: pytest.CaptureFixture[str]) -> None:
 
     captured = capfd.readouterr()
     print(captured.out)
-    with open(os.path.join(TEST_DIR, "cfn_project_test_pyfunction.out")) as f_out:
+    with (TEST_DIR / "cfn_project_test_pyfunction.out").open() as f_out:
         assert captured.out == f_out.read()
 
 
@@ -172,7 +172,7 @@ def test_cfn_project_main_diff(capfd: pytest.CaptureFixture[str]) -> None:
 
     captured = capfd.readouterr()
     print(captured.out)
-    with open(os.path.join(TEST_DIR, "cfn_project_test_diff.out")) as f_out:
+    with (TEST_DIR / "cfn_project_test_diff.out").open() as f_out:
         assert captured.out == f_out.read()
 
 
@@ -202,7 +202,7 @@ def test_cfn_project_main_diff_assets(capfd: pytest.CaptureFixture[str]) -> None
 
     # Add a PyFunction to the template
     with TemporaryDirectory() as tmpd:
-        with open(os.path.join(tmpd, "app.py"), "w"):
+        with (Path(tmpd) / "app.py").open("w"):
             pass
 
         test.add(
@@ -257,7 +257,7 @@ def test_cfn_project_main_show_assets(capfd: pytest.CaptureFixture[str]) -> None
 
     # Add a PyFunction to the template
     with TemporaryDirectory() as tmpd:
-        with open(os.path.join(tmpd, "app.py"), "w"):
+        with (Path(tmpd) / "app.py").open("w"):
             pass
 
         test.add(
@@ -275,5 +275,5 @@ def test_cfn_project_main_show_assets(capfd: pytest.CaptureFixture[str]) -> None
 
     captured = capfd.readouterr()
     print(captured.out)
-    with open(os.path.join(TEST_DIR, "cfn_project_test_show_assets.out")) as f_out:
+    with (TEST_DIR / "cfn_project_test_show_assets.out").open() as f_out:
         assert captured.out == f_out.read()

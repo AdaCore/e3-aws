@@ -10,7 +10,7 @@ from dateutil.parser import parse as parse_date
 from e3.aws import session
 from e3.aws.ec2 import BlockDeviceMapping, EC2Element
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     from e3.aws import Session
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class AMI(EC2Element):
     """Represent an AMI."""
 
-    PROPERTIES = {
+    PROPERTIES: ClassVar[dict[str, Any]] = {
         "ImageId": "id",
         "OwnerId": "owner_id",
         "Public": "public",
@@ -54,7 +54,8 @@ class AMI(EC2Element):
             download AMI description using EC2 api
         """
         if data is None:
-            assert ami_id is not None and session is not None
+            assert ami_id is not None
+            assert session is not None
             data = session.client("ec2", region).describe_images(ImageIds=[ami_id])[
                 "Images"
             ][0]
@@ -119,10 +120,9 @@ class AMI(EC2Element):
 
     def __str__(self) -> str:
         """Return string representation of the AMI."""
-        return "%-12s %-24s: %s" % (
-            self.region,
-            self.data["ImageId"],
-            self.data.get("Description", ""),
+        return (
+            f"{self.region:<12s} {self.data['ImageId']:<24s}:"
+            f" {self.data.get('Description', '')}"
         )
 
     @classmethod
@@ -148,12 +148,14 @@ class AMI(EC2Element):
             filters = []
         if owners is None:
             owners = ["self"]
-        result = []
+        result: list[AMI] = []
         for r in session.regions:
             c = session.client("ec2", r)
             region_result = c.describe_images(Owners=owners, Filters=filters)
-            for ami in region_result["Images"]:
-                result.append(AMI(ami["ImageId"], r, data=ami, session=session))
+            result.extend(
+                AMI(ami["ImageId"], r, data=ami, session=session)
+                for ami in region_result["Images"]
+            )
         return result
 
     @classmethod
@@ -267,13 +269,7 @@ class AMI(EC2Element):
             **kwargs,
         )
         assert len(result) == 1, (
-            "cannot find AMI %s (%s) of kind (%s) in region %s %s"
-            % (
-                platform,
-                os_version,
-                kind,
-                region,
-                kwargs,
-            )
+            f"cannot find AMI {platform} ({os_version}) of kind ({kind})"
+            f" in region {region} {kwargs}"
         )
         return result[0]

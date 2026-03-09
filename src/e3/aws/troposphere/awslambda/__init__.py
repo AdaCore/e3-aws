@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import difflib
 import logging
-import os
 import sys
 import zipfile
 from enum import Enum
 from functools import cached_property
 from hashlib import sha256
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
@@ -30,16 +30,16 @@ from e3.fs import mv, rm, sync_tree
 from e3.net.http import HTTPSession
 from e3.os.process import Run
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from types import TracebackType
 
     from troposphere import AWSObject
 
     from e3.aws.troposphere import Stack
 
-    from types import TracebackType
     from typing import Any
 
 logger = logging.getLogger("e3.aws.troposphere.awslambda")
@@ -52,11 +52,11 @@ class Architecture(Enum):
     ARM64 = "arm64"
 
 
-class UnknownPlatform(Exception):
+class UnknownPlatform(Exception):  # noqa: N818
     """Unknown platform exception."""
 
     def __init__(self, architecture: Architecture):
-        """Initialize an UnknownPlatform error.
+        """Initialize an UnknownPlatform.
 
         :param architecture: the unsupported CPU architecture
         """
@@ -186,7 +186,7 @@ class PyFunctionAsset(Asset):
         assert self._archive_dir is not None
 
         # Create a temporary packaging directory
-        package_dir = os.path.join(self._archive_dir, "package")
+        package_dir = str(Path(self._archive_dir) / "package")
 
         # Package the code with dependencies
         raw_archive_name = f"{self.name}.zip"
@@ -199,9 +199,7 @@ class PyFunctionAsset(Asset):
             requirement_file=self.requirement_file,
         )
 
-        raw_archive_path = os.path.abspath(
-            os.path.join(self._archive_dir, raw_archive_name)
-        )
+        raw_archive_path = str((Path(self._archive_dir) / raw_archive_name).resolve())
 
         # Compute the checksum
         sha = sha256()
@@ -223,7 +221,7 @@ class PyFunctionAsset(Asset):
         checksum = sha.hexdigest()
 
         # Rename the archive with the checksum
-        archive_path = os.path.join(self._archive_dir, f"{self.name}_{checksum}.zip")
+        archive_path = str(Path(self._archive_dir) / f"{self.name}_{checksum}.zip")
         mv(raw_archive_path, archive_path)
 
         return checksum
@@ -232,7 +230,7 @@ class PyFunctionAsset(Asset):
     def archive_path(self) -> str:
         """Return the path of the archive with the checksum."""
         assert self._archive_dir is not None
-        return os.path.join(self._archive_dir, self.archive_name)
+        return str(Path(self._archive_dir) / self.archive_name)
 
     @cached_property
     def archive_name(self) -> str:
@@ -329,7 +327,7 @@ class Function(Construct):
         :param architecture: x86_64 or arm64. (default: x86_64)
         :param memory_size: the amount of memory available to the function at
             runtime. The value can be any multiple of 1 MB.
-        :param ephemeral_storage_size: The size of the function’s /tmp directory
+        :param ephemeral_storage_size: The size of the function's /tmp directory
             in MB. The default value is 512, but can be any whole number between
             512 and 10240 MB
         :param logs_retention_in_days: The number of days to retain the log events
@@ -475,10 +473,7 @@ class Function(Construct):
             code_params = {"ImageUri": image_uri}
             params["PackageType"] = "Image"
 
-        if isinstance(self.role, Role):
-            role = self.role.arn
-        else:
-            role = self.role
+        role = self.role.arn if isinstance(self.role, Role) else self.role
 
         params.update(
             {
@@ -634,7 +629,7 @@ class PyFunction(Function):
 
     AMAZON_LINUX_2_RUNTIMES = ("3.9", "3.10", "3.11")
     AMAZON_LINUX_2023_RUNTIMES = ("3.12", "3.13")
-    RUNTIME_CONFIGS = {
+    RUNTIME_CONFIGS: ClassVar[dict[str, dict[str, str | tuple[str, ...]]]] = {
         f"python{version}": {
             "implementation": "cp",
             # Amazon Linux 2 glibc version is 2.26 and we support only x86_64
@@ -702,7 +697,7 @@ class PyFunction(Function):
         :param timeout: maximum execution time (default: 3s)
         :param memory_size: the amount of memory available to the function at
             runtime. The value can be any multiple of 1 MB.
-        :param ephemeral_storage_size: The size of the function’s /tmp directory
+        :param ephemeral_storage_size: The size of the function's /tmp directory
             in MB. The default value is 512, but can be any whole number between
             512 and 10240 MB
         :param logs_retention_in_days: The number of days to retain the log events
@@ -762,12 +757,15 @@ class PyFunction(Function):
     def resources(self, stack: Stack) -> list[AWSObject | Construct]:
         """Compute AWS resources for the construct."""
         assert isinstance(stack.s3_bucket, str)
-        return [self.code_asset] + self.lambda_resources(
-            code_bucket=stack.s3_bucket,
-            code_key=Sub(
-                f"{stack.s3_assets_key}${{{self.code_asset.s3_key_parameter_name}}}"
+        return [
+            self.code_asset,
+            *self.lambda_resources(
+                code_bucket=stack.s3_bucket,
+                code_key=Sub(
+                    f"{stack.s3_assets_key}${{{self.code_asset.s3_key_parameter_name}}}"
+                ),
             ),
-        )
+        ]
 
     @client("lambda")
     def _exist_version(
@@ -891,7 +889,7 @@ class PyFunction(Function):
 
                 # Output lines of the code archive
                 active_archive_files = self._show_archive_files(
-                    os.path.join(tmpd, archive_name)
+                    str(Path(tmpd) / archive_name)
                 )
         except botocore.exceptions.ClientError as e:
             # We can get a genuine AccessDeniedException depending on conditions
@@ -1193,7 +1191,8 @@ class AutoVersion(Construct):
         if index >= 0 and index < len(self.versions):
             return self.versions[index]
 
-        raise ValueError(f"version {number} if out of range")
+        msg = f"version {number} if out of range"
+        raise ValueError(msg)
 
     @property
     def previous(self) -> Version:

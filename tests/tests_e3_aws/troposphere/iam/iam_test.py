@@ -1,13 +1,13 @@
 """Provide IAM construct tests."""
 
 import json
-import os
+from pathlib import Path
 
 from e3.aws.troposphere import Stack
 from e3.aws.troposphere.iam.policy_statement import Allow, Trust
 from e3.aws.troposphere.iam.role import PolicyDocument, Role
 
-TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+TEST_DIR = Path(__file__).resolve().parent
 EXPECTED_ROLE = {
     "TestRole": {
         "Properties": {
@@ -128,7 +128,7 @@ def test_role_with_inline(stack: Stack) -> None:
         )
     )
 
-    with open(os.path.join(TEST_DIR, "role_with_inline.json")) as fd:
+    with (TEST_DIR / "role_with_inline.json").open() as fd:
         expected_stack = json.load(fd)
 
     assert stack.export()["Resources"] == expected_stack

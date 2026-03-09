@@ -9,6 +9,7 @@ import uuid
 from datetime import datetime
 from enum import Enum
 
+import botocore.client
 import botocore.exceptions
 import yaml
 
@@ -19,9 +20,9 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
 
-    import botocore.client
-
     from typing import Any
+
+logger = logging.getLogger(__name__)
 
 VALID_STACK_NAME = re.compile("^[a-zA-Z][a-zA-Z0-9-]*$")
 VALID_STACK_NAME_MAX_LEN = 128
@@ -60,7 +61,7 @@ def get_stack_template(
 ) -> str | None:
     """Get the template of a stack.
 
-    :param stack_name: the name or the unique stack ID that’s associated with
+    :param stack_name: the name or the unique stack ID that's associated with
         the stack
     :param client: AWS client
     :return: the template, or None if the stack doesn't exist
@@ -178,7 +179,7 @@ def getatt_representer(dumper: CFNYamlDumper, data: Any) -> yaml.ScalarNode:
     :param data: the GetAtt data to serialize
     :return: a YAML scalar node with the !GetAtt tag
     """
-    return dumper.represent_scalar("!GetAtt", "%s.%s" % (data.name, data.attribute))
+    return dumper.represent_scalar("!GetAtt", f"{data.name}.{data.attribute}")
 
 
 def ref_representer(dumper: CFNYamlDumper, data: Any) -> yaml.ScalarNode:
@@ -259,9 +260,9 @@ class Resource:
         :param kind: resource kind
         """
         assert isinstance(kind, AWSType), (
-            "resource kind should be an AWSType: found %s" % kind
+            f"resource kind should be an AWSType: found {kind}"
         )
-        assert name.isalnum(), "resource name should be alphanumeric: found %s" % name
+        assert name.isalnum(), f"resource name should be alphanumeric: found {name}"
         self.name = name
         self.kind = kind
         self.depends: str | None = None
@@ -282,7 +283,7 @@ class Resource:
         :return: a getatt object
 
         """
-        assert name in self.ATTRIBUTES, "invalid attribute %s" % name
+        assert name in self.ATTRIBUTES, f"invalid attribute {name}"
         return GetAtt(self.name, name)
 
     @property
@@ -482,9 +483,8 @@ class Stack:
         :param s3_bucket: s3 bucket used to store data needed by the stack
         :param s3_key: s3 prefix in s3_bucket in which data is stored
         """
-        assert (
-            re.match(VALID_STACK_NAME, name) and len(name) <= VALID_STACK_NAME_MAX_LEN
-        ), "invalid stack name: %s" % name
+        assert re.match(VALID_STACK_NAME, name), f"invalid stack name: {name}"
+        assert len(name) <= VALID_STACK_NAME_MAX_LEN, f"invalid stack name: {name}"
         self.resources: dict[str, Resource | Stack] = {}
         self.name = name
 
@@ -499,7 +499,7 @@ class Stack:
 
         # Emit a warning to the user if no role is passed for Cloud Formation
         if cfn_role_arn is None:
-            logging.warning(
+            logger.warning(
                 "Consider using a separate role for CloudFormation to "
                 "reduce permissions needed by the entity in charge of "
                 "deploying the stack (see Stack cfn_role_arn parameter)"
@@ -519,11 +519,11 @@ class Stack:
             merge its resources into the current stack.
         :return: the current stack
         """
-        assert isinstance(element, Resource) or isinstance(element, Stack), (
-            "a resource or a stack is expected. got %s" % element
+        assert isinstance(element, (Resource, Stack)), (
+            f"a resource or a stack is expected. got {element}"
         )
         assert element.name not in self.resources, (
-            "resource already exist: %s" % element.name
+            f"resource already exist: {element.name}"
         )
         self.resources[element.name] = element
         return self
@@ -628,8 +628,8 @@ class Stack:
         client.create_stack(**parameters)
 
         if wait:
-            logging.info("Waiting for stack creation...")
-            logging.info(f"Done (status: {self.wait()})")
+            logger.info("Waiting for stack creation...")
+            logger.info(f"Done (status: {self.wait()})")
 
     @client("cloudformation")
     def wait(self, client: botocore.client.Client) -> str:
@@ -641,13 +641,13 @@ class Stack:
         status = self.state()
         while "PROGRESS" in status["StackStatus"]:
             for event in self.events(mark_as_read=True):
-                logging.info(str(event))
+                logger.info(str(event))
             time.sleep(5.0)
             status = self.state()
 
         # Get last eents
         for event in self.events(mark_as_read=True):
-            logging.info(str(event))
+            logger.info(str(event))
         return status["StackStatus"]
 
     def exists(self) -> bool:
@@ -657,11 +657,11 @@ class Stack:
         """
         try:
             self.state()
-            return True
         except Exception:
             # Documentation does not specify the right exception that is raised
             # by botocore.
             return False
+        return True
 
     @client("cloudformation")
     def state(self, client: botocore.client.BaseClient) -> Any:
@@ -762,13 +762,13 @@ class Stack:
         try:
             self.state()
         except Exception:
-            logging.exception(f"Stack {self.name} does not exist")
+            logger.exception(f"Stack {self.name} does not exist")
             return
 
         client.delete_stack(StackName=self.name, ClientRequestToken=self.uuid)
         if wait:
-            logging.info("Wait for stack deletion")
-            logging.info(f"Done (status: {self.wait()})")
+            logger.info("Wait for stack deletion")
+            logger.info(f"Done (status: {self.wait()})")
 
     @client("cloudformation")
     def events(
@@ -840,8 +840,8 @@ class Stack:
         )
 
         if wait:
-            logging.info("Waiting for stack update...")
-            logging.info(f"Done (status: {self.wait()})")
+            logger.info("Waiting for stack update...")
+            logger.info(f"Done (status: {self.wait()})")
 
     @client("cloudformation")
     def resource_status(

@@ -219,11 +219,11 @@ class VPCStack(Stack):
                     NatGateway(name + "NatGateway", eip, subnet_stack.subnet)
                 )
         elif nat_to:
-            assert nat_to in self, "invalid subnet name: %s" % nat_to
+            assert nat_to in self, f"invalid subnet name: {nat_to}"
             subnet_stack_to = self[nat_to]
             assert isinstance(subnet_stack_to, SubnetStack)
             assert nat_to + "NatGateway" in subnet_stack_to, (
-                "subnet %s has no NAT gateway" % nat_to
+                f"subnet {nat_to} has no NAT gateway"
             )
             nat = subnet_stack_to[nat_to + "NatGateway"]
             assert isinstance(nat, (InternetGateway, NatGateway))
@@ -327,7 +327,7 @@ class Fortress(Stack):
 
             # Create the bastion
             self.add(Instance(self.name + "Bastion", bastion_ami))
-            self.bastion.tags["Name"] = "Bastion (%s)" % self.name
+            self.bastion.tags["Name"] = f"Bastion ({self.name})"
             self.bastion.add(
                 EC2NetworkInterface(
                     self.public_subnet.subnet, public_ip=True, groups=[bastion_sg]
@@ -509,8 +509,7 @@ class Fortress(Stack):
                 for sg in self.amazon_groups.values():
                     self.add(sg)
 
-            for group in self.amazon_groups.values():
-                groups.append(group)
+            groups.extend(self.amazon_groups.values())
 
         if github_access:
             if not self.github_groups:
@@ -520,8 +519,7 @@ class Fortress(Stack):
                 for sg in self.github_groups.values():
                     self.add(sg)
 
-            for group in self.github_groups.values():
-                groups.append(group)
+            groups.extend(self.github_groups.values())
 
         if extra_groups:
             # Register the groups if necesssary
@@ -569,10 +567,11 @@ class Fortress(Stack):
         )
         nb_sg_groups = len(groups)
         if nb_sg_groups > 16:
-            raise AWSFortressError(
+            msg = (
                 f"Number of security groups is {nb_sg_groups} and exceeds the maximum "
                 "number of 16 security groups allowed per network interface."
             )
+            raise AWSFortressError(msg)
 
         for name in names:
             instance_or_template = (
@@ -611,7 +610,7 @@ class Fortress(Stack):
             instance_or_template.set_instance_profile(
                 self.private_server_instance_role.instance_profile
             )
-            instance_or_template.tags["Name"] = "%s (%s)" % (name, self.name)
+            instance_or_template.tags["Name"] = f"{name} ({self.name})"
 
     @property
     def vpc(self) -> VPCStack:

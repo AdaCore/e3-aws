@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 from e3.aws.cfn import AWSType, GetAtt, Resource
-from e3.aws.cfn.ec2 import VPC
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
+    from e3.aws.cfn.ec2 import VPC
+
     from typing import Any
 
 
 class GroupSecurityRule:
     """Security rule for EC2 Security groups."""
 
-    RULE_TYPE: str | None = None
-    PROTOCOLS: dict[str | int, dict[str, int | str]] = {
+    RULE_TYPE: ClassVar[str | None] = None
+    PROTOCOLS: ClassVar[dict[str | int, dict[str, int | str]]] = {
         "ssh": {"from": 22, "to": 22, "protocol": "tcp"},
         "smtps": {"from": 465, "to": 465, "protocol": "tcp"},
         "https": {"from": 443, "to": 443, "protocol": "tcp"},
@@ -91,31 +92,27 @@ class GroupSecurityRule:
 class EgressRule(GroupSecurityRule):
     """Represent an outbound security group rule."""
 
-    pass
-
 
 class IngressRule(GroupSecurityRule):
     """Represent an inbound security group rule."""
-
-    pass
 
 
 class Ipv4EgressRule(EgressRule):
     """Represent an IPv4 outbound security group rule."""
 
-    RULE_TYPE: str = "CidrIp"
+    RULE_TYPE: ClassVar[str] = "CidrIp"
 
 
 class PrefixListEgressRule(EgressRule):
     """Represent a prefix list outbound security group rule."""
 
-    RULE_TYPE: str = "DestinationPrefixListId"
+    RULE_TYPE: ClassVar[str] = "DestinationPrefixListId"
 
 
 class Ipv4IngressRule(IngressRule):
     """Represent an IPv4 inbound security group rule."""
 
-    RULE_TYPE: str = "CidrIp"
+    RULE_TYPE: ClassVar[str] = "CidrIp"
 
 
 class SecurityGroup(Resource):
@@ -154,7 +151,8 @@ class SecurityGroup(Resource):
         elif isinstance(rule, EgressRule):
             self.egress.append(rule)
         else:
-            raise AssertionError("a security group rule is expected")
+            msg = "a security group rule is expected"
+            raise TypeError(msg)
 
     @property
     def group_id(self) -> GetAtt:

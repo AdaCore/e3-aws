@@ -31,13 +31,9 @@ The resulting lambda can then be added into an HttpAPI::
 
 from __future__ import annotations
 
-import os
-
-from troposphere import GetAtt
-from troposphere.awslambda import LoggingConfig, VPCConfig
+from pathlib import Path
 
 from e3.aws import name_to_id
-from e3.aws.troposphere.iam.role import Role
 from e3.fs import cp
 
 from . import PyFunction, PyFunctionAsset
@@ -45,12 +41,16 @@ from . import PyFunction, PyFunctionAsset
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from troposphere import GetAtt
+    from troposphere.awslambda import LoggingConfig, VPCConfig
+
     from e3.aws.troposphere.awslambda import (
         Alias,
         AutoVersion,
         BlueGreenAliases,
         Version,
     )
+    from e3.aws.troposphere.iam.role import Role
 
 
 STARTUP_CODE = """
@@ -73,14 +73,11 @@ def generate_flask_wrapper(
     :param app_name: Flask app symbol name
     :param out_dir: output directory
     """
-    handler_file = os.path.join(out_dir, "lambda_handler_module.py")
-    with open(handler_file, "w") as fd:
+    handler_file = Path(out_dir) / "lambda_handler_module.py"
+    with handler_file.open("w") as fd:
         fd.write(STARTUP_CODE % {"app_module": app_module, "app_name": app_name})
-    wrapper_file = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "flask_apigateway_wrapper.py",
-    )
-    cp(wrapper_file, out_dir)
+    wrapper_file = Path(__file__).resolve().parent / "flask_apigateway_wrapper.py"
+    cp(str(wrapper_file), out_dir)
 
 
 class PyFlaskFunctionAsset(PyFunctionAsset):

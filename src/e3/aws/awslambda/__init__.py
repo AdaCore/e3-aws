@@ -114,14 +114,12 @@ def invoke(
     try:
         decoded = json.loads(raw_payload)
     except json.JSONDecodeError as e:
-        raise LambdaInvalidPayloadError(
-            f"Lambda {function_name!r} returned a payload that is not valid JSON"
-        ) from e
+        msg = f"Lambda {function_name!r} returned a payload that is not valid JSON"
+        raise LambdaInvalidPayloadError(msg) from e
     else:
         if decoded is None:
-            raise LambdaEmptyPayloadError(
-                f"Lambda {function_name!r} returned a null payload"
-            )
+            msg = f"Lambda {function_name!r} returned a null payload"
+            raise LambdaEmptyPayloadError(msg)
         response["Payload"] = decoded
 
     if "FunctionError" in response:

@@ -41,9 +41,7 @@ class PolicyDocument:
     @property
     def as_dict(self) -> dict:
         """Return dictionary representation of the PolicyDocument."""
-        policy_document = {
+        return {
             "Version": self.version,
             "Statement": [statement.as_dict for statement in self.statements],
         }
-
-        return policy_document

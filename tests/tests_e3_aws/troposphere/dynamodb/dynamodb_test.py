@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import json
-import os
+from pathlib import Path
 
 from troposphere import Ref
 
-from e3.aws.troposphere import Stack
 from e3.aws.troposphere.dynamodb import (
     ALL_PROJECTION,
     INCLUDE_PROJECTION,
@@ -15,10 +14,13 @@ from e3.aws.troposphere.dynamodb import (
     Table,
 )
 
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
-SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "source_dir")
-TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+if TYPE_CHECKING:
+    from e3.aws.troposphere import Stack
+
+TEST_DIR = Path(__file__).resolve().parent
+SOURCE_DIR = TEST_DIR / "source_dir"
 
 
 EXPECTED_TABLE_DEFAULT_TEMPLATE = {
@@ -123,9 +125,7 @@ def test_table_with_gsi(stack: Stack) -> None:
         )
     )
 
-    with open(
-        os.path.join(TEST_DIR, "dynamodb_table_with_gsi.json"),
-    ) as fd:
+    with (TEST_DIR / "dynamodb_table_with_gsi.json").open() as fd:
         expected_table_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_table_template

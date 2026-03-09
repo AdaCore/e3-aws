@@ -7,6 +7,7 @@ import os
 from abc import ABC, abstractmethod
 from collections import deque
 from itertools import chain
+from pathlib import Path
 
 from troposphere import AWSObject, Export, Output, Parameter, Template
 
@@ -23,9 +24,12 @@ if TYPE_CHECKING:  # all: no cover
     import botocore.client
     from troposphere import And, Condition, Equals, If, Not, Or
 
-    from typing import Union
+    from typing import TypeAlias
 
-    ConditionFunction = Union[And, Condition, Equals, If, Not, Or]
+    ConditionFunction: TypeAlias = And | Condition | Equals | If | Not | Or
+
+
+logger = logging.getLogger(__name__)
 
 
 class Construct(ABC):
@@ -160,7 +164,7 @@ class Asset(Construct):
         :param check_exists: check if an S3 object exists before uploading it
         :param dry_run: don't upload the file if set
         """
-        logging.info(
+        logger.info(
             "Upload {} to {}:{}".format(
                 os.path.relpath(file, root_dir).replace("\\", "/"), s3_bucket, s3_key
             )
@@ -171,11 +175,11 @@ class Asset(Construct):
 
         s3 = S3(client=client, bucket=s3_bucket)
         if check_exists and s3.object_exists(s3_key, ignore_error_403=True):
-            logging.info("Skip already existing %s", s3_key)
+            logger.info("Skip already existing %s", s3_key)
             return
 
         if not dry_run:
-            with open(file, "rb") as f:
+            with Path(file).open("rb") as f:
                 s3.push(key=s3_key, content=f, exist_ok=True)
 
     @abstractmethod
@@ -262,11 +266,7 @@ class Stack(cfn.Stack):
         :param element: if a resource an AWSObject or Construct add the resource
              to the stack. If a stack merge its resources into the current stack.
         """
-        if isinstance(element, Stack):
-            constructs = element.constructs
-
-        else:
-            constructs = [element]
+        constructs = element.constructs if isinstance(element, Stack) else [element]
 
         # Add the new constructs (non expanded)
         self.constructs += constructs

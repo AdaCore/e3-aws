@@ -6,7 +6,7 @@ from dateutil.parser import parse as parse_date
 
 from e3.aws import session
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -22,7 +22,7 @@ class EC2Element:
     All objects returned by EC2 API
     """
 
-    PROPERTIES: dict[str, Any] = {}
+    PROPERTIES: ClassVar[dict[str, Any]] = {}
 
     def __init__(self, data: dict[str, Any], region: str | None = None) -> None:
         """Initialize an EC2 Element.
@@ -60,7 +60,10 @@ class EC2Element:
 class SecurityGroup(EC2Element):
     """Security Group description."""
 
-    PROPERTIES = {"GroupName": "group_name", "GroupId": "group_id"}
+    PROPERTIES: ClassVar[dict[str, Any]] = {
+        "GroupName": "group_name",
+        "GroupId": "group_id",
+    }
 
     group_name: str
     """The name of the security group."""
@@ -85,7 +88,9 @@ class SecurityGroup(EC2Element):
             region
         """
         if data is None:
-            assert region is not None and group_id is not None and session is not None
+            assert region is not None
+            assert group_id is not None
+            assert session is not None
             data = session.client("ec2", region).describe_security_groups(
                 GroupIds=[group_id]
             )["SecurityGroups"][0]
@@ -110,19 +115,21 @@ class SecurityGroup(EC2Element):
         assert session is not None
         if filters is None:
             filters = []
-        result = []
+        result: list[SecurityGroup] = []
         for r in session.regions:
             c = session.client("ec2", r)
             region_result = c.describe_security_groups(Filters=filters)
-            for sg in region_result["SecurityGroups"]:
-                result.append(SecurityGroup(sg["GroupId"], r, data=sg))
+            result.extend(
+                SecurityGroup(sg["GroupId"], r, data=sg)
+                for sg in region_result["SecurityGroups"]
+            )
         return result
 
 
 class Instance(EC2Element):
     """EC2 Instance."""
 
-    PROPERTIES = {"InstanceId": "instance_id"}
+    PROPERTIES: ClassVar[dict[str, Any]] = {"InstanceId": "instance_id"}
 
     instance_id: str
     """The ID of the instance."""
@@ -145,9 +152,9 @@ class Instance(EC2Element):
             region
         """
         if data is None:
-            assert (
-                instance_id is not None and region is not None and session is not None
-            )
+            assert instance_id is not None
+            assert region is not None
+            assert session is not None
             data = session.client("ec2", region).describe_instances(
                 InstanceIds=[instance_id]
             )["Reservations"]["Instances"][0]
@@ -182,10 +189,7 @@ class Instance(EC2Element):
 
         :return: True if at least one interface has a public IP
         """
-        for ni in self.network_interfaces:
-            if ni.public_ip is not None:
-                return True
-        return False
+        return any(ni.public_ip is not None for ni in self.network_interfaces)
 
     @property
     def block_device_mappings(self) -> list[BlockDeviceMapping]:
@@ -241,7 +245,7 @@ class Instance(EC2Element):
 class BlockDeviceMapping(EC2Element):
     """Block Device Mappping."""
 
-    PROPERTIES = {"DeviceName": "device_name"}
+    PROPERTIES: ClassVar[dict[str, Any]] = {"DeviceName": "device_name"}
 
     device_name: str
     """The device name."""
@@ -276,7 +280,7 @@ class BlockDeviceMapping(EC2Element):
 class VolumeAttachment(EC2Element):
     """Volume Attachment."""
 
-    PROPERTIES = {
+    PROPERTIES: ClassVar[dict[str, Any]] = {
         "InstanceId": "instance_id",
         "Device": "device",
         "State": "state",
@@ -333,7 +337,7 @@ class VolumeAttachment(EC2Element):
 class Volume(EC2Element):
     """EC2 Volume."""
 
-    PROPERTIES = {
+    PROPERTIES: ClassVar[dict[str, Any]] = {
         "VolumeId": "volume_id",
         "AvailabilityZone": "availability_zone",
         "Size": "size",
@@ -376,7 +380,9 @@ class Volume(EC2Element):
             region
         """
         if data is None:
-            assert volume_id is not None and region is not None and session is not None
+            assert volume_id is not None
+            assert region is not None
+            assert session is not None
             data = session.client("ec2", region).describe_volumes(
                 InstanceIds=[volume_id]
             )["Volumes"][0]
@@ -420,19 +426,24 @@ class Volume(EC2Element):
 
         if filters is None:
             filters = []
-        result = []
+        result: list[Volume] = []
         for r in session.regions:
             c = session.client("ec2", r)
             region_result = c.describe_volumes(Filters=filters)
-            for volume in region_result.get("Volumes", []):
-                result.append(Volume(volume["VolumeId"], r, data=volume))
+            result.extend(
+                Volume(volume["VolumeId"], r, data=volume)
+                for volume in region_result.get("Volumes", [])
+            )
         return result
 
 
 class Snapshot(EC2Element):
     """Represent an EBS snapshot."""
 
-    PROPERTIES = {"Encrypted": "encrypted", "SnapshotId": "snapshot_id"}
+    PROPERTIES: ClassVar[dict[str, Any]] = {
+        "Encrypted": "encrypted",
+        "SnapshotId": "snapshot_id",
+    }
 
     encrypted: bool
     """Indicates whether the snapshot is encrypted."""
@@ -457,9 +468,9 @@ class Snapshot(EC2Element):
             region
         """
         if data is None:
-            assert (
-                snapshot_id is not None and region is not None and session is not None
-            )
+            assert snapshot_id is not None
+            assert region is not None
+            assert session is not None
             data = session.client("ec2", region).describe_snapshots(
                 SnapshotIds=[snapshot_id]
             )["Snapshots"][0]
@@ -486,12 +497,14 @@ class Snapshot(EC2Element):
         assert session is not None
         if filters is None:
             filters = []
-        result = []
+        result: list[Snapshot] = []
         for r in session.regions:
             c = session.client("ec2", r)
             region_result = c.describe_snapshots(OwnerIds=["self"], Filters=filters)
-            for snapshot in region_result.get("Snapshots", []):
-                result.append(Snapshot(snapshot["SnapshotId"], r, data=snapshot))
+            result.extend(
+                Snapshot(snapshot["SnapshotId"], r, data=snapshot)
+                for snapshot in region_result.get("Snapshots", [])
+            )
         return result
 
 

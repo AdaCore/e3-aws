@@ -5,8 +5,8 @@ from __future__ import annotations
 import base64
 import io
 import json
-import os
 import sys
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -21,7 +21,6 @@ from troposphere.awslambda import (
 )
 
 from e3.aws import AWSEnv
-from e3.aws.troposphere import Stack
 from e3.aws.troposphere.awslambda import (
     Alias,
     Architecture,
@@ -42,12 +41,12 @@ from e3.aws.util.ecr import get_ecr_credentials
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from flask import Response
 
+    from e3.aws.troposphere import Stack
 
-SOURCE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "source_dir")
+
+SOURCE_DIR = Path(__file__).resolve().parent / "source_dir"
 
 
 EXPECTED_STACK_TEMPLATE = {
@@ -688,7 +687,7 @@ def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
 
 
 @pytest.mark.parametrize(
-    "python_version, platform_list",
+    ("python_version", "platform_list"),
     [
         ("3.9", ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
         ("3.10", ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
@@ -871,7 +870,7 @@ def test_docker_function(stack: Stack) -> None:
 
 
 @pytest.mark.parametrize(
-    "architecture, build_args, expected_platform",
+    ("architecture", "build_args", "expected_platform"),
     [
         (Architecture.X86_64, {}, ["linux/amd64"]),
         (Architecture.ARM64, {}, ["linux/arm64"]),
@@ -972,7 +971,7 @@ def test_autoversion_default(stack: Stack, simple_lambda_function: PyFunction) -
     assert auto_version.previous.name == "mypylambdaVersion1"
     assert auto_version.latest.name == "mypylambdaVersion2"
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="version 3 if out of range"):
         auto_version.get_version(3)
 
 
@@ -1106,7 +1105,7 @@ def test_create_flask_wsgi_environ_with_event(event_source: str) -> None:
     :param event_source: source of the lambda event
     """
     # get lambda event
-    with open(os.path.join(SOURCE_DIR, f"event-{event_source}.json")) as fd:
+    with (SOURCE_DIR / f"event-{event_source}.json").open() as fd:
         event = json.load(fd)
 
     handler = FlaskLambdaHandler("app")
@@ -1120,9 +1119,7 @@ def test_create_flask_wsgi_environ_with_event(event_source: str) -> None:
     # serialize to a JSON dict
     flask_environment = json.loads(json.dumps(flask_environment))
 
-    with open(
-        os.path.join(SOURCE_DIR, f"{event_source}_api_wsgi_flask_environment.json"),
-    ) as fd:
+    with (SOURCE_DIR / f"{event_source}_api_wsgi_flask_environment.json").open() as fd:
         expected_flask_environment = json.load(fd)
 
     assert flask_environment == expected_flask_environment
@@ -1166,11 +1163,9 @@ def base64_response_server() -> Flask:
 
 def test_text_response(base64_response_server: Flask) -> None:
     """Query a route sending back a plain text response."""
-    with open(
-        os.path.join(
-            SOURCE_DIR, "event-http-text-response.json"
-        ),  # an event from a HTTP API
-    ) as fd:
+    with (
+        SOURCE_DIR / "event-http-text-response.json"  # an event from a HTTP API
+    ).open() as fd:
         http_api_event = json.load(fd)
 
     handler = FlaskLambdaHandler(base64_response_server)
@@ -1183,11 +1178,9 @@ def test_text_response(base64_response_server: Flask) -> None:
 
 def test_base64_response(base64_response_server: Flask) -> None:
     """Query a route sending back a base64 encoded response."""
-    with open(
-        os.path.join(
-            SOURCE_DIR, "event-http-base64-response.json"
-        ),  # an event from a HTTP API
-    ) as fd:
+    with (
+        SOURCE_DIR / "event-http-base64-response.json"  # an event from a HTTP API
+    ).open() as fd:
         http_api_event = json.load(fd)
 
     handler = FlaskLambdaHandler(base64_response_server)
@@ -1199,7 +1192,7 @@ def test_base64_response(base64_response_server: Flask) -> None:
 
 
 @pytest.mark.parametrize(
-    "version, expected_function_name_ref",
+    ("version", "expected_function_name_ref"),
     [
         # Add the permission on the function itself
         (

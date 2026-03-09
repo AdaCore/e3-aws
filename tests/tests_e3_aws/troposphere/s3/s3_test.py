@@ -1,7 +1,7 @@
 """Provide S3 construct tests."""
 
 import json
-import os
+from pathlib import Path
 
 import pytest
 
@@ -14,7 +14,7 @@ from e3.aws.troposphere.s3.bucket import Bucket, EncryptionAlgorithm
 from e3.aws.troposphere.sns import Topic
 from e3.aws.troposphere.sqs import Queue
 
-TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+TEST_DIR = Path(__file__).resolve().parent
 
 
 def test_bucket(stack: Stack) -> None:
@@ -48,7 +48,7 @@ def test_bucket(stack: Stack) -> None:
     stack.add(topic_test)
     stack.add(queue_test)
 
-    with open(os.path.join(TEST_DIR, "bucket.json")) as fd:
+    with (TEST_DIR / "bucket.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -66,7 +66,7 @@ def test_bucket_with_roles(stack: Stack) -> None:
     )
     stack.add(bucket)
 
-    with open(os.path.join(TEST_DIR, "bucket-with-roles.json")) as fd:
+    with (TEST_DIR / "bucket-with-roles.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -85,7 +85,7 @@ def test_bucket_with_roles_exists(stack: Stack) -> None:
     )
     stack.add(bucket)
 
-    with open(os.path.join(TEST_DIR, "bucket-with-roles-exists.json")) as fd:
+    with (TEST_DIR / "bucket-with-roles-exists.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -104,7 +104,7 @@ def test_bucket_with_roles_trusted_accounts(stack: Stack) -> None:
     )
     stack.add(bucket)
 
-    with open(os.path.join(TEST_DIR, "bucket-with-roles-trusted-accounts.json")) as fd:
+    with (TEST_DIR / "bucket-with-roles-trusted-accounts.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -119,7 +119,7 @@ def test_bucket_multi_encryption(stack: Stack) -> None:
     )
     stack.add(bucket)
 
-    with open(os.path.join(TEST_DIR, "bucket_multi_encryption.json")) as fd:
+    with (TEST_DIR / "bucket_multi_encryption.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -133,7 +133,7 @@ def test_bucket_with_kwargs(stack: Stack) -> None:
     )
     stack.add(bucket)
 
-    with open(os.path.join(TEST_DIR, "bucket_with_object_lock_kwargs.json")) as fd:
+    with (TEST_DIR / "bucket_with_object_lock_kwargs.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -159,7 +159,7 @@ def test_bucket_notification_string_arns(stack: Stack) -> None:
     )
     stack.add(bucket)
 
-    with open(os.path.join(TEST_DIR, "bucket_notification_string_arns.json")) as fd:
+    with (TEST_DIR / "bucket_notification_string_arns.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -189,7 +189,7 @@ def test_bucket_with_roles_and_trust_policies(stack: Stack) -> None:
     )
     stack.add(bucket)
 
-    with open(os.path.join(TEST_DIR, "bucket-with-roles-trusted-policies.json")) as fd:
+    with (TEST_DIR / "bucket-with-roles-trusted-policies.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
@@ -218,9 +218,7 @@ def test_bucket_with_default_lifecycle_rule(stack: Stack) -> None:
     bucket = Bucket(name="test-bucket", add_multipart_lifecycle_rule=True)
     stack.add(bucket)
 
-    with open(
-        os.path.join(TEST_DIR, "bucket-with-multipart-lifecycle-rule.json")
-    ) as fd:
+    with (TEST_DIR / "bucket-with-multipart-lifecycle-rule.json").open() as fd:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template

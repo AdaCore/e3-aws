@@ -9,7 +9,6 @@ from troposphere import GetAtt, Ref, Tags, ec2
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
-from e3.aws.troposphere.iam.policy_document import PolicyDocument
 
 from typing import TYPE_CHECKING
 
@@ -17,6 +16,7 @@ if TYPE_CHECKING:
     from troposphere import AWSObject
 
     from e3.aws.troposphere import Stack
+    from e3.aws.troposphere.iam.policy_document import PolicyDocument
 
 
 class InternetGateway(Construct):
@@ -221,10 +221,7 @@ class VPCEndpointsSubnet(Construct):
         endpoints = []
 
         for service_name, pd in self.interface_endpoints:
-            if pd is not None:
-                opt_params = {"PolicyDocument": pd.as_dict}
-            else:
-                opt_params = {}
+            opt_params = {"PolicyDocument": pd.as_dict} if pd is not None else {}
 
             if service_name == "email-smtp":
                 security_group_id = Ref(self.ses_security_group)
@@ -363,7 +360,7 @@ class Subnet(Construct):
         )
 
     @cached_property
-    def ID(self) -> Ref:
+    def ID(self) -> Ref:  # noqa: N802
         """Return subnet's ID."""
         return Ref(self.subnet)
 

@@ -4,14 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from pytest import MonkeyPatch
-
 
 @pytest.fixture(autouse=True)
-def set_ci(monkeypatch: MonkeyPatch) -> None:
+def set_ci(monkeypatch: pytest.MonkeyPatch) -> None:
     """Toggle on CI by default.
 
     That variable is set by GitLab and may lead to different local test results

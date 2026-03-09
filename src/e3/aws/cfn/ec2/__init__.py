@@ -8,14 +8,13 @@ from email.message import EmailMessage
 from email.mime.multipart import MIMEMultipart
 
 from e3.aws.cfn import AWSType, Base64, GetAtt, Join, Ref, Resource, Sub
-from e3.aws.cfn.iam import PolicyDocument
-from e3.aws.ec2.ami import AMI
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from e3.aws.cfn.ec2.security import SecurityGroup
-    from e3.aws.cfn.iam import InstanceProfile
+    from e3.aws.cfn.iam import InstanceProfile, PolicyDocument
+    from e3.aws.ec2.ami import AMI
 
     from typing import Any
 
@@ -65,7 +64,7 @@ class EphemeralDisk(BlockDevice):
 
         Can be used to transform to CloudFormation Yaml format.
         """
-        return {"DeviceName": self.device_name, "VirtualName": "ephemeral%s" % self.id}
+        return {"DeviceName": self.device_name, "VirtualName": f"ephemeral{self.id}"}
 
 
 class EBSDisk(BlockDevice):
@@ -246,7 +245,7 @@ class WinUserData:
         """
         props = ""
         for kind, part in self.parts:
-            props += "<%s>\n%s\n</%s>" % (kind, part, kind)
+            props += f"<{kind}>\n{part}\n</{kind}>"
         return Base64(Sub(props, self.variables))
 
 
@@ -324,7 +323,7 @@ class TemplateOrInstance(Resource):
         if isinstance(device, EC2NetworkInterface):
             if device.device_index is None:
                 # Assign automatically a device index
-                index = max(list(self.network_interfaces.keys()) + [-1]) + 1
+                index = max([*list(self.network_interfaces.keys()), -1]) + 1
                 device.device_index = index
             else:
                 # Ensure the device is not already present
@@ -335,7 +334,8 @@ class TemplateOrInstance(Resource):
         elif isinstance(device, BlockDevice):
             self.block_devices.append(device)
         else:
-            raise AssertionError("invalid device %s" % device)
+            msg = f"invalid device {device}"  # type: ignore[unreachable]
+            raise TypeError(msg)
         return self
 
     def add_user_data(
@@ -663,7 +663,7 @@ class VPCEndpoint(Resource):
         :param policy_document: policy document attached to the endpoint.
         """
         super().__init__(name, kind=AWSType.EC2_VPC_ENDPOINT)
-        assert service in ("dynamodb", "s3"), "Invalid service: %s" % service
+        assert service in ("dynamodb", "s3"), f"Invalid service: {service}"
         self.service = service
         self.vpc = vpc
         self.route_tables = route_tables

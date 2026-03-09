@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
 # This is the static address at which AWS publish the list of ip-ranges
 # used by its services.
+logger = logging.getLogger(__name__)
+
 IP_RANGES_URL = "https://ip-ranges.amazonaws.com/ip-ranges.json"
 
 
@@ -102,7 +104,7 @@ def github_security_groups(
             IPv4Network(ip_range)
         except AddressValueError:
             IPv6Network(ip_range)
-            logging.info(f"Skipping IPv6 range {ip_range} for github access SG")
+            logger.info(f"Skipping IPv6 range {ip_range} for github access SG")
             continue
 
         if len(sg.egress + sg.ingress) == limit:

@@ -133,6 +133,6 @@ class Pricing:
         if not prices:
             return None
 
-        price_data = list(prices[0]["terms"]["OnDemand"].values())[0]
-        price_per_unit_data = list(price_data["priceDimensions"].values())[0]
+        price_data = next(iter(prices[0]["terms"]["OnDemand"].values()))
+        price_per_unit_data = next(iter(price_data["priceDimensions"].values()))
         return float(price_per_unit_data["pricePerUnit"]["USD"])

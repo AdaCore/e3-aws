@@ -74,7 +74,7 @@ class Bucket(Construct):
 
         if add_multipart_lifecycle_rule:
             self.lifecycle_rules = (
-                self.lifecycle_rules + [DEFAULT_LIFECYCLE_RULE]
+                [*self.lifecycle_rules, DEFAULT_LIFECYCLE_RULE]
                 if self.lifecycle_rules
                 else [DEFAULT_LIFECYCLE_RULE]
             )
@@ -242,26 +242,27 @@ class Bucket(Construct):
             if v
         }
 
-        attr = {"DeletionPolicy": "Retain"}
-        for key, val in {
-            "BucketName": self.name,
-            "BucketEncryption": bucket_encryption,
-            "PublicAccessBlockConfiguration": public_access_block_config,
-            "VersioningConfiguration": s3.VersioningConfiguration(
-                Status=versioning_status
-            ),
-            "LifecycleConfiguration": lifecycle_config,
-            "NotificationConfiguration": (
-                s3.NotificationConfiguration(
-                    name_to_id(self.name + "NotifConfig"), **notification_params
-                )
-                if notification_params
-                else None
-            ),
-            "DependsOn": self.depends_on,
-        }.items():
-            if val:
-                attr[key] = val
+        attr = {"DeletionPolicy": "Retain"} | {
+            key: val
+            for key, val in {
+                "BucketName": self.name,
+                "BucketEncryption": bucket_encryption,
+                "PublicAccessBlockConfiguration": public_access_block_config,
+                "VersioningConfiguration": s3.VersioningConfiguration(
+                    Status=versioning_status
+                ),
+                "LifecycleConfiguration": lifecycle_config,
+                "NotificationConfiguration": (
+                    s3.NotificationConfiguration(
+                        name_to_id(self.name + "NotifConfig"), **notification_params
+                    )
+                    if notification_params
+                    else None
+                ),
+                "DependsOn": self.depends_on,
+            }.items()
+            if val
+        }
 
         attr |= self.bucket_kwargs
         return [

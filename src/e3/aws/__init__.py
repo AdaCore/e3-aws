@@ -11,6 +11,7 @@ import urllib.parse
 from uuid import uuid4
 
 import boto3
+import botocore.client
 import botocore.session
 import requests
 import requests.auth
@@ -29,9 +30,6 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from collections.abc import Callable
     from datetime import datetime
-
-    import botocore.client
-    import botocore.stub
 
     from typing import Any, TypedDict
 
@@ -110,10 +108,11 @@ class Session:
             region_variable = self.session.SESSION_VARIABLES["region"][1]
             region = os.environ.get(region_variable, "")
             if not region:
-                raise ValueError(
+                msg = (
                     "region should be specified either using regions "
                     "parameter or using AWS environment variables"
                 )
+                raise ValueError(msg)
             self.regions = [region]
         else:
             self.regions = regions
@@ -306,8 +305,9 @@ class Session:
         aws_p = Run(cmd, **kwargs)
 
         if aws_p.status:
+            msg = f"{cmd} failed (exit status: {aws_p.status})"
             raise AWSSessionRunError(
-                f"{cmd} failed (exit status: {aws_p.status})",
+                msg,
                 origin="aws_session_cli_cmd",
                 process=aws_p,
             )
@@ -337,7 +337,7 @@ class AWSEnv(Session):
         env.aws_env = self
 
 
-class default_region:
+class DefaultRegion:
     """Context manager used to set a default region."""
 
     def __init__(self, region: str):
@@ -452,10 +452,7 @@ def assume_role_main() -> None:
     if session_duration is not None:
         session_duration = int(session_duration)
 
-    if args.role_session_name:
-        role_session_name = args.role_session_name
-    else:
-        role_session_name = str(uuid4()).replace("-", "")
+    role_session_name = args.role_session_name or str(uuid4()).replace("-", "")
 
     credentials = s.assume_role_get_credentials(
         args.role_arn, role_session_name, session_duration=session_duration
@@ -505,8 +502,7 @@ def name_to_id(name: str) -> str:
         return match.group(1)[1].upper()
 
     resource_id = re.sub(r"[^a-zA-Z0-9]", "", re.sub(r"(-[a-z])", replacement, name))
-    resource_id = resource_id[0].upper() + resource_id[1:]
-    return resource_id
+    return resource_id[0].upper() + resource_id[1:]
 
 
 class IAMAuth(requests.auth.AuthBase):
@@ -544,10 +540,11 @@ class IAMAuth(requests.auth.AuthBase):
 
         # Split back the url in order to be able to call AWSRequest
         aws_headers = dict(request.headers)
-        key_to_delete = []
-        for key in aws_headers:
-            if key.lower() in ("accept", "accept-encoding", "connection"):
-                key_to_delete.append(key)
+        key_to_delete = [
+            key
+            for key in aws_headers
+            if key.lower() in ("accept", "accept-encoding", "connection")
+        ]
 
         for key in key_to_delete:
             del aws_headers[key]

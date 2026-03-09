@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+from pathlib import Path
 
 from troposphere import cloudformation
 
@@ -118,6 +118,6 @@ class StackSet(Construct):
 
     def create_data_dir(self, root_dir: str) -> None:
         """Create data to be pushed to bucket used by cloudformation for resources."""
-        template_path = os.path.join(root_dir, self.template_filename)
-        with open(template_path, "w") as template_f:
+        template_path = Path(root_dir) / self.template_filename
+        with template_path.open("w") as template_f:
             template_f.write(self.stack.body)

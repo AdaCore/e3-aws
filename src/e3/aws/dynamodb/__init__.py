@@ -85,7 +85,8 @@ class DynamoDB:
 
         result = table.put_item(**params)
         if result["ResponseMetadata"]["HTTPStatusCode"] != 200:
-            raise RuntimeError("Put Item Error")
+            msg = "Put Item Error"
+            raise RuntimeError(msg)
         return result
 
     def get_item(
@@ -105,8 +106,8 @@ class DynamoDB:
                 Key={key: item[key] for key in keys if key in item}
             )
             logger.debug(f"Get_item response: {response}")
-        except ClientError as e:
-            logger.error(e)
+        except ClientError:
+            logger.exception("Failed to get item")
             return {}
         else:
             return response.get("Item", {})
@@ -135,8 +136,7 @@ class DynamoDB:
         batch_keys = {
             table_name: {
                 "Keys": [
-                    {key: item[key] for key in keys if key in item.keys()}
-                    for item in items
+                    {key: item[key] for key in keys if key in item} for item in items
                 ],
                 "ConsistentRead": True,
             }
@@ -168,8 +168,8 @@ class DynamoDB:
                         sleepy_time = min(sleepy_time * 2, 32)
                 else:
                     break
-            except ClientError as e:
-                logger.error(e)
+            except ClientError:
+                logger.exception("Failed to batch get items")
                 return []
         return res
 
@@ -237,7 +237,8 @@ class DynamoDB:
         result = table.update_item(**params)
 
         if result["ResponseMetadata"]["HTTPStatusCode"] != 200:
-            raise RuntimeError("Update Item Error")
+            msg = "Update Item Error"
+            raise RuntimeError(msg)
         return result
 
     def query_items(
@@ -261,15 +262,15 @@ class DynamoDB:
             logger.warning(
                 "DynamoDB.query_items only supports one key in the query dict"
             )
-        if len(list(query.values())[0]) > 1:
+        if len(next(iter(query.values()))) > 1:
             logger.warning(
                 "DynamoDB.query_items only supports one value per key in the "
                 "query dict, use query_itemsv2 instead"
             )
         table = self.client.Table(table_name)
         logger.info(f"Quering table {table_name} with {query}")
-        attr_name = list(query.keys())[0]
-        attr_value = list(query.values())[0][0]
+        attr_name = next(iter(query.keys()))
+        attr_value = next(iter(query.values()))[0]
         exp_name = f"#{attr_name.upper()}"
 
         sort_key_attr: tuple[dict[str, str], dict[str, str], str] = (
@@ -385,17 +386,17 @@ class DynamoDB:
         if query:
             exp_attr_names = {f"#{s.upper()}": s for s in list(query.keys())}
             # values in dictionary is a list
-            values = list(query.values())[0]
+            values = next(iter(query.values()))
 
             # for the moment we support 'or', 'contains', and 'between'
             # operations
             if opt == BETWEEN_OPERATION:
                 exp_attr_values = dict(zip([":lower", ":upper"], values))
-                key = list(exp_attr_names.keys())[0]
+                key = next(iter(exp_attr_names.keys()))
                 filter_exp = f"{key} between :lower and :upper"
             elif opt == CONTAINS_OPERATION:
                 exp_attr_values = {":val": values[0]}
-                key = list(exp_attr_names.keys())[0]
+                key = next(iter(exp_attr_names.keys()))
                 filter_exp = f"contains ({key}, :val )"
             else:
                 # remove non-alphanumerical caracters
@@ -403,7 +404,7 @@ class DynamoDB:
                 exp_attr_values = {
                     f":{pattern.sub('_', v)}": v for i, v in enumerate(values)
                 }
-                key = list(exp_attr_names.keys())[0]
+                key = next(iter(exp_attr_names.keys()))
                 filter_exp = " or ".join(
                     [f"{key} = {values}" for values in exp_attr_values]
                 )

@@ -103,22 +103,22 @@ class Role(Construct):
 
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return troposphere objects defining the role."""
-        attr = {}
-
-        for key, val in {
-            "RoleName": self.name,
-            "Description": self.description,
-            "ManagedPolicyArns": self.managed_policy_arns,
-            "MaxSessionDuration": self.max_session_duration,
-            "AssumeRolePolicyDocument": self.trust_policy.as_dict,
-            "Tags": Tags({"Name": self.name, **self.tags}),
-            "Path": self.path,
-            "PermissionsBoundary": self.boundary,
-            "Condition": self.condition,
-            "Policies": self.policies,
-        }.items():
-            if val is not None:
-                attr[key] = val
+        attr = {
+            key: val
+            for key, val in {
+                "RoleName": self.name,
+                "Description": self.description,
+                "ManagedPolicyArns": self.managed_policy_arns,
+                "MaxSessionDuration": self.max_session_duration,
+                "AssumeRolePolicyDocument": self.trust_policy.as_dict,
+                "Tags": Tags({"Name": self.name, **self.tags}),
+                "Path": self.path,
+                "PermissionsBoundary": self.boundary,
+                "Condition": self.condition,
+                "Policies": self.policies,
+            }.items()
+            if val is not None
+        }
 
         return [iam.Role(name_to_id(self.name), **attr)]
 

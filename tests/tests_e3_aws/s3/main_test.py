@@ -142,6 +142,8 @@ def test_bucket_auto_delete() -> None:
 
 def test_bucket_already_exist_error(client: S3) -> None:
     """Test creating an already existing bucket in a context."""
-    with pytest.raises(BucketExistsError):
-        with s3.bucket("test", region="eu-west-1", exist_ok=False) as client:
-            assert client.bucket_exists
+    with (
+        pytest.raises(BucketExistsError),
+        s3.bucket("test", region="eu-west-1", exist_ok=False) as client,
+    ):
+        assert client.bucket_exists

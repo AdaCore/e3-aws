@@ -153,7 +153,8 @@ class Queue(Construct):
             # Check for unique Sid
             check_sid = [statement.sid for statement in self.queue_policy_statements]
             if len(check_sid) != len(set(check_sid)):
-                raise Exception("Unique Sid is required for QueuePolicy statements")
+                msg = "Unique Sid is required for QueuePolicy statements"
+                raise Exception(msg)  # noqa: TRY002
 
             self.optional_resources.extend(
                 [
