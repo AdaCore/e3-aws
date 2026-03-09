@@ -20,5 +20,5 @@ def test_security_group():
     sg.add_rule(EgressRule("ip", "10.10.1.1/32", from_port=80))
     assert sg.properties
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError):
         sg.add_rule("invalid object")

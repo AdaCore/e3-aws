@@ -334,7 +334,7 @@ class TemplateOrInstance(Resource):
         elif isinstance(device, BlockDevice):
             self.block_devices.append(device)
         else:
-            raise AssertionError(f"invalid device {device}")
+            raise TypeError(f"invalid device {device}")
         return self
 
     def add_user_data(

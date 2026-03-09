@@ -151,7 +151,7 @@ class SecurityGroup(Resource):
         elif isinstance(rule, EgressRule):
             self.egress.append(rule)
         else:
-            raise AssertionError("a security group rule is expected")
+            raise TypeError("a security group rule is expected")
 
     @property
     def group_id(self) -> GetAtt:
