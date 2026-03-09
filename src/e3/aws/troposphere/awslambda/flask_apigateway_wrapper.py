@@ -15,6 +15,8 @@ from werkzeug.datastructures import iter_multi_items
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
+    from types import TracebackType
+
     from typing_extensions import NotRequired
 
     from typing import Any, TypedDict
@@ -48,10 +50,16 @@ class FlaskLambdaHandler:
         :param app: a Flask app
         """
         self.app = app
-        self.status = None
-        self.response_headers = None
+        self.status: int | None = None
+        self.response_headers: dict[str, str] | None = None
 
-    def start_response(self, status, response_headers, exc_info=None):
+    def start_response(
+        self,
+        status: str,
+        response_headers: list[tuple[str, str]],
+        exc_info: tuple[type[BaseException], BaseException, TracebackType]
+        | None = None,
+    ) -> None:
         """Implement Flask callback to store the response.
 
         See Flask documentation.

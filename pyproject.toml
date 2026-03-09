@@ -42,13 +42,14 @@ check = [
   "moto[sts, dynamodb]",
   "bandit",
   "pip-audit",
+  "requests_mock",
   "types-colorama",
   "types-psutil",
   "types-python-dateutil",
   "types-PyYAML",
   "types-requests",
   "types-setuptools",
-  "python-on-whales"
+  "python-on-whales",
 ]
 
 [tool.setuptools.dynamic]

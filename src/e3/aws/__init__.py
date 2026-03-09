@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from collections.abc import Callable
     from datetime import datetime
+    from types import TracebackType
 
     from typing import Any, TypedDict
 
@@ -354,7 +355,12 @@ class DefaultRegion:
         """Enter the default region context."""
         Env().aws_env.default_region = self.default_region
 
-    def __exit__(self, _type, _value, _tb):
+    def __exit__(
+        self,
+        _type: type[BaseException] | None,
+        _value: BaseException | None,
+        _tb: TracebackType | None,
+    ) -> None:
         """Exit the default region context."""
         del _type, _value, _tb
         Env().aws_env.default_region = self.previous_region
@@ -369,7 +375,7 @@ def session() -> Callable:
     :type name: str
     """
 
-    def decorator(func):
+    def decorator(func: Callable) -> Callable:
         def wrapper(*args, **kwargs):
             if "session" in kwargs:
                 session = kwargs.get("session")
@@ -497,7 +503,7 @@ def name_to_id(name: str) -> str:
     characters following a dash to uppercase for a better readability.
     """
 
-    def replacement(match):
+    def replacement(match: re.Match[str]) -> str:
         """Return uppercased second character of the match."""
         return match.group(1)[1].upper()
 
