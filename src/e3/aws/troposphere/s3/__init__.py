@@ -98,10 +98,11 @@ class BucketWithRoles(Construct):
         ]:
             if all(el.values()):
                 keys = list(el.keys())
-                raise AttributeError(
+                msg = (
                     f"You cannot set {keys[0]!r} and {keys[1]!r} at the"
                     " same time , please use one or the other."
                 )
+                raise AttributeError(msg)
         self.name = name
         self.iam_names_prefix = iam_names_prefix
         self.trusted_accounts = trusted_accounts if trusted_accounts is not None else []

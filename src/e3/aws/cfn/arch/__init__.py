@@ -567,10 +567,11 @@ class Fortress(Stack):
         )
         nb_sg_groups = len(groups)
         if nb_sg_groups > 16:
-            raise AWSFortressError(
+            msg = (
                 f"Number of security groups is {nb_sg_groups} and exceeds the maximum "
                 "number of 16 security groups allowed per network interface."
             )
+            raise AWSFortressError(msg)
 
         for name in names:
             instance_or_template = (

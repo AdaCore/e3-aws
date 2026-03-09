@@ -109,10 +109,11 @@ class Session:
             region_variable = self.session.SESSION_VARIABLES["region"][1]
             region = os.environ.get(region_variable, "")
             if not region:
-                raise ValueError(
+                msg = (
                     "region should be specified either using regions "
                     "parameter or using AWS environment variables"
                 )
+                raise ValueError(msg)
             self.regions = [region]
         else:
             self.regions = regions
@@ -305,8 +306,9 @@ class Session:
         aws_p = Run(cmd, **kwargs)
 
         if aws_p.status:
+            msg = f"{cmd} failed (exit status: {aws_p.status})"
             raise AWSSessionRunError(
-                f"{cmd} failed (exit status: {aws_p.status})",
+                msg,
                 origin="aws_session_cli_cmd",
                 process=aws_p,
             )

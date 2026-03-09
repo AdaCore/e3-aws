@@ -1191,7 +1191,8 @@ class AutoVersion(Construct):
         if index >= 0 and index < len(self.versions):
             return self.versions[index]
 
-        raise ValueError(f"version {number} if out of range")
+        msg = f"version {number} if out of range"
+        raise ValueError(msg)
 
     @property
     def previous(self) -> Version:

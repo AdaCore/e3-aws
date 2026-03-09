@@ -85,7 +85,8 @@ class DynamoDB:
 
         result = table.put_item(**params)
         if result["ResponseMetadata"]["HTTPStatusCode"] != 200:
-            raise RuntimeError("Put Item Error")
+            msg = "Put Item Error"
+            raise RuntimeError(msg)
         return result
 
     def get_item(
@@ -236,7 +237,8 @@ class DynamoDB:
         result = table.update_item(**params)
 
         if result["ResponseMetadata"]["HTTPStatusCode"] != 200:
-            raise RuntimeError("Update Item Error")
+            msg = "Update Item Error"
+            raise RuntimeError(msg)
         return result
 
     def query_items(
