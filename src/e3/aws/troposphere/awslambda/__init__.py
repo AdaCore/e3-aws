@@ -199,9 +199,7 @@ class PyFunctionAsset(Asset):
             requirement_file=self.requirement_file,
         )
 
-        raw_archive_path = str(
-            (Path(self._archive_dir) / raw_archive_name).resolve()
-        )
+        raw_archive_path = str((Path(self._archive_dir) / raw_archive_name).resolve())
 
         # Compute the checksum
         sha = sha256()
@@ -759,12 +757,15 @@ class PyFunction(Function):
     def resources(self, stack: Stack) -> list[AWSObject | Construct]:
         """Compute AWS resources for the construct."""
         assert isinstance(stack.s3_bucket, str)
-        return [self.code_asset, *self.lambda_resources(
-            code_bucket=stack.s3_bucket,
-            code_key=Sub(
-                f"{stack.s3_assets_key}${{{self.code_asset.s3_key_parameter_name}}}"
+        return [
+            self.code_asset,
+            *self.lambda_resources(
+                code_bucket=stack.s3_bucket,
+                code_key=Sub(
+                    f"{stack.s3_assets_key}${{{self.code_asset.s3_key_parameter_name}}}"
+                ),
             ),
-        )]
+        ]
 
     @client("lambda")
     def _exist_version(

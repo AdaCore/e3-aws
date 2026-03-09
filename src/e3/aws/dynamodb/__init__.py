@@ -135,8 +135,7 @@ class DynamoDB:
         batch_keys = {
             table_name: {
                 "Keys": [
-                    {key: item[key] for key in keys if key in item}
-                    for item in items
+                    {key: item[key] for key in keys if key in item} for item in items
                 ],
                 "ConsistentRead": True,
             }
