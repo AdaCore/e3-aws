@@ -30,8 +30,12 @@ logger = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from collections.abc import Callable
     from datetime import datetime
+    from types import TracebackType
 
-    from typing import Any, TypedDict
+    from typing import Any, ParamSpec, TypedDict, TypeVar
+
+    P = ParamSpec("P")
+    T = TypeVar("T")
 
     class AWSCredentials(TypedDict, total=False):
         """Annotate a dict containing AWS credentials.
@@ -354,13 +358,18 @@ class DefaultRegion:
         """Enter the default region context."""
         Env().aws_env.default_region = self.default_region
 
-    def __exit__(self, _type, _value, _tb):
+    def __exit__(
+        self,
+        _type: type[BaseException] | None,
+        _value: BaseException | None,
+        _tb: TracebackType | None,
+    ) -> None:
         """Exit the default region context."""
         del _type, _value, _tb
         Env().aws_env.default_region = self.previous_region
 
 
-def session() -> Callable:
+def session() -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorate a function to handle automatically AWS session retrieval.
 
     The function in input should take a mandatory argument called session.
@@ -369,14 +378,15 @@ def session() -> Callable:
     :type name: str
     """
 
-    def decorator(func):
-        def wrapper(*args, **kwargs):
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             if "session" in kwargs:
                 session = kwargs.get("session")
                 del kwargs["session"]
             else:
                 session = Env().aws_env
-            return func(*args, session=session, **kwargs)
+            kwargs["session"] = session
+            return func(*args, **kwargs)
 
         return wrapper
 
@@ -497,7 +507,7 @@ def name_to_id(name: str) -> str:
     characters following a dash to uppercase for a better readability.
     """
 
-    def replacement(match):
+    def replacement(match: re.Match[str]) -> str:
         """Return uppercased second character of the match."""
         return match.group(1)[1].upper()
 

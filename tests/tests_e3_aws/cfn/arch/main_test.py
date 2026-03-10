@@ -1,9 +1,17 @@
 """Provide tests for CloudFormation architecture patterns."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 from botocore.stub import ANY
 
 from e3.aws import AWSEnv, DefaultRegion
+
+if TYPE_CHECKING:
+    from requests_mock import Mocker
+
 from e3.aws.cfn.arch import AWSFortressError, Fortress
 from e3.aws.cfn.ec2.security import SecurityGroup
 from e3.aws.cfn.iam import Allow, Policy, PolicyDocument
@@ -48,7 +56,7 @@ GITHUB_API_RANGE = {"git": ["127.0.0.0/24", "2a0a:a440::/29"]}
     reason="This test does not work offline and the associated feature is deprecated"
 )
 @pytest.mark.parametrize("enable_github", [True, False])
-def test_create_fortress(enable_github, requests_mock):
+def test_create_fortress(enable_github: bool, requests_mock: Mocker) -> None:
     """Test fortress stack creation."""
     if enable_github:
         requests_mock.get("https://api.github.com/meta", json=GITHUB_API_RANGE)
@@ -85,14 +93,14 @@ def test_create_fortress(enable_github, requests_mock):
         p = Policy("InternalPolicy", d)
         f = Fortress(
             "myfortress",
-            allow_ssh_from="0.0.0.0/0",
+            allow_ssh_from="0.0.0.0/0",  # type: ignore[arg-type]
             bastion_ami=AMI("ami-1234"),
             internal_server_policy=p,
         )
-        f += Bucket("Bucket2")
+        f += Bucket("Bucket2")  # type: ignore[misc]
 
         # Allow access to mybucket through a s3 endpoint
-        f.private_subnet.add_bucket_access(["mybucket", f["Bucket2"]])
+        f.private_subnet.add_bucket_access(["mybucket", f["Bucket2"]])  # type: ignore[arg-type]
 
         # Allow access to a secret throught a secretsmanager endpoint
         f.add_secret_access("arn_secret")
