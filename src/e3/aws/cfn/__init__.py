@@ -78,33 +78,13 @@ def get_stack_template(
 class AWSType(Enum):
     """Cloud Formation resource types."""
 
-    EC2_EIP = "AWS::EC2::EIP"
-    EC2_INSTANCE = "AWS::EC2::Instance"
-    EC2_INTERNET_GATEWAY = "AWS::EC2::InternetGateway"
-    EC2_LAUNCH_TEMPLATE = "AWS::EC2::LaunchTemplate"
-    EC2_NAT_GATEWAY = "AWS::EC2::NatGateway"
-    EC2_NETWORK_INTERFACE = "AWS::EC2::NetworkInterface"
-    EC2_ROUTE = "AWS::EC2::Route"
-    EC2_ROUTE_TABLE = "AWS::EC2::RouteTable"
-    EC2_SECURITY_GROUP = "AWS::EC2::SecurityGroup"
-    EC2_SUBNET = "AWS::EC2::Subnet"
-    EC2_SUBNET_ROUTE_TABLE_ASSOCIATION = "AWS::EC2::SubnetRouteTableAssociation"
-    EC2_VOLUME = "AWS::EC2::Volume"
-    EC2_VPC = "AWS::EC2::VPC"
-    EC2_VPC_ENDPOINT = "AWS::EC2::VPCEndpoint"
-    EC2_VPC_GATEWAY_ATTACHMENT = "AWS::EC2::VPCGatewayAttachment"
     IAM_GROUP = "AWS::IAM::Group"
     IAM_ROLE = "AWS::IAM::Role"
     IAM_USER = "AWS::IAM::User"
     IAM_POLICY = "AWS::IAM::Policy"
     IAM_INSTANCE_PROFILE = "AWS::IAM::InstanceProfile"
-    ROUTE53_HOSTED_ZONE = "AWS::Route53::HostedZone"
-    ROUTE53_RECORDSET = "AWS::Route53::RecordSet"
     S3_BUCKET = "AWS::S3::Bucket"
     S3_BUCKET_POLICY = "AWS::S3::BucketPolicy"
-    SERVICE_DISCOVERY_PRIVATE_DNS_NAMESPACE = (
-        "AWS::ServiceDiscovery::PrivateDnsNamespace"
-    )
     CODE_COMMIT_REPOSITORY = "AWS::CodeCommit::Repository"
 
 
