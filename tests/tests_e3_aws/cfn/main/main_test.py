@@ -112,7 +112,7 @@ def test_cfn_main_push_existing_stack(
     """
 
     class MyCFNMain(CFNMain):
-        def create_stack(self):
+        def create_stack(self) -> list[Stack]:
             return [Stack(name="existing-stack")]
 
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
