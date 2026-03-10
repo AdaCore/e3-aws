@@ -8,7 +8,7 @@ from e3.aws.cfn import Stack
 from e3.aws.cfn.s3 import Bucket
 
 
-def test_stack_create():
+def test_stack_create() -> None:
     """Test stack creation."""
     s = Stack(name="teststack")
     s.body
@@ -19,7 +19,7 @@ def test_stack_create():
         s = Stack(name="test_stack")
 
 
-def test_stack_compose():
+def test_stack_compose() -> None:
     """Test stack composition."""
     s = Stack(name="teststack")
     s2 = Stack(name="teststack2")
@@ -28,7 +28,7 @@ def test_stack_compose():
     assert len(s.export()["Resources"]) == 2
 
 
-def test_create_stack():
+def test_create_stack() -> None:
     """Test create stack API call."""
     s = Stack(name="teststack")
 
@@ -62,7 +62,7 @@ def test_create_stack():
             s.create(url="noprotocol://nothing")
 
 
-def test_create_change_set():
+def test_create_change_set() -> None:
     """Test create change set API call."""
     s = Stack(name="teststack")
 
@@ -96,7 +96,7 @@ def test_create_change_set():
             s.create_change_set("name2", url="noprotocol://nothing")
 
 
-def test_create_change_set_role_arn():
+def test_create_change_set_role_arn() -> None:
     """Test create change set with role ARN."""
     s = Stack(name="teststack", cfn_role_arn="arn:aws:iam::123456789012:role/S3Access")
 
@@ -120,7 +120,7 @@ def test_create_change_set_role_arn():
             s.create_change_set("name1")
 
 
-def test_validate():
+def test_validate() -> None:
     """Test stack template validation."""
     s = Stack(name="teststack")
 

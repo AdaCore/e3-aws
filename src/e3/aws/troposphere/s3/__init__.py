@@ -17,7 +17,7 @@ from e3.aws.troposphere.s3.bucket import Bucket
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from troposphere import AWSObject, Stack
+    from troposphere import AWSObject, Ref, Stack
 
     from e3.aws.troposphere.iam.policy_statement import PrincipalType
 
@@ -195,17 +195,17 @@ class BucketWithRoles(Construct):
         )
 
     @property
-    def ref(self):
+    def ref(self) -> Ref:
         """Return bucket ref."""
         return self.bucket.ref
 
     @property
-    def arn(self):
+    def arn(self) -> str:
         """Return bucket arn."""
         return self.bucket.arn
 
     @property
-    def all_objects_arn(self):
+    def all_objects_arn(self) -> str:
         """Return the ARN for all objects in the bucket."""
         return self.bucket.all_objects_arn
 

@@ -92,7 +92,7 @@ class Role(Construct):
         return policies
 
     @property
-    def arn(self):
+    def arn(self) -> GetAtt:
         """Return the role ARN."""
         return GetAtt(name_to_id(self.name), "Arn")
 

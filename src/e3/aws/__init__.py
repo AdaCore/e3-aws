@@ -127,9 +127,9 @@ class Session:
         self.clients: dict[str, botocore.client.Client] = {}
         self.stubbers: dict[str, botocore.stub.Stubber] = {}
 
-        self._account_alias = None
+        self._account_alias: str | None = None
 
-        self._identity = None
+        self._identity: dict[str, str] | None = None
 
     def assume_role(
         self,
@@ -201,7 +201,7 @@ class Session:
         return credentials
 
     @property
-    def account_alias(self):
+    def account_alias(self) -> str:
         """Return current account alias."""
         if self._account_alias is None:
             client = self.client("iam", region="us-east-1")
@@ -215,7 +215,7 @@ class Session:
         return self._account_alias
 
     @property
-    def identity(self):
+    def identity(self) -> dict[str, str]:
         """Return identity information."""
         if self._identity is None:
             sts_client = self.client("sts")

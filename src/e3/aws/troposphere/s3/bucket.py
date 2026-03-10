@@ -276,27 +276,27 @@ class Bucket(Construct):
         ]
 
     @property
-    def ref(self):
+    def ref(self) -> Ref:
         """Return a CloudFormation Ref to this bucket."""
         return Ref(name_to_id(self.name))
 
     @property
-    def arn(self):
+    def arn(self) -> str:
         """Return the bucket ARN."""
         return f"arn:aws:s3:::{self.name}"
 
     @property
-    def all_objects_arn(self):
+    def all_objects_arn(self) -> str:
         """Return the ARN for all objects in the bucket."""
         return f"{self.arn}/*"
 
     @property
-    def domain_name(self):
+    def domain_name(self) -> GetAtt:
         """Return the bucket domain name attribute."""
         return GetAtt(name_to_id(self.name), "DomainName")
 
     @property
-    def regional_domain_name(self):
+    def regional_domain_name(self) -> GetAtt:
         """Return the bucket regional domain name attribute."""
         return GetAtt(name_to_id(self.name), "RegionalDomainName")
 
