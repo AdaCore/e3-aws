@@ -326,7 +326,7 @@ class AWSEnv(Session):
         regions: list[str] | None = None,
         stub: bool = False,
         profile: str | None = None,
-    ):
+    ) -> None:
         """Initialize an AWS session.
 
         Once intialized AWS environment can be accessed from Env().aws_env
@@ -344,7 +344,7 @@ class AWSEnv(Session):
 class DefaultRegion:
     """Context manager used to set a default region."""
 
-    def __init__(self, region: str):
+    def __init__(self, region: str) -> None:
         """Initialize context manager.
 
         :param region: default region
@@ -354,7 +354,7 @@ class DefaultRegion:
         self.previous_region = aws_env.default_region
         self.default_region = region
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         """Enter the default region context."""
         Env().aws_env.default_region = self.default_region
 
@@ -520,7 +520,7 @@ class IAMAuth(requests.auth.AuthBase):
 
     def __init__(
         self, session: Session, role: str | None = None, region: str | None = None
-    ):
+    ) -> None:
         """Initialize authorizer.
 
         :param session: an aws session

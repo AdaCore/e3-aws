@@ -452,7 +452,7 @@ class Stack:
         cfn_role_arn: str | None = None,
         s3_bucket: str | None = None,
         s3_key: str | None = None,
-    ):
+    ) -> None:
         """Initialize a stack.
 
         :param name: stack name

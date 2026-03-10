@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 class ConfigurationRecorder(Construct):
     """Define a ConfigurationRecorder and associated ressources."""
 
-    def __init__(self, bucket_name: str):
+    def __init__(self, bucket_name: str) -> None:
         """Initializae a ConfigurationRecorder.
 
         :param name: The name of the Amazon S3 bucket to create and to which AWS

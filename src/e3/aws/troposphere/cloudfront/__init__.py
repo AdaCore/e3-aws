@@ -51,7 +51,7 @@ class S3WebsiteDistribution(Construct):
         logging_prefix: str | None = None,
         logging_include_cookies: bool | None = None,
         iam_path: str | None = None,
-    ):
+    ) -> None:
         """Initialize a S3WebsiteCFDistribution.
 
         :param name: function name

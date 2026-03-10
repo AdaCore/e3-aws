@@ -43,7 +43,7 @@ class DockerFunction(Function):
         dl_config: awslambda.DeadLetterConfig | None = None,
         docker_client: DockerClient | None = None,
         **build_args: Any,
-    ):
+    ) -> None:
         """Initialize an AWS lambda function using a Docker image.
 
         :param name: function name

@@ -308,7 +308,7 @@ class Api(Construct):
         domain_name: str | None = None,
         hosted_zone_id: str | None = None,
         stages_config: list[StageConfiguration] | None = None,
-    ):
+    ) -> None:
         """Initialize API resource.
 
         :param name: the resource name
@@ -511,7 +511,7 @@ class HttpApi(Api):
         hosted_zone_id: str | None = None,
         stages_config: list[StageConfiguration] | None = None,
         integration_uri: str | Ref | Sub | None = None,
-    ):
+    ) -> None:
         """Initialize an HTTP API.
 
         The schema supported here is a single lambda handling all the routes.
@@ -822,7 +822,7 @@ class RestApi(Api):
         endpoint_access_mode: EndpointAccessMode | None = None,
         security_policy: SecurityPolicy | None = None,
         integration_timeout: int | None = None,
-    ):
+    ) -> None:
         """Initialize a Rest API.
 
         The schema supported here is a single lambda handling the API.

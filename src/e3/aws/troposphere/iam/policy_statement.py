@@ -94,7 +94,7 @@ class AssumeRole(PolicyStatement):
         principal: PrincipalType,
         sid: str | None = None,
         condition: ConditionType | None = None,
-    ):
+    ) -> None:
         """Initialize an AssumeRole statement.
 
         :param principal: principal which are allowed to assume the role

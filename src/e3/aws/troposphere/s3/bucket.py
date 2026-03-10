@@ -54,7 +54,7 @@ class Bucket(Construct):
         authorized_encryptions: list[EncryptionAlgorithm] | None = None,
         add_multipart_lifecycle_rule: bool = False,
         **bucket_kwargs: Any,
-    ):
+    ) -> None:
         """Initialize a bucket.
 
         :param name: bucket name

@@ -142,7 +142,7 @@ class PyFlaskFunction(PyFunction):
         environment: dict[str, str] | None = None,
         logging_config: LoggingConfig | None = None,
         vpc_config: VPCConfig | None = None,
-    ):
+    ) -> None:
         """Initialize a Flask AWS lambda function using a Python runtime.
 
         :param name: function name
@@ -229,7 +229,7 @@ class Py38FlaskFunction(PyFlaskFunction):
         logs_retention_in_days: int | None = None,
         logging_config: LoggingConfig | None = None,
         vpc_config: VPCConfig | None = None,
-    ):
+    ) -> None:
         """Initialize a Flask AWS lambda function using Python 3.8 runtime.
 
         For params see PyFlaskFunction.

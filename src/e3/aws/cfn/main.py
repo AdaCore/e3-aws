@@ -42,7 +42,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         assume_read_role: tuple[str, str] | None = None,
         assume_role: tuple[str, str] | None = None,
         deploy_branch: str | None = None,
-    ):
+    ) -> None:
         """Initialize main.
 
         :param regions: list of regions on which we can operate
