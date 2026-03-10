@@ -12,7 +12,6 @@ from e3.aws.cfn import AWSType, Base64, GetAtt, Join, Ref, Resource, Sub
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from e3.aws.cfn.ec2.security import SecurityGroup
     from e3.aws.cfn.iam import InstanceProfile, PolicyDocument
     from e3.aws.ec2.ami import AMI
 
@@ -110,7 +109,7 @@ class EC2NetworkInterface:
         self,
         subnet: Subnet | None = None,
         public_ip: bool = False,
-        groups: list[SecurityGroup] | None = None,
+        groups: list[Resource] | None = None,
         device_index: int | None = None,
         description: str | None = None,
         interface: NetworkInterface | None = None,
@@ -136,7 +135,7 @@ class EC2NetworkInterface:
             )
             self.subnet: Subnet | None = subnet
             self.public_ip: bool | None = public_ip
-            self.groups: list[SecurityGroup] | None = groups
+            self.groups: list[Resource] | None = groups
             self.interface_id = None
         else:
             assert not public_ip, "cannot associate automatically a public IP"
@@ -256,7 +255,7 @@ class NetworkInterface(Resource):
         self,
         name: str,
         subnet: Subnet,
-        groups: list[SecurityGroup] | None = None,
+        groups: list[Resource] | None = None,
         description: str | None = None,
     ) -> None:
         """Initialize an External Network Interface (ENI).
@@ -692,7 +691,7 @@ class VPCInterfaceEndpoint(Resource):
         subnet: Subnet,
         vpc: VPC,
         policy_document: PolicyDocument | None,
-        security_group: SecurityGroup,
+        security_group: Resource,
     ):
         """Initialize a VPC interface endpoint.
 

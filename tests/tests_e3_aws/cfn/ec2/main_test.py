@@ -24,7 +24,6 @@ from e3.aws.cfn.ec2 import (
     VPCGatewayAttachment,
     WinUserData,
 )
-from e3.aws.cfn.ec2.security import SecurityGroup
 from e3.aws.cfn.iam import Allow, PolicyDocument, Principal, PrincipalKind
 from e3.aws.ec2.ami import AMI
 
@@ -81,17 +80,11 @@ def test_create_instance():
         vpc = VPC("VPC", "10.10.0.0/16")
         subnet = Subnet("Subnet", vpc, "10.10.10.0/24")
         subnet = Subnet("Subnet2", vpc, "10.10.20.0/24")
-        security_group = SecurityGroup("mysgroup", vpc)
         i.add(EC2NetworkInterface(subnet, description="first network interface"))
-        i.add(
-            EC2NetworkInterface(
-                subnet, groups=[security_group], description="2nd network interface"
-            )
-        )
+        i.add(EC2NetworkInterface(subnet, description="2nd network interface"))
         i.add(
             EC2NetworkInterface(
                 subnet,
-                groups=[security_group],
                 description="3rd network interface",
                 device_index=3,
             )

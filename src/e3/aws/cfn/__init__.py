@@ -86,7 +86,6 @@ class AWSType(Enum):
     EC2_NETWORK_INTERFACE = "AWS::EC2::NetworkInterface"
     EC2_ROUTE = "AWS::EC2::Route"
     EC2_ROUTE_TABLE = "AWS::EC2::RouteTable"
-    EC2_SECURITY_GROUP = "AWS::EC2::SecurityGroup"
     EC2_SUBNET = "AWS::EC2::Subnet"
     EC2_SUBNET_ROUTE_TABLE_ASSOCIATION = "AWS::EC2::SubnetRouteTableAssociation"
     EC2_VOLUME = "AWS::EC2::Volume"
