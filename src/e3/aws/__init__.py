@@ -32,7 +32,10 @@ if TYPE_CHECKING:
     from datetime import datetime
     from types import TracebackType
 
-    from typing import Any, TypedDict
+    from typing import Any, ParamSpec, TypedDict, TypeVar
+
+    P = ParamSpec("P")
+    T = TypeVar("T")
 
     class AWSCredentials(TypedDict, total=False):
         """Annotate a dict containing AWS credentials.
@@ -366,7 +369,7 @@ class DefaultRegion:
         Env().aws_env.default_region = self.previous_region
 
 
-def session() -> Callable:
+def session() -> Callable[[Callable[P, T]], Callable[P, T]]:
     """Decorate a function to handle automatically AWS session retrieval.
 
     The function in input should take a mandatory argument called session.
@@ -375,14 +378,15 @@ def session() -> Callable:
     :type name: str
     """
 
-    def decorator(func: Callable) -> Callable:
-        def wrapper(*args, **kwargs):
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             if "session" in kwargs:
                 session = kwargs.get("session")
                 del kwargs["session"]
             else:
                 session = Env().aws_env
-            return func(*args, session=session, **kwargs)
+            kwargs["session"] = session
+            return func(*args, **kwargs)
 
         return wrapper
 

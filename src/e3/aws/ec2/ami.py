@@ -188,7 +188,7 @@ class AMI(EC2Element):
         :return: a list of AMI
         """
         assert session is not None
-        result: dict[tuple[str, str, str], tuple[int, AMI]] = {}
+        result: dict[tuple[str, ...], tuple[int, AMI]] = {}
 
         filters = [
             {"Name": "tag-key", "Values": ["platform"]},
@@ -209,6 +209,7 @@ class AMI(EC2Element):
             tag_filters["kind"] = kind
 
         for ami in all_images:
+            assert ami.region is not None
             key_l = [ami.region, ami.platform, ami.os_version]
             if kind is not None:
                 key_l.append(ami.kind)
