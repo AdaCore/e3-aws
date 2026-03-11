@@ -53,7 +53,7 @@ class Bucket(Construct):
         ) = EncryptionAlgorithm.AES256,
         authorized_encryptions: list[EncryptionAlgorithm] | None = None,
         add_multipart_lifecycle_rule: bool = False,
-        **bucket_kwargs: Any,
+        **bucket_kwargs: Any,  # noqa: ANN401
     ) -> None:
         """Initialize a bucket.
 

@@ -59,7 +59,7 @@ class BucketWithRoles(Construct):
             | PolicyDocument
             | None
         ) = None,
-        **bucket_kwargs: Any,
+        **bucket_kwargs: Any,  # noqa: ANN401
     ) -> None:
         """Initialize BucketWithRoles instance.
 

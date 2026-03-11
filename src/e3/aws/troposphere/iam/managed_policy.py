@@ -26,7 +26,7 @@ class ManagedPolicy(Construct):
         statements: list[PolicyStatement],
         description: str = "",
         path: str = "/",
-        **kwargs: Any,
+        **kwargs: Any,  # noqa: ANN401
     ) -> None:
         """Initialize an IAM Managed policy.
 

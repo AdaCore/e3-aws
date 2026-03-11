@@ -59,7 +59,7 @@ class S3:
 
     def __init__(
         self,
-        client: Any,
+        client: botocore.client.BaseClient,
         bucket: str,
     ) -> None:
         """Initialize S3.

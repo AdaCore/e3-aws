@@ -168,7 +168,7 @@ class AMI(EC2Element):
         region: str | None = None,
         session: Session | None = None,
         owners: list[str] | None = None,
-        **kwargs: Any,
+        **kwargs: str,
     ) -> list[AMI]:
         """Find AMIs.
 
@@ -242,7 +242,7 @@ class AMI(EC2Element):
         region: str | None = None,
         session: Session | None = None,
         owners: list[str] | None = None,
-        **kwargs: Any,
+        **kwargs: str,
     ) -> AMI:
         """Select one AMI based on platform, os_version and kind.
 

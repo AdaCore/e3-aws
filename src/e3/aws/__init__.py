@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
     from datetime import datetime
     from types import TracebackType
 
@@ -285,7 +285,11 @@ class Session:
         return self.clients[name][region]
 
     def run(
-        self, cmd: list[str], role_arn: str, session_duration: int, **kwargs: Any
+        self,
+        cmd: list[str],
+        role_arn: str,
+        session_duration: int,
+        **kwargs: Any,  # noqa: ANN401
     ) -> Run:
         """Execute a command with credentials to assume role role_arn.
 
@@ -482,7 +486,7 @@ def assume_role_main() -> None:
             print(f"export {k}={v}")
 
 
-def iterate(fun: Callable, key: str, **kwargs: Any) -> Any:
+def iterate(fun: Callable, key: str, **kwargs: Any) -> Iterator[Any]:  # noqa: ANN401
     """Create an iterator other paginate botocore function.
 
     :param fun: the function to call

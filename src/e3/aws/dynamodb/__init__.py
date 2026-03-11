@@ -12,6 +12,8 @@ from botocore.exceptions import ClientError
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from boto3.resources.base import ServiceResource
+
     from typing import Any, Literal
 
     OperationType = Literal["or", "between", "contains"]
@@ -29,7 +31,7 @@ class DynamoDB:
 
     def __init__(
         self,
-        client: Any,
+        client: ServiceResource,
     ) -> None:
         """Initialize DynamoDB table."""
         self.client = client

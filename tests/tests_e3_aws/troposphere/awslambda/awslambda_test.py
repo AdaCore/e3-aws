@@ -1108,7 +1108,7 @@ def test_create_flask_wsgi_environ_with_event(event_source: str) -> None:
     with (SOURCE_DIR / f"event-{event_source}.json").open() as fd:
         event = json.load(fd)
 
-    handler = FlaskLambdaHandler("app")
+    handler = FlaskLambdaHandler(Flask("app"))
     flask_environment = handler.create_flask_wsgi_environ(event, {})
 
     # remove values that are not

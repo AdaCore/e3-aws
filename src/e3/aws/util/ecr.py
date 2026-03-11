@@ -41,7 +41,7 @@ def build_and_push_image(
     image_tag: str,
     session: Session,
     docker_client: DockerClient | None = None,
-    **build_args: Any,
+    **build_args: Any,  # noqa: ANN401
 ) -> str:
     """Build and push image to an ECR repository and return image URI.
 
