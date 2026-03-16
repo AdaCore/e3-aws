@@ -195,7 +195,7 @@ def test_bucket_with_roles_and_trust_policies(stack: Stack) -> None:
     assert stack.export()["Resources"] == expected_template
 
 
-def test_bucket_with_roles_and_trust_policies_error(stack: Stack) -> None:
+def test_bucket_with_roles_and_trust_policies_error() -> None:
     """Test BucketWithRoles with trust policies raises error."""
     with pytest.raises(AttributeError) as exc:
         BucketWithRoles(
