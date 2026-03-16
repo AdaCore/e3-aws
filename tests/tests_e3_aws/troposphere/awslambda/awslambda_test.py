@@ -799,7 +799,7 @@ def test_get_ecr_credentials() -> None:
     # Check the response is parsed correctly
     ecr_username, ecr_password, ecr_url = get_ecr_credentials(aws_env)
     assert ecr_username == "test_user"
-    assert ecr_password == "test_pwd"
+    assert ecr_password == "test_pwd"  # noqa: S105
     assert ecr_url == "test_endpoint"
 
 
