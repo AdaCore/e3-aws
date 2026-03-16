@@ -147,7 +147,6 @@ def test_cfn_main_push_existing_stack(
                 "TemplateBody": ANY,
             },
         )
-        stubber = stubber
         stubber.add_response(
             "describe_change_set",
             {
