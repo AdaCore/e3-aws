@@ -55,7 +55,7 @@ class Architecture(Enum):
 class UnknownPlatform(Exception):  # noqa: N818
     """Unknown platform exception."""
 
-    def __init__(self, architecture: Architecture):
+    def __init__(self, architecture: Architecture) -> None:
         """Initialize an UnknownPlatform.
 
         :param architecture: the unsupported CPU architecture
@@ -307,7 +307,7 @@ class Function(Construct):
         logging_config: awslambda.LoggingConfig | None = None,
         dl_config: awslambda.DeadLetterConfig | None = None,
         vpc_config: awslambda.VPCConfig | None = None,
-    ):
+    ) -> None:
         """Initialize an AWS lambda function.
 
         :param name: function name
@@ -677,7 +677,7 @@ class PyFunction(Function):
         logging_config: awslambda.LoggingConfig | None = None,
         dl_config: awslambda.DeadLetterConfig | None = None,
         vpc_config: awslambda.VPCConfig | None = None,
-    ):
+    ) -> None:
         """Initialize an AWS lambda function with a Python runtime.
 
         :param name: function name
@@ -942,7 +942,7 @@ class Py38Function(PyFunction):
         reserved_concurrent_executions: int | None = None,
         logging_config: awslambda.LoggingConfig | None = None,
         dl_config: awslambda.DeadLetterConfig | None = None,
-    ):
+    ) -> None:
         """Initialize an AWS lambda function using Python 3.8 runtime.
 
         See PyFunction for params description.
@@ -983,7 +983,7 @@ class Alias(Construct):
             awslambda.ProvisionedConcurrencyConfiguration | None
         ) = None,
         routing_config: awslambda.AliasRoutingConfiguration | None = None,
-    ):
+    ) -> None:
         """Initialize an AWS lambda alias.
 
         :param name: name of the resource
@@ -1060,7 +1060,7 @@ class Version(Construct):
             awslambda.ProvisionedConcurrencyConfiguration | None
         ) = None,
         code_sha256: str | None = None,
-    ):
+    ) -> None:
         """Initialize an AWS lambda version.
 
         :param name: version name

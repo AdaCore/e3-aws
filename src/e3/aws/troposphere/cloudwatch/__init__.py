@@ -31,7 +31,7 @@ class Alarm(Construct):
         period: int | None = None,
         statistic: str | None = None,
         threshold: float | None = None,
-    ):
+    ) -> None:
         """Initialize an AWS CloudWatch alarm.
 
         :param name: alarm name

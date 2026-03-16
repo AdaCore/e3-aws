@@ -34,7 +34,7 @@ class ProjectionType(Enum):
     INCLUDE = "INCLUDE"
     ALL = "ALL"
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return string representation of the projection type."""
         return str(self.value)
 
@@ -55,7 +55,7 @@ class GlobalSecondaryIndex:
         non_key_attributes: list[str] | None = None,
         read_capacity_units: int | None = None,
         write_capacity_units: int | None = None,
-    ):
+    ) -> None:
         """Initialize a Global Secondary index.
 
         :param index_name: name of the global secondary index
@@ -103,7 +103,7 @@ class Table(Construct):
         time_to_live_enabled: bool | None = None,
         stream_enabled: bool | None = None,
         stream_view_type: str | None = None,
-    ):
+    ) -> None:
         """Initialize an AWS DynamoDB table.
 
         :param name: table name

@@ -20,7 +20,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
 
-    from typing import Any
+    from typing import Any, ParamSpec, TypeVar
+
+    P = ParamSpec("P")
+    T = TypeVar("T")
+
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +43,8 @@ def client(name: str) -> Callable:
     :type name: str
     """
 
-    def decorator(func: Callable) -> Callable:
-        def wrapper(*args: Any, **kwargs: Any) -> Callable:
+    def decorator(func: Callable[P, T]) -> Callable[P, T]:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             aws_env = Env().aws_env
             if "region" in kwargs:
                 region = kwargs["region"]
@@ -48,7 +52,8 @@ def client(name: str) -> Callable:
             else:
                 region = aws_env.default_region
             client = aws_env.client(name, region=region)
-            return func(*args, client=client, **kwargs)
+            kwargs["client"] = client
+            return func(*args, **kwargs)
 
         return wrapper
 
@@ -152,7 +157,7 @@ class Sub:
 # Declare Yaml representer for intrinsic functions
 
 
-def getatt_representer(dumper: CFNYamlDumper, data: Any) -> yaml.ScalarNode:
+def getatt_representer(dumper: CFNYamlDumper, data: GetAtt) -> yaml.ScalarNode:
     """Represent a GetAtt intrinsic function in YAML.
 
     :param dumper: the YAML dumper instance
@@ -162,7 +167,7 @@ def getatt_representer(dumper: CFNYamlDumper, data: Any) -> yaml.ScalarNode:
     return dumper.represent_scalar("!GetAtt", f"{data.name}.{data.attribute}")
 
 
-def ref_representer(dumper: CFNYamlDumper, data: Any) -> yaml.ScalarNode:
+def ref_representer(dumper: CFNYamlDumper, data: Ref) -> yaml.ScalarNode:
     """Represent a Ref intrinsic function in YAML.
 
     :param dumper: the YAML dumper instance
@@ -172,7 +177,7 @@ def ref_representer(dumper: CFNYamlDumper, data: Any) -> yaml.ScalarNode:
     return dumper.represent_scalar("!Ref", data.name)
 
 
-def base64_representer(dumper: CFNYamlDumper, data: Any) -> yaml.MappingNode:
+def base64_representer(dumper: CFNYamlDumper, data: Base64) -> yaml.MappingNode:
     """Represent a Base64 intrinsic function in YAML.
 
     :param dumper: the YAML dumper instance
@@ -183,7 +188,7 @@ def base64_representer(dumper: CFNYamlDumper, data: Any) -> yaml.MappingNode:
 
 
 def sub_representer(
-    dumper: CFNYamlDumper, data: Any
+    dumper: CFNYamlDumper, data: Sub
 ) -> yaml.SequenceNode | yaml.ScalarNode:
     """Represent a Sub intrinsic function in YAML.
 
@@ -196,7 +201,7 @@ def sub_representer(
     return dumper.represent_scalar("!Sub", data.content)
 
 
-def join_representer(dumper: CFNYamlDumper, data: Any) -> yaml.SequenceNode:
+def join_representer(dumper: CFNYamlDumper, data: Join) -> yaml.SequenceNode:
     """Represent a Join intrinsic function in YAML.
 
     :param dumper: the YAML dumper instance
@@ -209,7 +214,7 @@ def join_representer(dumper: CFNYamlDumper, data: Any) -> yaml.SequenceNode:
 class CFNYamlDumper(yaml.Dumper):
     """Provide a YAML dumper for CloudFormation templates."""
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: ANN401
         """Yaml dumper for cloud formation templates.
 
         See yaml.Dumper documentation.
@@ -222,7 +227,7 @@ class CFNYamlDumper(yaml.Dumper):
         self.add_representer(Join, join_representer)
         self.add_representer(Sub, sub_representer)
 
-    def ignore_aliases(self, data: Any) -> bool:
+    def ignore_aliases(self, data: object) -> bool:
         """Ignore aliases."""
         return True
 
@@ -452,7 +457,7 @@ class Stack:
         cfn_role_arn: str | None = None,
         s3_bucket: str | None = None,
         s3_key: str | None = None,
-    ):
+    ) -> None:
         """Initialize a stack.
 
         :param name: stack name
@@ -644,7 +649,7 @@ class Stack:
         return True
 
     @client("cloudformation")
-    def state(self, client: botocore.client.BaseClient) -> Any:
+    def state(self, client: botocore.client.BaseClient) -> dict[str, Any]:
         """Return state of the stack on AWS."""
         result = client.describe_stacks(StackName=self.stack_id)["Stacks"][0]
         if self.stack_id != result["StackId"]:
@@ -654,7 +659,7 @@ class Stack:
     @client("cloudformation")
     def validate(
         self, client: botocore.client.BaseClient, url: str | None = None
-    ) -> Any:
+    ) -> dict[str, Any]:
         """Validate a template.
 
         :param client: a botocore client
@@ -671,7 +676,7 @@ class Stack:
     @client("cloudformation")
     def create_change_set(
         self, name: str, client: botocore.client.BaseClient, url: str | None = None
-    ) -> Any:
+    ) -> dict[str, Any]:
         """Create a change set.
 
         This creates a difference between the state of the stack on AWS servers
@@ -706,7 +711,9 @@ class Stack:
         )
 
     @client("cloudformation")
-    def describe_change_set(self, name: str, client: botocore.client.BaseClient) -> Any:
+    def describe_change_set(
+        self, name: str, client: botocore.client.BaseClient
+    ) -> dict[str, Any]:
         """Describe a change set.
 
         Retrieve status of a given changeset
@@ -718,7 +725,9 @@ class Stack:
         return client.describe_change_set(ChangeSetName=name, StackName=self.name)
 
     @client("cloudformation")
-    def delete_change_set(self, name: str, client: botocore.client.BaseClient) -> Any:
+    def delete_change_set(
+        self, name: str, client: botocore.client.BaseClient
+    ) -> dict[str, Any]:
         """Delete a change set.
 
         :param client: a botocore client
@@ -793,7 +802,7 @@ class Stack:
                 yield event
 
     @client("cloudformation")
-    def cost(self, client: botocore.client.BaseClient) -> Any:
+    def cost(self, client: botocore.client.BaseClient) -> dict[str, Any]:
         """Compute cost of the stack (estimation).
 
         :param client: a botocore client
@@ -806,7 +815,7 @@ class Stack:
         client: botocore.client.BaseClient,
         changeset_name: str,
         wait: bool = False,
-    ) -> Any:
+    ) -> None:
         """Execute a changeset.
 
         :param client: a botocore client
@@ -826,7 +835,7 @@ class Stack:
     @client("cloudformation")
     def resource_status(
         self, client: botocore.client.BaseClient, in_progress_only: bool = True
-    ) -> Any:
+    ) -> dict[str, str]:
         """Return status of each resources of the stack.
 
         The state of the stack taken is the one pushed on AWS (after a call
@@ -846,7 +855,7 @@ class Stack:
         return result
 
     @client("cloudformation")
-    def enable_termination_protection(self, client: botocore.client.BaseClient) -> Any:
+    def enable_termination_protection(self, client: botocore.client.BaseClient) -> None:
         """Enable termination protection for a stack."""
         aws_result = self.state()
         if aws_result["EnableTerminationProtection"]:
@@ -862,7 +871,7 @@ class Stack:
     @client("cloudformation")
     def set_stack_policy(
         self, stack_policy_body: str, client: botocore.client.BaseClient
-    ) -> Any:
+    ) -> None:
         """Set a stack policy.
 
         :param stack_policy_body: stack policy body to apply

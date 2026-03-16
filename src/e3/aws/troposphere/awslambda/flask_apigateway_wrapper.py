@@ -15,8 +15,10 @@ from werkzeug.datastructures import iter_multi_items
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from types import TracebackType
 
+    from flask import Flask
     from typing_extensions import NotRequired
 
     from typing import Any, TypedDict
@@ -44,7 +46,7 @@ TEXT_MIME_TYPES = [
 class FlaskLambdaHandler:
     """Flask lambda handler."""
 
-    def __init__(self, app: Any) -> None:
+    def __init__(self, app: Flask) -> None:
         """Initialize a Flask lambda handler.
 
         :param app: a Flask app
@@ -58,8 +60,10 @@ class FlaskLambdaHandler:
         status: str,
         response_headers: list[tuple[str, str]],
         exc_info: tuple[type[BaseException], BaseException, TracebackType]
+        | tuple[None, None, None]
         | None = None,
-    ) -> None:
+        /,
+    ) -> Callable[[bytes], object]:
         """Implement Flask callback to store the response.
 
         See Flask documentation.
@@ -67,14 +71,22 @@ class FlaskLambdaHandler:
         self.status = int(status[:3])
         self.response_headers = dict(response_headers)
 
+        def write(data: bytes) -> None:
+            """Write data directly (deprecated WSGI interface)."""
+
+        return write
+
     def lambda_handler(self, event: dict, context: dict) -> FlaskLambdaResponse:
         """Lambda entry point."""
         self.status = None
         self.response_headers = None
         try:
             body = next(
-                self.app.wsgi_app(
-                    self.create_flask_wsgi_environ(event, context), self.start_response
+                iter(
+                    self.app.wsgi_app(
+                        self.create_flask_wsgi_environ(event, context),
+                        self.start_response,
+                    )
                 )
             )
         except StopIteration:
@@ -82,7 +94,7 @@ class FlaskLambdaHandler:
             # automatically added to a view. For instance, if the status code is 304
             # (Not Modified) there is no response body.
             print("wsgi_app does not return a response body")
-            body = ""
+            body = b""
 
         returndict: FlaskLambdaResponse = {
             "statusCode": cast("int", self.status),

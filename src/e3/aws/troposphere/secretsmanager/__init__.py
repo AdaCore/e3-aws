@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class Secret(Construct):
     """Provide Secret resource and associated utility methods."""
 
-    def __init__(self, name: str, description: str, iam_path: str = "/"):
+    def __init__(self, name: str, description: str, iam_path: str = "/") -> None:
         """Initialize a Secret instance.
 
         :param name: name of the secret
@@ -73,7 +73,7 @@ class RotationSchedule(Construct):
         rotation_function: Function,
         schedule_expression: str,
         rotation_function_version: Version | Alias | None = None,
-    ):
+    ) -> None:
         """Initialize a ScheduleRotationSecret instance.
 
         :param secret: secret to rotate

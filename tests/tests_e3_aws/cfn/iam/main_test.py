@@ -16,7 +16,7 @@ from e3.aws.cfn.iam import (
 from e3.aws.cfn.s3 import Bucket
 
 
-def test_create_statements():
+def test_create_statements() -> None:
     """Various statement creations."""
     s1 = Deny(
         apply_to=Principal(PrincipalKind.SERVICE, "myservice"),
@@ -43,7 +43,7 @@ def test_create_statements():
     assert len(pd3.statements) == 2
 
 
-def test_create_instance_profile():
+def test_create_instance_profile() -> None:
     """Create a basic instance role that get access to a bucket."""
     s = Bucket("MyBucket")
     policy_document = PolicyDocument()
@@ -56,7 +56,7 @@ def test_create_instance_profile():
     assert instance_profile.body
 
 
-def test_principal_star():
+def test_principal_star() -> None:
     """Create a list of principal with one principal being '*'."""
     pl = [
         Principal(PrincipalKind.SERVICE, "ec2.amazonaws.com"),
@@ -69,7 +69,7 @@ def test_principal_star():
     assert Principal.property_list(pl)
 
 
-def test_create_user_and_group():
+def test_create_user_and_group() -> None:
     """Create a basic group."""
     mygroup = Group("mygroup")
     myuser = User("myuser", groups=[mygroup.name])

@@ -27,7 +27,7 @@ class StackSet(Construct):
         accounts: list[str] | None = None,
         failure_tolerance_count: int = 0,
         max_concurrent_count: int = 1,
-    ):
+    ) -> None:
         """Initialize a CloudFormation service managed stack set.
 
         :param name: stack set name

@@ -32,7 +32,7 @@ class InternetGateway(Construct):
         vpc: ec2.vpc,
         subnets: list[ec2.subnet] | None = None,
         route_table: ec2.RouteTable | None = None,
-    ):
+    ) -> None:
         """Initialize InternetGateway construct.
 
         :param name_prefix: prefix for cloudformation resource names
@@ -281,7 +281,7 @@ class Subnet(Construct):
         internet_gateway: InternetGateway | None = None,
         use_nat: bool = False,
         nat_to: ec2.NatGateway | None = None,
-    ):
+    ) -> None:
         """Initialize Subnet construct.
 
         :param name: name of the Subnet

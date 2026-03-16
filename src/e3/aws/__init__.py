@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Iterator
     from datetime import datetime
     from types import TracebackType
 
@@ -127,9 +127,9 @@ class Session:
         self.clients: dict[str, botocore.client.Client] = {}
         self.stubbers: dict[str, botocore.stub.Stubber] = {}
 
-        self._account_alias = None
+        self._account_alias: str | None = None
 
-        self._identity = None
+        self._identity: dict[str, str] | None = None
 
     def assume_role(
         self,
@@ -201,7 +201,7 @@ class Session:
         return credentials
 
     @property
-    def account_alias(self):
+    def account_alias(self) -> str:
         """Return current account alias."""
         if self._account_alias is None:
             client = self.client("iam", region="us-east-1")
@@ -215,7 +215,7 @@ class Session:
         return self._account_alias
 
     @property
-    def identity(self):
+    def identity(self) -> dict[str, str]:
         """Return identity information."""
         if self._identity is None:
             sts_client = self.client("sts")
@@ -285,7 +285,11 @@ class Session:
         return self.clients[name][region]
 
     def run(
-        self, cmd: list[str], role_arn: str, session_duration: int, **kwargs: Any
+        self,
+        cmd: list[str],
+        role_arn: str,
+        session_duration: int,
+        **kwargs: Any,  # noqa: ANN401
     ) -> Run:
         """Execute a command with credentials to assume role role_arn.
 
@@ -326,7 +330,7 @@ class AWSEnv(Session):
         regions: list[str] | None = None,
         stub: bool = False,
         profile: str | None = None,
-    ):
+    ) -> None:
         """Initialize an AWS session.
 
         Once intialized AWS environment can be accessed from Env().aws_env
@@ -344,7 +348,7 @@ class AWSEnv(Session):
 class DefaultRegion:
     """Context manager used to set a default region."""
 
-    def __init__(self, region: str):
+    def __init__(self, region: str) -> None:
         """Initialize context manager.
 
         :param region: default region
@@ -354,7 +358,7 @@ class DefaultRegion:
         self.previous_region = aws_env.default_region
         self.default_region = region
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         """Enter the default region context."""
         Env().aws_env.default_region = self.default_region
 
@@ -482,7 +486,7 @@ def assume_role_main() -> None:
             print(f"export {k}={v}")
 
 
-def iterate(fun: Callable, key: str, **kwargs: Any) -> Any:
+def iterate(fun: Callable, key: str, **kwargs: Any) -> Iterator[Any]:  # noqa: ANN401
     """Create an iterator other paginate botocore function.
 
     :param fun: the function to call
@@ -520,7 +524,7 @@ class IAMAuth(requests.auth.AuthBase):
 
     def __init__(
         self, session: Session, role: str | None = None, region: str | None = None
-    ):
+    ) -> None:
         """Initialize authorizer.
 
         :param session: an aws session

@@ -3,7 +3,7 @@
 from e3.aws.cfn.codecommit import Repository
 
 
-def test_create_repository():
+def test_create_repository() -> None:
     """RecordSet test."""
     name = "my-repo"
     description = "my repo description"

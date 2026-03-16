@@ -6,7 +6,7 @@ from e3.aws import AWSEnv, DefaultRegion, Session
 from e3.aws.ec2.ami import AMI
 
 
-def test_ls_ami():
+def test_ls_ami() -> None:
     """List AMIS from all regions."""
     aws_env = AWSEnv(regions=["us-east-1", "eu-west-1"], stub=True)
     stub_us = aws_env.stub("ec2", region="us-east-1")
@@ -33,7 +33,7 @@ def test_ls_ami():
     assert len(AMI.ls()) == 2
 
 
-def test_select():
+def test_select() -> None:
     """Test AMI.select."""
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
     stub = aws_env.stub("ec2", region="us-east-1")
@@ -130,7 +130,7 @@ def test_select():
         assert ami.id == "ami-5"
 
 
-def test_find_with_owners():
+def test_find_with_owners() -> None:
     """Test AMI.select."""
     aws_env = AWSEnv(regions=["us-east-1"], stub=True)
     stub = aws_env.stub("ec2", region="us-east-1")
@@ -178,7 +178,7 @@ def test_find_with_owners():
         assert ami.owner_id == "2222"
 
 
-def test_session_without_args():
+def test_session_without_args() -> None:
     """Raise error when no arguments."""
     with pytest.raises(ValueError, match="region should be specified"):
         Session()

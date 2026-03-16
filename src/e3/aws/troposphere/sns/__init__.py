@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 class Topic(Construct):
     """A SNS Topic."""
 
-    def __init__(self, name: str, kms_master_key_id: str | None = None):
+    def __init__(self, name: str, kms_master_key_id: str | None = None) -> None:
         """Initialize a SNS Topic.
 
         :param name: topic name
