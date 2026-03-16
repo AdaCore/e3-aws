@@ -42,6 +42,7 @@ class BucketWithRoles(Construct):
         ) = None,
         iam_read_root_name: str = "Read",
         iam_write_root_name: str = "Write",
+        *,
         bucket_exists: bool | None = None,
         read_trusted_accounts: list[str] | None = None,
         write_trusted_accounts: list[str] | None = None,

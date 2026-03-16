@@ -35,6 +35,7 @@ ASSET_URI_PREFIX = "s3://cfn_bucket/assets/"
     ],
 )
 def test_file_asset(
+    *,
     versioning: bool,
     layout: AssetLayout,
     expected_s3_key: str,
@@ -99,6 +100,7 @@ def test_file_asset(
     ],
 )
 def test_directory_asset(
+    *,
     versioning: bool,
     ignore: list[str] | None,
     layout: AssetLayout,

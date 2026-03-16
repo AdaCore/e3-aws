@@ -151,6 +151,7 @@ class Asset(Construct):
         root_dir: str,
         file: str,
         client: botocore.client.S3 | None = None,
+        *,
         check_exists: bool | None = None,
         dry_run: bool | None = None,
     ) -> None:
@@ -188,6 +189,7 @@ class Asset(Construct):
         s3_bucket: str,
         s3_root_key: str,
         client: botocore.client.S3 | None = None,
+        *,
         dry_run: bool | None = None,
     ) -> None:
         """Upload this asset to the S3 bucket referenced by the stack.

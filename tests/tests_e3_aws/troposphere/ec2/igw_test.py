@@ -60,7 +60,7 @@ EXPECTED_TEMPLATE = {
 
 
 @pytest.mark.parametrize("route_table_provided", [False, True])
-def test_internet_gateway(stack: Stack, route_table_provided: bool) -> None:
+def test_internet_gateway(*, stack: Stack, route_table_provided: bool) -> None:
     """Test InternetGateway construct."""
     vpc = ec2.VPC(
         name_to_id("vpc-test"),

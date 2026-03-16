@@ -1042,6 +1042,7 @@ def test_rest_api_security_policy_validation(
     caplog: pytest.LogCaptureFixture,
     endpoint_type: EndpointConfigurationType,
     security_policy: SecurityPolicy,
+    *,
     should_be_valid: bool,
 ) -> None:
     """Test security policy validation against endpoint configuration types."""

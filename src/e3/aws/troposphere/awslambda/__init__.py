@@ -259,6 +259,7 @@ class PyFunctionAsset(Asset):
         s3_bucket: str,
         s3_root_key: str,
         client: botocore.client.S3 | None = None,
+        *,
         dry_run: bool | None = None,
     ) -> None:
         """Upload the Lambda code to S3.

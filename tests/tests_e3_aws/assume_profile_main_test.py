@@ -53,6 +53,7 @@ class MockSession:
     [(False, EXPECTED_DEFAULT_OUTPUT), (True, EXPECTED_JSON_OUTPUT)],
 )
 def test_assume_profile_main_json(
+    *,
     json: bool,
     expected_output: str,
     capfd: pytest.CaptureFixture[str],

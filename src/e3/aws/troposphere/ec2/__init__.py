@@ -108,6 +108,7 @@ class VPCEndpointsSubnet(Construct):
         cidr_block: str,
         vpc: ec2.vpc,
         interface_endpoints: list[tuple[str, PolicyDocument | None]] | None = None,
+        *,
         vpc_prefixed_endpoints: bool | None = None,
     ) -> None:
         """Initialize VPCEndpointsSubnet Construct.

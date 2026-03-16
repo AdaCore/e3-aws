@@ -107,7 +107,7 @@ class S3:
         self.client.delete_bucket(Bucket=self.bucket)
 
     def push(
-        self, key: str, content: bytes | BinaryIO, exist_ok: bool | None = None
+        self, key: str, content: bytes | BinaryIO, *, exist_ok: bool | None = None
     ) -> None:
         """Push content to S3.
 

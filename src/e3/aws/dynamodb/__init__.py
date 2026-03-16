@@ -43,6 +43,7 @@ class DynamoDB:
         items: list[dict[str, Any]],
         table_name: str,
         keys: list[str],
+        *,
         exist_ok: bool | None = None,
     ) -> None:
         """Add multiple items to a table.
@@ -62,6 +63,7 @@ class DynamoDB:
         item: dict[str, Any],
         table_name: str,
         keys: list[str],
+        *,
         exist_ok: bool | None = None,
     ) -> dict[str, Any]:
         """Add item to a table.
