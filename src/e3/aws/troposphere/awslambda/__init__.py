@@ -1203,7 +1203,12 @@ class AutoVersion(Construct):
         """
         # Last item if there is only 1 element
         # Last - 1 item if there is more than 1 elements
-        return self.versions[-1] if len(self.versions) < 2 else self.versions[-2]
+        min_versions_for_previous = 2
+        return (
+            self.versions[-1]
+            if len(self.versions) < min_versions_for_previous
+            else self.versions[-2]
+        )
 
     @property
     def latest(self) -> Version:

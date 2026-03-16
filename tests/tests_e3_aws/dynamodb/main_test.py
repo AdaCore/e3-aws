@@ -176,7 +176,8 @@ def test_query_itemsv2(client: DynamoDB) -> None:
     items = client.query_itemsv2(
         table_name=TABLE_NAME, query_key="name", query_values=["John", "Doe"]
     )
-    assert len(items) == 2
+    expected_items = 2
+    assert len(items) == expected_items
     assert items == CUSTOMERS
 
 

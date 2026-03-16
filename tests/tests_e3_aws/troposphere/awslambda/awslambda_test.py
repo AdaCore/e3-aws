@@ -47,7 +47,7 @@ if TYPE_CHECKING:
 
 
 SOURCE_DIR = Path(__file__).resolve().parent / "source_dir"
-
+HTTP_OK = 200
 
 EXPECTED_STACK_TEMPLATE = {
     "AWSTemplateFormatVersion": "2010-09-09",
@@ -1171,7 +1171,7 @@ def test_text_response(base64_response_server: Flask) -> None:
     handler = FlaskLambdaHandler(base64_response_server)
     response = handler.lambda_handler(http_api_event, {})
     # Check the response is not base64
-    assert response["statusCode"] == 200
+    assert response["statusCode"] == HTTP_OK
     assert response["headers"]["Content-Type"] == "text/plain; charset=utf-8"
     assert response["body"] == b"world"
 
@@ -1186,7 +1186,7 @@ def test_base64_response(base64_response_server: Flask) -> None:
     handler = FlaskLambdaHandler(base64_response_server)
     response = handler.lambda_handler(http_api_event, {})
     # Check the response is base64 encoded
-    assert response["statusCode"] == 200
+    assert response["statusCode"] == HTTP_OK
     assert response["headers"]["Content-Type"] == "image/png"
     assert response["body"] == "4pavUE5H4pCN4pCK4pCa4pCK"
 

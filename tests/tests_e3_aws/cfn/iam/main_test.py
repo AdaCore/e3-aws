@@ -38,9 +38,10 @@ def test_create_statements() -> None:
     pd1.append(s1)
     pd2.append(s2)
     pd3 = pd1 + pd2
-    assert len(pd3.statements) == 2
+    expected_statements = 2
+    assert len(pd3.statements) == expected_statements
     pd1 += [s2]
-    assert len(pd3.statements) == 2
+    assert len(pd3.statements) == expected_statements
 
 
 def test_create_instance_profile() -> None:

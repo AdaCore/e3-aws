@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("e3.aws.dynamodb")
 
+HTTP_OK = 200
+
 OR_OPERATION: OperationType = "or"
 BETWEEN_OPERATION: OperationType = "between"
 CONTAINS_OPERATION: OperationType = "contains"
@@ -86,7 +88,7 @@ class DynamoDB:
             )
 
         result = table.put_item(**params)
-        if result["ResponseMetadata"]["HTTPStatusCode"] != 200:
+        if result["ResponseMetadata"]["HTTPStatusCode"] != HTTP_OK:
             msg = "Put Item Error"
             raise RuntimeError(msg)
         return result
@@ -242,7 +244,7 @@ class DynamoDB:
 
         result = table.update_item(**params)
 
-        if result["ResponseMetadata"]["HTTPStatusCode"] != 200:
+        if result["ResponseMetadata"]["HTTPStatusCode"] != HTTP_OK:
             msg = "Update Item Error"
             raise RuntimeError(msg)
         return result

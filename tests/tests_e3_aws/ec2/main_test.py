@@ -30,7 +30,8 @@ def test_ls_ami() -> None:
         },
         {"Filters": [], "Owners": ["self"]},
     )
-    assert len(AMI.ls()) == 2
+    expected_amis = 2
+    assert len(AMI.ls()) == expected_amis
 
 
 def test_select() -> None:
