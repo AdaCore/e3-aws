@@ -209,7 +209,11 @@ class DynamoDB:
         # get attributes values
         exp_attr_values = {f":{k}": v for k, v in data.items()}
 
-        temp = zip(list(exp_attr_names.keys()), list(exp_attr_values.keys()))
+        temp = zip(
+            list(exp_attr_names.keys()),
+            list(exp_attr_values.keys()),
+            strict=True,
+        )
         update_exp = " , ".join([f"{n} = {v}" for n, v in temp])
         update_exp = f"SET {update_exp}"
 
@@ -393,7 +397,7 @@ class DynamoDB:
             # for the moment we support 'or', 'contains', and 'between'
             # operations
             if opt == BETWEEN_OPERATION:
-                exp_attr_values = dict(zip([":lower", ":upper"], values))
+                exp_attr_values = dict(zip([":lower", ":upper"], values, strict=True))
                 key = next(iter(exp_attr_names.keys()))
                 filter_exp = f"{key} between :lower and :upper"
             elif opt == CONTAINS_OPERATION:
