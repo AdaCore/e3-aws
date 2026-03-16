@@ -584,6 +584,7 @@ class Stack:
         self,
         client: botocore.client.Client,
         url: str | None = None,
+        *,
         wait: bool = False,
     ) -> None:
         """Create a stack.
@@ -738,7 +739,7 @@ class Stack:
         return client.delete_change_set(ChangeSetName=name, StackName=self.name)
 
     @client("cloudformation")
-    def delete(self, client: botocore.client.Client, wait: bool = False) -> None:
+    def delete(self, client: botocore.client.Client, *, wait: bool = False) -> None:
         """Delete a stack.
 
         Delete a stack. Note that operation is aynchron
@@ -763,6 +764,7 @@ class Stack:
     def events(
         self,
         client: botocore.client.BaseClient,
+        *,
         failed_only: bool = False,
         mark_as_read: bool = True,
     ) -> Iterator[StackEvent]:
@@ -814,6 +816,7 @@ class Stack:
         self,
         client: botocore.client.BaseClient,
         changeset_name: str,
+        *,
         wait: bool = False,
     ) -> None:
         """Execute a changeset.
@@ -834,7 +837,7 @@ class Stack:
 
     @client("cloudformation")
     def resource_status(
-        self, client: botocore.client.BaseClient, in_progress_only: bool = True
+        self, client: botocore.client.BaseClient, *, in_progress_only: bool = True
     ) -> dict[str, str]:
         """Return status of each resources of the stack.
 

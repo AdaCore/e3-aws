@@ -46,6 +46,7 @@ class Bucket(Construct):
     def __init__(
         self,
         name: str,
+        *,
         enable_versioning: bool = True,
         lifecycle_rules: list[s3.LifecycleRule] | None = None,
         default_bucket_encryption: (

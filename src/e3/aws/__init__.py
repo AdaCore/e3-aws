@@ -78,6 +78,7 @@ class Session:
     def __init__(
         self,
         regions: list[str] | None = None,
+        *,
         stub: bool = False,
         profile: str | None = None,
         credentials: AWSCredentials | None = None,
@@ -157,6 +158,7 @@ class Session:
         role_arn: str,
         role_session_name: str,
         session_duration: int | None = None,
+        *,
         as_env_var: bool = False,
     ) -> AWSCredentials:
         """Return credentials for ``role_arn``.
@@ -328,6 +330,7 @@ class AWSEnv(Session):
     def __init__(
         self,
         regions: list[str] | None = None,
+        *,
         stub: bool = False,
         profile: str | None = None,
     ) -> None:

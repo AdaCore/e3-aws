@@ -68,6 +68,7 @@ class Bucket(Resource):
         name: str,
         access_control: AccessControl | None = None,
         bucket_name: str | None = None,
+        *,
         versioning: bool = False,
     ) -> None:
         """Initialize a S3 bucket.

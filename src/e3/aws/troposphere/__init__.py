@@ -209,6 +209,7 @@ class Stack(cfn.Stack):
         description: str | None = None,
         cfn_role_arn: str | None = None,
         deploy_session: Session | None = None,
+        *,
         dry_run: bool | None = False,
         s3_bucket: str | None = None,
         s3_key: str | None = None,
@@ -303,7 +304,7 @@ class Stack(cfn.Stack):
         return self
 
     def add_parameter(
-        self, parameter: Parameter | list[Parameter], update_if_exist: bool = False
+        self, parameter: Parameter | list[Parameter], *, update_if_exist: bool = False
     ) -> None:
         """Add parameters to stack template.
 
@@ -321,7 +322,7 @@ class Stack(cfn.Stack):
                 self.template.add_parameter(param)
 
     def add_output(
-        self, output: Output | list[Output], update_if_exist: bool = False
+        self, output: Output | list[Output], *, update_if_exist: bool = False
     ) -> None:
         """Add outputs to stack template.
 

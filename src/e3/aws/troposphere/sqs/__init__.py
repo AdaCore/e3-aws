@@ -24,6 +24,7 @@ class Queue(Construct):
     def __init__(
         self,
         name: str,
+        *,
         fifo: bool = False,
         visibility_timeout: int = 30,
         dlq_name: str | None = None,

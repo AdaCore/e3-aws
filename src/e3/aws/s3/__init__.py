@@ -209,7 +209,7 @@ class S3:
         else:
             return True
 
-    def object_exists(self, key: str, /, ignore_error_403: bool = False) -> bool:
+    def object_exists(self, key: str, /, *, ignore_error_403: bool = False) -> bool:
         """Check if an object exists.
 
         :param key: object key
