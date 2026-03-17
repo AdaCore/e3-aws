@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("e3.aws.dynamodb")
 
+HTTP_OK = 200
+
 OR_OPERATION: OperationType = "or"
 BETWEEN_OPERATION: OperationType = "between"
 CONTAINS_OPERATION: OperationType = "contains"
@@ -41,6 +43,7 @@ class DynamoDB:
         items: list[dict[str, Any]],
         table_name: str,
         keys: list[str],
+        *,
         exist_ok: bool | None = None,
     ) -> None:
         """Add multiple items to a table.
@@ -60,6 +63,7 @@ class DynamoDB:
         item: dict[str, Any],
         table_name: str,
         keys: list[str],
+        *,
         exist_ok: bool | None = None,
     ) -> dict[str, Any]:
         """Add item to a table.
@@ -86,7 +90,7 @@ class DynamoDB:
             )
 
         result = table.put_item(**params)
-        if result["ResponseMetadata"]["HTTPStatusCode"] != 200:
+        if result["ResponseMetadata"]["HTTPStatusCode"] != HTTP_OK:
             msg = "Put Item Error"
             raise RuntimeError(msg)
         return result
@@ -209,7 +213,11 @@ class DynamoDB:
         # get attributes values
         exp_attr_values = {f":{k}": v for k, v in data.items()}
 
-        temp = zip(list(exp_attr_names.keys()), list(exp_attr_values.keys()))
+        temp = zip(
+            list(exp_attr_names.keys()),
+            list(exp_attr_values.keys()),
+            strict=True,
+        )
         update_exp = " , ".join([f"{n} = {v}" for n, v in temp])
         update_exp = f"SET {update_exp}"
 
@@ -238,7 +246,7 @@ class DynamoDB:
 
         result = table.update_item(**params)
 
-        if result["ResponseMetadata"]["HTTPStatusCode"] != 200:
+        if result["ResponseMetadata"]["HTTPStatusCode"] != HTTP_OK:
             msg = "Update Item Error"
             raise RuntimeError(msg)
         return result
@@ -393,7 +401,7 @@ class DynamoDB:
             # for the moment we support 'or', 'contains', and 'between'
             # operations
             if opt == BETWEEN_OPERATION:
-                exp_attr_values = dict(zip([":lower", ":upper"], values))
+                exp_attr_values = dict(zip([":lower", ":upper"], values, strict=True))
                 key = next(iter(exp_attr_names.keys()))
                 filter_exp = f"{key} between :lower and :upper"
             elif opt == CONTAINS_OPERATION:

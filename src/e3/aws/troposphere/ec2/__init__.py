@@ -108,6 +108,7 @@ class VPCEndpointsSubnet(Construct):
         cidr_block: str,
         vpc: ec2.vpc,
         interface_endpoints: list[tuple[str, PolicyDocument | None]] | None = None,
+        *,
         vpc_prefixed_endpoints: bool | None = None,
     ) -> None:
         """Initialize VPCEndpointsSubnet Construct.
@@ -279,6 +280,7 @@ class Subnet(Construct):
         cidr_block: str,
         availability_zone: str,
         internet_gateway: InternetGateway | None = None,
+        *,
         use_nat: bool = False,
         nat_to: ec2.NatGateway | None = None,
     ) -> None:
@@ -410,6 +412,7 @@ class VPC(Construct):
         secondary_public_subnet_cidr_block: str | None = "10.10.128.0/18",
         secondary_public_subnet_az: str = "eu-west-1b",
         vpc_endpoints_subnet_cidr_block: str = "10.10.192.0/18",
+        *,
         nat_gateway: bool = False,
         s3_endpoint_policy_document: PolicyDocument | None = None,
         interface_endpoints: list[tuple[str, PolicyDocument | None]] | None = None,
@@ -674,6 +677,7 @@ class VPCv2(Construct):
         cidr_block: str | None = None,
         interface_endpoints: list[tuple[str, PolicyDocument | None]] | None = None,
         s3_endpoint_policy_document: PolicyDocument | None = None,
+        *,
         with_private_subnets: bool = True,
     ) -> None:
         """Initialize an VPCv2 instance.

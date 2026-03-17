@@ -229,6 +229,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         s3_bucket: str,
         s3_key: str,
         s3_client: botocore.client.S3 | None = None,
+        *,
         check_exists: bool = False,
     ) -> None:
         """Upload directory to S3 bucket.
@@ -476,6 +477,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
     def execute(
         self,
         args: list[str] | None = None,
+        *,
         known_args_only: bool = False,
         aws_env: Session | None = None,
     ) -> int:

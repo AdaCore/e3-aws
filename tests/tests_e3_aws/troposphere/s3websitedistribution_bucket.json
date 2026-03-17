@@ -145,6 +145,7 @@
                             "    :param event: the S3 event triggering the invalidation",
                             "    :param context: the Lambda runtime context",
                             "    \"\"\"",
+                            "    del context",
                             "    path = []",
                             "    client = boto3.client(\"cloudfront\")",
                             "    for items in event[\"Records\"]:",

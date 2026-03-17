@@ -89,8 +89,8 @@ class Pricing:
         result: list[PriceInformation] = []
         paginator = self.client.get_paginator("get_products")
         for data in paginator.paginate(ServiceCode="AmazonEC2", Filters=filters):
-            for price in data["PriceList"]:
-                price = json.loads(price)
+            for raw_price in data["PriceList"]:
+                price = json.loads(raw_price)
 
                 # Cache the individual response
                 attributes = price["product"]["attributes"]

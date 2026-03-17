@@ -95,6 +95,7 @@ class Table(Construct):
         key_schema: dict[str, str],
         global_secondary_indexes: list[GlobalSecondaryIndex] | None = None,
         tags: dict[str, str] | None = None,
+        *,
         point_in_time_recovery_enabled: bool | None = True,
         billing_mode: str | None = None,
         read_capacity_units: int | Ref | None = None,

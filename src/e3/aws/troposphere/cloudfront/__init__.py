@@ -49,6 +49,7 @@ class S3WebsiteDistribution(Construct):
         r53_route_from: list[tuple[str, str]] | None = None,
         logging_bucket: str | None = None,
         logging_prefix: str | None = None,
+        *,
         logging_include_cookies: bool | None = None,
         iam_path: str | None = None,
     ) -> None:

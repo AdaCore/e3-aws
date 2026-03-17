@@ -107,7 +107,7 @@ class S3:
         self.client.delete_bucket(Bucket=self.bucket)
 
     def push(
-        self, key: str, content: bytes | BinaryIO, exist_ok: bool | None = None
+        self, key: str, content: bytes | BinaryIO, *, exist_ok: bool | None = None
     ) -> None:
         """Push content to S3.
 
@@ -209,7 +209,7 @@ class S3:
         else:
             return True
 
-    def object_exists(self, key: str, /, ignore_error_403: bool = False) -> bool:
+    def object_exists(self, key: str, /, *, ignore_error_403: bool = False) -> bool:
         """Check if an object exists.
 
         :param key: object key

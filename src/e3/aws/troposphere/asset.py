@@ -102,6 +102,7 @@ class DirectoryAsset(Asset):
         s3_bucket: str,
         s3_root_key: str,
         client: botocore.client.S3 | None = None,
+        *,
         dry_run: bool | None = None,
     ) -> None:
         """Upload all objects in the assets directory to S3.
@@ -177,6 +178,7 @@ class FileAsset(Asset):
         s3_bucket: str,
         s3_root_key: str,
         client: botocore.client.S3 | None = None,
+        *,
         dry_run: bool | None = None,
     ) -> None:
         """Upload the File asset to S3.
