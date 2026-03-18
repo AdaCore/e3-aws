@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 import pytest
 
@@ -28,7 +28,7 @@ def test_run(capfd: CaptureFixture) -> None:
                     "AccessKeyId": "12345678912345678",
                     "SecretAccessKey": "12345678912345678",
                     "SessionToken": "12345678912345678",
-                    "Expiration": datetime(4042, 1, 1),
+                    "Expiration": datetime(4042, 1, 1, tzinfo=UTC),
                 }
             },
             {

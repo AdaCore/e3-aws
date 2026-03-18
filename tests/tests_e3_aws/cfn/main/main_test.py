@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import textwrap
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
@@ -129,7 +129,7 @@ def test_cfn_main_push_existing_stack(
                 "Stacks": [
                     {
                         "StackName": stack_name,
-                        "CreationTime": datetime(2016, 1, 20, 22, 9),
+                        "CreationTime": datetime(2016, 1, 20, 22, 9, tzinfo=UTC),
                         "StackStatus": "CREATE_COMPLETE",
                         "StackId": stack_name + "1",
                     }
@@ -174,7 +174,7 @@ def test_cfn_main_push_existing_stack(
                     "Stacks": [
                         {
                             "StackName": stack_name,
-                            "CreationTime": datetime(2016, 1, 20, 22, 9),
+                            "CreationTime": datetime(2016, 1, 20, 22, 9, tzinfo=UTC),
                             "StackStatus": "UPDATE_COMPLETE",
                             "StackId": stack_name + "1",
                         }
