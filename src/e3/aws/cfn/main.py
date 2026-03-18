@@ -10,7 +10,7 @@ import os
 import re
 import tempfile
 import time
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 import botocore.exceptions
@@ -171,7 +171,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         self.aws_env: Session | AWSEnv | None = None
         self.deploy_branch = deploy_branch
 
-        self.timestamp = datetime.utcnow().strftime("%Y-%m-%d/%H:%M:%S.%f")
+        self.timestamp = datetime.now(tz=UTC).strftime("%Y-%m-%d/%H:%M:%S.%f")
 
         if s3_bucket is not None:
             s3_root_key = f"{s3_key.strip('/')}/"
