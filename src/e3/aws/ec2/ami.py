@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 
 from dateutil.parser import parse as parse_date
 
@@ -67,12 +67,15 @@ class AMI(EC2Element):
 
         :return: AMI creation date
         """
-        return parse_date(self.data["CreationDate"]).replace(tzinfo=None)
+        creation_date = parse_date(self.data["CreationDate"])
+        if creation_date.tzinfo is None:
+            creation_date = creation_date.replace(tzinfo=UTC)
+        return creation_date
 
     @property
     def age(self) -> int:
         """Return age of the AMI in days."""
-        age = datetime.now() - self.creation_date
+        age = datetime.now(tz=UTC) - self.creation_date
         return int(age.total_seconds() / (3600 * 24))
 
     @property
