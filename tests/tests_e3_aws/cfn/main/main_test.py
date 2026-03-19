@@ -3,7 +3,16 @@
 from __future__ import annotations
 
 import textwrap
-from datetime import UTC, datetime
+from datetime import datetime
+
+try:
+    from datetime import UTC
+except ImportError:
+    # Python < 3.11 does not have datetime.UTC
+    from datetime import timezone
+
+    UTC = timezone.utc
+
 from pathlib import Path
 
 import pytest
