@@ -7,6 +7,15 @@ import re
 import time
 import uuid
 from datetime import datetime
+
+try:
+    from datetime import UTC
+except ImportError:
+    # Python < 3.11 does not have datetime.UTC
+    from datetime import timezone
+
+    UTC = timezone.utc
+
 from enum import Enum
 
 import botocore.client
@@ -490,7 +499,7 @@ class Stack:
                 "deploying the stack (see Stack cfn_role_arn parameter)"
             )
         self.cfn_role_arn = cfn_role_arn
-        self.creation_date = datetime.now().timestamp()
+        self.creation_date = datetime.now(tz=UTC).timestamp()
 
         # The uuid is used by create and create_change_set. It allows then
         # to track for example events associated with that deployment

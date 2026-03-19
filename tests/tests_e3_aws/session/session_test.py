@@ -4,6 +4,14 @@ from __future__ import annotations
 
 from datetime import datetime
 
+try:
+    from datetime import UTC
+except ImportError:
+    # Python < 3.11 does not have datetime.UTC
+    from datetime import timezone
+
+    UTC = timezone.utc
+
 import pytest
 
 from e3.aws import AWSEnv, AWSSessionRunError, Session
@@ -28,7 +36,7 @@ def test_run(capfd: CaptureFixture) -> None:
                     "AccessKeyId": "12345678912345678",
                     "SecretAccessKey": "12345678912345678",
                     "SessionToken": "12345678912345678",
-                    "Expiration": datetime(4042, 1, 1),
+                    "Expiration": datetime(4042, 1, 1, tzinfo=UTC),
                 }
             },
             {
