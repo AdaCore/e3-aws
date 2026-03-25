@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from troposphere import AWSObject, GetAtt, Ref, Tags, ecs
+from typing_extensions import override
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -37,6 +38,7 @@ class Cluster(Construct):
     default_capacity_provider_strategy: list[dict[str, str]] | None = None
     tags: dict[str, str] = field(default_factory=dict)
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Construct and return ECS cluster troposphere resources."""
         c_settings = None
@@ -139,6 +141,7 @@ class FargateCluster(Cluster):
             path=self.path,
         )
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Construct and return Fargate ECS cluster and associated resources.
 

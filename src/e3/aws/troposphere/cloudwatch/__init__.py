@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from troposphere import GetAtt, Ref, cloudwatch
+from typing_extensions import override
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -72,6 +73,7 @@ class Alarm(Construct):
         """Return a CloudFormation Ref to this alarm."""
         return Ref(name_to_id(self.name))
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
         params = {

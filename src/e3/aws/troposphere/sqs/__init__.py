@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from troposphere import GetAtt, Ref, sns, sqs
+from typing_extensions import override
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -147,6 +148,7 @@ class Queue(Construct):
         """Ref of the SQS."""
         return Ref(name_to_id(self.name))
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Compute AWS resources for the construct."""
         # Add Queue policy to optional resources if any statement

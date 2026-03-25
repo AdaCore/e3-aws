@@ -21,6 +21,7 @@ from enum import Enum
 import botocore.client
 import botocore.exceptions
 import yaml
+from typing_extensions import override
 
 from e3.env import Env
 
@@ -236,6 +237,7 @@ class CFNYamlDumper(yaml.Dumper):
         self.add_representer(Join, join_representer)
         self.add_representer(Sub, sub_representer)
 
+    @override
     def ignore_aliases(self, data: object) -> bool:
         """Ignore aliases."""
         return True
@@ -633,6 +635,7 @@ class Stack:
         :param client: the CloudFormation client
         :return: the final stack status string
         """
+        del client  # client is not used but is required by the decorator
         status = self.state()
         while "PROGRESS" in status["StackStatus"]:
             for event in self.events(mark_as_read=True):

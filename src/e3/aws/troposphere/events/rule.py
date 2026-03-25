@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from troposphere import AWSObject, GetAtt, Ref, events
+from typing_extensions import override
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -89,6 +90,7 @@ class FargateScheduledTaskRule(Construct):
             Targets=self.targets,
         )
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return FargateScheduledRule resources."""
         return [self.rule]

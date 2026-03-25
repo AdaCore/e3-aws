@@ -6,6 +6,7 @@ from enum import Enum
 
 from troposphere import GetAtt, Ref, Tags, dynamodb
 from troposphere.dynamodb import PointInTimeRecoverySpecification
+from typing_extensions import override
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -163,6 +164,7 @@ class Table(Construct):
         """StreamArn of the DynamoDB table."""
         return GetAtt(name_to_id(self.name), "StreamArn")
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
         params: dict = {

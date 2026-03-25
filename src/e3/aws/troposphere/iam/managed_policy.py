@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from troposphere import AWSObject, Ref, iam
+from typing_extensions import override
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -47,6 +48,7 @@ class ManagedPolicy(Construct):
         """Return managed policy arn."""
         return Ref(name_to_id(self.name))
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return troposphere objects defining the managed policy."""
         params = {
@@ -58,6 +60,7 @@ class ManagedPolicy(Construct):
         }
         return [iam.ManagedPolicy(name_to_id(self.name), **params)]
 
+    @override
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         """Return the CloudFormation policy document for this managed policy.
 

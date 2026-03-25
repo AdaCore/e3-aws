@@ -5,6 +5,7 @@ from __future__ import annotations
 from enum import Enum
 
 from troposphere import AccountId, AWSObject, GetAtt, Ref, s3
+from typing_extensions import override
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -179,6 +180,7 @@ class Bucket(Construct):
             params["Queue"] = target
             self.queue_configurations.append((params, None, permission_suffix))
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Construct and return a s3.Bucket and its associated s3.BucketPolicy."""
         # Handle versioning configuration
@@ -301,6 +303,7 @@ class Bucket(Construct):
         """Return the bucket regional domain name attribute."""
         return GetAtt(name_to_id(self.name), "RegionalDomainName")
 
+    @override
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         """Return the CloudFormation policy document for this bucket.
 

@@ -83,6 +83,7 @@ class S3Handler(EventHandler):
         :param event: an event
         :return: the prefix
         """
+        del event
         return ""
 
     def send_event(self, event: Event) -> bool:

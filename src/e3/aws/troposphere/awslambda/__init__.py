@@ -16,6 +16,7 @@ from zipfile import ZipFile
 import botocore.client
 import botocore.exceptions
 from troposphere import GetAtt, Ref, Sub, awslambda, logs
+from typing_extensions import override
 
 from e3.archive import create_archive
 from e3.aws import name_to_id
@@ -394,6 +395,7 @@ class Function(Construct):
                         alias_name=alias,
                     )
 
+    @override
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         """Return the CloudFormation policy document for this function.
 
@@ -442,6 +444,7 @@ class Function(Construct):
         """Return a CloudFormation Ref to this function."""
         return Ref(name_to_id(self.name))
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
         return self.lambda_resources(
@@ -908,6 +911,7 @@ class PyFunction(Function):
         else:
             print(f"No diff for the new version of function {name_with_qualifier}")
 
+    @override
     def show(self, stack: Stack) -> None:
         """Display the function archive contents.
 
@@ -1040,6 +1044,7 @@ class Alias(Construct):
 
         return result
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
         return [
@@ -1108,6 +1113,7 @@ class Version(Construct):
 
         return result
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
         return [
@@ -1216,6 +1222,7 @@ class AutoVersion(Construct):
         """Return the latest version."""
         return self.versions[-1]
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
         return self.versions
@@ -1373,6 +1380,7 @@ class BlueGreenAliases(Construct):
         """Return the green alias."""
         return self.aliases[1]
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
         return self.aliases
