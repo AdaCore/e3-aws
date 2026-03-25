@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from troposphere import Ref, secretsmanager
+from typing_extensions import override
 
 from e3.aws.troposphere import Construct, Stack, name_to_id
 from e3.aws.troposphere.iam.managed_policy import ManagedPolicy
@@ -59,6 +60,7 @@ class Secret(Construct):
         """Return secret arn."""
         return Ref(self.secret)
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return troposphere objects associated with the construct."""
         return [self.secret]
@@ -104,6 +106,7 @@ class RotationSchedule(Construct):
             DependsOn=self.lambda_permission.title,
         )
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return troposphere objects associated with the construct."""
         return [self.lambda_permission, self.schedule]

@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from troposphere import AWSObject, config
+from typing_extensions import override
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -36,6 +37,7 @@ class ConfigRule(Construct):
     input_parameters: dict[str, Any] = field(default_factory=dict)
     scope: dict[str, Any] = field(default_factory=dict)
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return troposphere objects defining the configuration rule."""
         return [

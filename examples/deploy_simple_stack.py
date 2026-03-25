@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import sys
 from functools import cached_property
+from typing_extensions import override
 
 from troposphere import GetAtt, Ref, Tags, ec2, iam
 
@@ -133,6 +134,7 @@ class SimpleInstance(Construct):
             Tags=Tags({"Name": self.name}),
         )
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject | Construct]:
         """Return resources for this construct."""
         return [

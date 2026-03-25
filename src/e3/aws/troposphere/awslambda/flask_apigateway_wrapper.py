@@ -59,15 +59,18 @@ class FlaskLambdaHandler:
         self,
         status: str,
         response_headers: list[tuple[str, str]],
-        exc_info: tuple[type[BaseException], BaseException, TracebackType]
-        | tuple[None, None, None]
-        | None = None,
+        exc_info: (
+            tuple[type[BaseException], BaseException, TracebackType]
+            | tuple[None, None, None]
+            | None
+        ) = None,
         /,
     ) -> Callable[[bytes], object]:
         """Implement Flask callback to store the response.
 
         See Flask documentation.
         """
+        del exc_info
         self.status = int(status[:3])
         self.response_headers = dict(response_headers)
 
@@ -127,6 +130,7 @@ class FlaskLambdaHandler:
         :param event: as received by the lambda
         :param context: as received by the lambda
         """
+        del context
         request_ctx = event["requestContext"]
         remote_user: str | None = None
 

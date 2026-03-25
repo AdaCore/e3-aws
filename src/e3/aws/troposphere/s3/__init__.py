@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing_extensions import override
+
 from e3.aws.troposphere import Construct
 from e3.aws.troposphere.iam.managed_policy import ManagedPolicy
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
@@ -210,6 +212,7 @@ class BucketWithRoles(Construct):
         """Return the ARN for all objects in the bucket."""
         return self.bucket.all_objects_arn
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject | Construct]:
         """Return resources associated with the construct."""
         return ([] if self.bucket_exists else [self.bucket]) + [

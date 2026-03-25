@@ -20,6 +20,7 @@ from troposphere import (
     route53,
 )
 from troposphere.certificatemanager import Certificate, DomainValidationOption
+from typing_extensions import override
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -374,6 +375,7 @@ class Api(Construct):
         """
         return Ref(self.stage_logical_id(stage_name))
 
+    @override
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         """Get policy needed by CloudFormation."""
         return PolicyDocument(
@@ -575,6 +577,7 @@ class HttpApi(Api):
             ),
         }
 
+    @override
     def declare_stage(
         self,
         stage_name: str,
@@ -737,6 +740,7 @@ class HttpApi(Api):
             "HostedZoneId": "RegionalHostedZoneId",
         }
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
         result = []
@@ -935,6 +939,7 @@ class RestApi(Api):
             "Type": "COGNITO_USER_POOLS",
         }
 
+    @override
     def declare_stage(
         self,
         stage_name: str,
@@ -1344,6 +1349,7 @@ class RestApi(Api):
 
         return result
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return list of AWSObject associated with the construct."""
         result = []

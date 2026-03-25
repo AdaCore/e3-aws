@@ -10,6 +10,7 @@ from itertools import chain
 from pathlib import Path
 
 from troposphere import AWSObject, Export, Output, Parameter, Template
+from typing_extensions import override
 
 from e3.aws import Session, cfn, name_to_id
 from e3.aws.cfn.main import CFNMain
@@ -53,6 +54,7 @@ class Construct(ABC):
 
         :param stack: the stack that contains the construct
         """
+        del stack
         return PolicyDocument([])
 
     def create_data_dir(self, root_dir: str) -> None:  # noqa: B027
@@ -121,6 +123,7 @@ class Asset(Construct):
             Default=self.s3_key,
         )
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject | Construct]:
         """Return no resources."""
         # Add the parameter during template creation even if the S3 key may not

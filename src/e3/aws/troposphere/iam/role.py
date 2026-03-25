@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from functools import cached_property
 
 from troposphere import AWSObject, GetAtt, Ref, Tags, iam
+from typing_extensions import override
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -101,6 +102,7 @@ class Role(Construct):
         """Return a Ref on the role, the Ref on an iam Role returns its name."""
         return Ref(name_to_id(self.name))
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return troposphere objects defining the role."""
         attr = {
@@ -122,6 +124,7 @@ class Role(Construct):
 
         return [iam.Role(name_to_id(self.name), **attr)]
 
+    @override
     def cfn_policy_document(self, stack: Stack) -> PolicyDocument:
         """Return the CloudFormation policy document for this role.
 

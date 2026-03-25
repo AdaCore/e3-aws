@@ -6,6 +6,7 @@ from functools import cached_property
 from ipaddress import IPv4Network
 
 from troposphere import GetAtt, Ref, Tags, ec2
+from typing_extensions import override
 
 from e3.aws import name_to_id
 from e3.aws.troposphere import Construct
@@ -58,6 +59,7 @@ class InternetGateway(Construct):
             )
         return self._route_table
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return resources associated with the construct."""
         igw = ec2.InternetGateway(name_to_id(f"{self.name_prefix}-igw"))
@@ -248,6 +250,7 @@ class VPCEndpointsSubnet(Construct):
             )
         return endpoints
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Construct and return VPCEndpointsSubnet resources."""
         result = [
@@ -366,6 +369,7 @@ class Subnet(Construct):
         """Return subnet's ID."""
         return Ref(self.subnet)
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return resources associated with the Subnet construct."""
         result = [self.subnet, self.route_table_assoc]
@@ -641,6 +645,7 @@ class VPC(Construct):
             )
         return None
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return VPC Construct resources."""
         return [
@@ -1013,6 +1018,7 @@ class VPCv2(Construct):
             )
         return rules
 
+    @override
     def resources(self, stack: Stack) -> list[AWSObject]:
         """Return VPC Construct resources."""
         res = [
