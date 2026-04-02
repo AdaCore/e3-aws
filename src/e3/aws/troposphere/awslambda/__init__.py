@@ -9,6 +9,7 @@ import zipfile
 from enum import Enum
 from functools import cached_property
 from hashlib import sha256
+from os import fspath
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
@@ -67,11 +68,11 @@ class UnknownPlatform(Exception):  # noqa: N818
 def package_pyfunction_code(
     filename: str,
     /,
-    package_dir: str,
-    root_dir: str,
-    populate_package_dir: Callable[[str], None],
+    package_dir: str | Path,
+    root_dir: str | Path,
+    populate_package_dir: Callable[[str | Path], None],
     runtime: str | None = None,
-    requirement_file: str | None = None,
+    requirement_file: str | Path | None = None,
 ) -> None:
     """Package user code with dependencies.
 
@@ -99,7 +100,7 @@ def package_pyfunction_code(
                 "--only-binary=:all:",
                 f"--target={package_dir}",
                 "-r",
-                requirement_file,
+                fspath(requirement_file),
             ],
             output=None,
         )
@@ -128,9 +129,9 @@ class PyFunctionAsset(Asset):
         self,
         name: str,
         *,
-        code_dir: str,
+        code_dir: str | Path,
         runtime: str,
-        requirement_file: str | None = None,
+        requirement_file: str | Path | None = None,
         layout: AssetLayout = AssetLayout.TREE,
     ) -> None:
         """Initialize PyFunctionAsset.
@@ -247,7 +248,7 @@ class PyFunctionAsset(Asset):
             else self.archive_name
         )
 
-    def populate_package_dir(self, package_dir: str) -> None:
+    def populate_package_dir(self, package_dir: str | Path) -> None:
         """Copy user code into package directory.
 
         :param package_dir: directory in which the package content is put
@@ -669,8 +670,8 @@ class PyFunction(Function):
         min_version: int | None = None,
         alias: str | Alias | BlueGreenAliases | None = None,
         code_asset: PyFunctionAsset | None = None,
-        code_dir: str | None = None,
-        requirement_file: str | None = None,
+        code_dir: str | Path | None = None,
+        requirement_file: str | Path | None = None,
         code_version: int | None = None,
         timeout: int = 3,
         memory_size: int | None = None,
@@ -795,7 +796,7 @@ class PyFunction(Function):
     @client("lambda")
     def download_code_asset(
         self,
-        dest: str,
+        dest: str | Path,
         client: botocore.client.BaseClient,
         filename: str | None = None,
         qualifier: str | None = None,
@@ -817,7 +818,7 @@ class PyFunction(Function):
             url=resp["Code"]["Location"], dest=dest, filename=filename
         )
 
-    def _show_archive_files(self, archive_path: str) -> list[str]:
+    def _show_archive_files(self, archive_path: str | Path) -> list[str]:
         """Output the newline separated list of files of an archive.
 
         The .pyc files are omitted to reduce the size of the output.
@@ -933,12 +934,12 @@ class Py38Function(PyFunction):
         name: str,
         description: str,
         role: str | GetAtt | Role,
-        code_dir: str,
+        code_dir: str | Path,
         handler: str,
         version: int | Version | AutoVersion | None = None,
         min_version: int | None = None,
         alias: str | Alias | BlueGreenAliases | None = None,
-        requirement_file: str | None = None,
+        requirement_file: str | Path | None = None,
         code_version: int | None = None,
         timeout: int = 3,
         memory_size: int | None = None,
