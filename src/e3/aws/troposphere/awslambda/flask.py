@@ -38,7 +38,7 @@ from e3.fs import cp
 
 from . import PyFunction, PyFunctionAsset
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 if TYPE_CHECKING:
     from troposphere import GetAtt
@@ -65,7 +65,7 @@ lambda_handler_fun = lambda_handler.lambda_handler
 def generate_flask_wrapper(
     app_module: str,
     app_name: str,
-    out_dir: str,
+    out_dir: str | Path,
 ) -> None:
     """Generate a Flask wrapper for calling a lambda handler.
 
@@ -87,10 +87,10 @@ class PyFlaskFunctionAsset(PyFunctionAsset):
         self,
         name: str,
         *,
-        code_dir: str,
+        code_dir: str | Path,
         app: str,
         runtime: str,
-        requirement_file: str | None = None,
+        requirement_file: str | Path | None = None,
     ) -> None:
         """Initialize PyFlaskFunctionAsset.
 
@@ -106,11 +106,8 @@ class PyFlaskFunctionAsset(PyFunctionAsset):
         self.app = app
         self.app_module, self.app_name = app.rsplit(".", 1)
 
-    def populate_package_dir(self, package_dir: str) -> None:
-        """Copy user code into package directory.
-
-        :param package_dir: directory in which the package content is put
-        """
+    @override
+    def populate_package_dir(self, package_dir: str | Path) -> None:
         super().populate_package_dir(package_dir=package_dir)
 
         generate_flask_wrapper(
@@ -132,8 +129,8 @@ class PyFlaskFunction(PyFunction):
         min_version: int | None = None,
         alias: str | Alias | BlueGreenAliases | None = None,
         code_asset: PyFunctionAsset | None = None,
-        code_dir: str | None = None,
-        requirement_file: str | None = None,
+        code_dir: str | Path | None = None,
+        requirement_file: str | Path | None = None,
         code_version: int | None = None,
         timeout: int = 3,
         memory_size: int | None = None,
@@ -220,9 +217,9 @@ class Py38FlaskFunction(PyFlaskFunction):
         name: str,
         description: str,
         role: str | GetAtt | Role,
-        code_dir: str,
+        code_dir: str | Path,
         app: str,
-        requirement_file: str | None = None,
+        requirement_file: str | Path | None = None,
         code_version: int | None = None,
         timeout: int = 3,
         memory_size: int | None = None,
