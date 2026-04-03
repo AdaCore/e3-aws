@@ -23,7 +23,7 @@ from e3.env import Env
 from e3.error import E3Error
 from e3.os.process import Run
 
-from typing import TYPE_CHECKING, Literal, overload
+from typing import TYPE_CHECKING, Literal, cast, overload
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,8 @@ if TYPE_CHECKING:
     from types_boto3_cloudformation import CloudFormationClient
     from types_boto3_lambda import LambdaClient
     from types_boto3_s3 import S3Client
+    from types_boto3_sts import STSClient
+    from types_boto3_sts.type_defs import AssumeRoleRequestTypeDef
 
     from typing import Any, ParamSpec, TypedDict, TypeVar
 
@@ -176,7 +178,7 @@ class Session:
             keys are translated to be compatible to update os.environ.
         """
         client = self.client("sts", region=self.regions[0])
-        arguments: dict[str, Any] = {
+        arguments: AssumeRoleRequestTypeDef = {
             "RoleArn": role_arn,
             "RoleSessionName": role_session_name,
         }
@@ -191,18 +193,21 @@ class Session:
 
         response = client.assume_role(**arguments)
 
-        credentials = response["Credentials"]
+        credentials = cast("AWSCredentials", response["Credentials"])
         if as_env_var:
             key_to_envvar = {
                 "AccessKeyId": "AWS_ACCESS_KEY_ID",
                 "SecretAccessKey": "AWS_SECRET_ACCESS_KEY",
                 "SessionToken": "AWS_SESSION_TOKEN",
             }
-            credentials = {
-                key_to_envvar[k]: v
-                for k, v in credentials.items()
-                if k in key_to_envvar
-            }
+            credentials = cast(
+                "AWSCredentials",
+                {
+                    key_to_envvar[k]: v
+                    for k, v in credentials.items()
+                    if k in key_to_envvar
+                },
+            )
 
         return credentials
 
@@ -225,8 +230,12 @@ class Session:
         """Return identity information."""
         if self._identity is None:
             sts_client = self.client("sts")
-            self._identity = {"UserId": "", "Account": "", "Arn": ""}
-            self._identity.update(sts_client.get_caller_identity())
+            resp = sts_client.get_caller_identity()
+            self._identity = {
+                "UserId": resp.get("UserId", ""),
+                "Account": resp.get("Account", ""),
+                "Arn": resp.get("Arn", ""),
+            }
 
         return self._identity
 
@@ -267,6 +276,9 @@ class Session:
     def client(self, name: Literal["s3"], region: str | None = ...) -> S3Client: ...
 
     @overload
+    def client(self, name: Literal["sts"], region: str | None = ...) -> STSClient: ...
+
+    @overload
     def client(
         self, name: Literal["cloudformation"], region: str | None = ...
     ) -> CloudFormationClient: ...
@@ -281,7 +293,13 @@ class Session:
 
     def client(
         self, name: str, region: str | None = None
-    ) -> S3Client | CloudFormationClient | LambdaClient | botocore.client.Client:
+    ) -> (
+        S3Client
+        | STSClient
+        | CloudFormationClient
+        | LambdaClient
+        | botocore.client.Client
+    ):
         """Get a client.
 
         :param name: client name
@@ -445,14 +463,15 @@ def assume_profile_main() -> None:
         "SessionToken": "AWS_SESSION_TOKEN",
     }
 
-    frozen_credentials = (
-        boto3.Session(
-            region_name="eu-west-1",
-            profile_name=args.profile,
-        )
-        .get_credentials()
-        .get_frozen_credentials()
-    )
+    session_creds = boto3.Session(
+        region_name="eu-west-1",
+        profile_name=args.profile,
+    ).get_credentials()
+    if session_creds is None:
+        msg = "No credentials found"
+        raise RuntimeError(msg)
+
+    frozen_credentials = session_creds.get_frozen_credentials()
 
     credentials = {v: getattr(frozen_credentials, k) for k, v in var_to_key.items()}
 
