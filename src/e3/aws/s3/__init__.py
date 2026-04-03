@@ -9,14 +9,22 @@ from contextlib import contextmanager
 import boto3
 from botocore.exceptions import ClientError
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator
 
-    import botocore
+    from botocore.response import StreamingBody
+    from types_boto3_s3 import S3Client
+    from types_boto3_s3.literals import BucketLocationConstraintType
+    from types_boto3_s3.type_defs import (
+        CreateBucketRequestTypeDef,
+        GetObjectOutputTypeDef,
+        ListObjectsV2RequestPaginateTypeDef,
+        ObjectTypeDef,
+    )
 
-    from typing import IO, Any, BinaryIO
+    from typing import BinaryIO
 
 logger = logging.getLogger("e3.aws.s3")
 
@@ -57,11 +65,7 @@ class KeyNotFoundError(Exception):
 class S3:
     """S3 abstraction."""
 
-    def __init__(
-        self,
-        client: botocore.client.BaseClient,
-        bucket: str,
-    ) -> None:
+    def __init__(self, client: S3Client, bucket: str) -> None:
         """Initialize S3.
 
         :param client: a client for the S3 API
@@ -77,14 +81,14 @@ class S3:
         :raises BucketExistsError: if the bucket already exists
         """
         try:
-            params: dict[str, Any] = {}
+            params: CreateBucketRequestTypeDef = {"Bucket": self.bucket}
 
             # us-east-1 is the default location
-            region = self.client.meta.region_name
+            region = cast("BucketLocationConstraintType", self.client.meta.region_name)
             if region != "us-east-1":
                 params["CreateBucketConfiguration"] = {"LocationConstraint": region}
 
-            self.client.create_bucket(Bucket=self.bucket, **params)
+            self.client.create_bucket(**params)
         except ClientError as error:
             # Raise any non already exists error
             if error.response["Error"]["Code"] not in [
@@ -125,16 +129,16 @@ class S3:
         result = (
             self.client.list_objects_v2(Bucket=self.bucket, Prefix=key)
             if not exist_ok
-            else {"Contents": []}
+            else None
         )
-        if not result.get("Contents", []):
+        if result is None or not result.get("Contents", []):
             self.client.put_object(
                 Body=content, Bucket=self.bucket, Key=key, ServerSideEncryption="AES256"
             )
         else:
             raise KeyExistsError(key)
 
-    def get_object(self, key: str) -> dict[str, Any]:
+    def get_object(self, key: str) -> GetObjectOutputTypeDef:
         """Get an object from S3.
 
         :param key: object key
@@ -149,7 +153,7 @@ class S3:
 
             raise
 
-    def get_body(self, key: str) -> IO[bytes]:
+    def get_body(self, key: str) -> StreamingBody:
         """Get the body of an object from S3.
 
         :param key: object key
@@ -175,13 +179,13 @@ class S3:
 
             raise
 
-    def iterate(self, *, prefix: str | None = None) -> Iterable[dict[str, Any]]:
+    def iterate(self, *, prefix: str | None = None) -> Iterable[ObjectTypeDef]:
         """Iterate all objects from S3.
 
         :param prefix: limit to objects with that prefix
         :return: an iterator over objects from S3
         """
-        params = {"Bucket": self.bucket}
+        params: ListObjectsV2RequestPaginateTypeDef = {"Bucket": self.bucket}
 
         if prefix is not None:
             params["Prefix"] = prefix
@@ -242,7 +246,7 @@ class S3:
 def bucket(
     name: str,
     *,
-    client: botocore.client.S3 | None = None,
+    client: S3Client | None = None,
     region: str | None = None,
     auto_create: bool = True,
     auto_delete: bool = False,

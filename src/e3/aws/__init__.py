@@ -23,7 +23,7 @@ from e3.env import Env
 from e3.error import E3Error
 from e3.os.process import Run
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, overload
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
     from datetime import datetime
     from types import TracebackType
+
+    from types_boto3_s3 import S3Client
 
     from typing import Any, ParamSpec, TypedDict, TypeVar
 
@@ -258,6 +260,14 @@ class Session:
             region_name=self.default_region,
             profile_name=self.profile,
         )
+
+    @overload
+    def client(self, name: Literal["s3"], region: str | None = ...) -> S3Client: ...
+
+    @overload
+    def client(
+        self, name: str = ..., region: str | None = ...
+    ) -> botocore.client.Client: ...
 
     def client(self, name: str, region: str | None = None) -> botocore.client.Client:
         """Get a client.

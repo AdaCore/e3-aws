@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from troposphere import AWSObject
+    from types_boto3_s3 import S3Client
 
     from e3.aws.troposphere import Stack
 
@@ -260,7 +261,7 @@ class PyFunctionAsset(Asset):
         self,
         s3_bucket: str,
         s3_root_key: str,
-        client: botocore.client.S3 | None = None,
+        client: S3Client | None = None,
         *,
         dry_run: bool | None = None,
     ) -> None:

@@ -35,6 +35,11 @@ from e3.main import Main
 from e3.os.process import PIPE
 from e3.vcs.git import GitRepository
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from types_boto3_s3 import S3Client
+
 logger = logging.getLogger(__name__)
 
 
@@ -238,7 +243,7 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         root_dir: str,
         s3_bucket: str,
         s3_key: str,
-        s3_client: botocore.client.S3 | None = None,
+        s3_client: S3Client | None = None,
         *,
         check_exists: bool = False,
     ) -> None:

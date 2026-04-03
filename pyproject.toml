@@ -50,6 +50,7 @@ check = [
   "types-requests",
   "types-setuptools",
   "python-on-whales",
+  "types-boto3[essential]",
 ]
 
 [tool.setuptools.dynamic]

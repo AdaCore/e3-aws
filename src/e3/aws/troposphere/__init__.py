@@ -22,8 +22,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:  # all: no cover
     from collections.abc import Iterable
 
-    import botocore.client
     from troposphere import And, Condition, Equals, If, Not, Or
+    from types_boto3_s3 import S3Client
 
     from typing import TypeAlias
 
@@ -153,7 +153,7 @@ class Asset(Construct):
         s3_key: str,
         root_dir: str,
         file: str,
-        client: botocore.client.S3 | None = None,
+        client: S3Client | None = None,
         *,
         check_exists: bool | None = None,
         dry_run: bool | None = None,
@@ -191,7 +191,7 @@ class Asset(Construct):
         self,
         s3_bucket: str,
         s3_root_key: str,
-        client: botocore.client.S3 | None = None,
+        client: S3Client | None = None,
         *,
         dry_run: bool | None = None,
     ) -> None:
