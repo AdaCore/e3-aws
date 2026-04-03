@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from types_boto3_cloudformation import CloudFormationClient
+    from types_boto3_lambda import LambdaClient
     from types_boto3_s3 import S3Client
 
     from typing import Any, ParamSpec, TypedDict, TypeVar
@@ -271,11 +272,16 @@ class Session:
     ) -> CloudFormationClient: ...
 
     @overload
+    def client(
+        self, name: Literal["lambda"], region: str | None = ...
+    ) -> LambdaClient: ...
+
+    @overload
     def client(self, name: str, region: str | None = ...) -> botocore.client.Client: ...
 
     def client(
         self, name: str, region: str | None = None
-    ) -> S3Client | CloudFormationClient | botocore.client.Client:
+    ) -> S3Client | CloudFormationClient | LambdaClient | botocore.client.Client:
         """Get a client.
 
         :param name: client name

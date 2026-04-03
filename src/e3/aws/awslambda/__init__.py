@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, TypedDict, cast
 
 if TYPE_CHECKING:
-    import botocore.client
+    from types_boto3_lambda import LambdaClient
+    from types_boto3_lambda.type_defs import InvocationRequestTypeDef
 
     from typing import Any
 
@@ -72,9 +73,7 @@ class LambdaExecutionError(Exception):
 
 
 def invoke(
-    client: botocore.client.BaseClient,
-    function_name: str,
-    payload: dict[str, Any] | None = None,
+    client: LambdaClient, function_name: str, payload: dict[str, Any] | None = None
 ) -> LambdaInvokeResponse:
     """Invoke a Lambda function and return the decoded response.
 
@@ -99,7 +98,7 @@ def invoke(
     :raise LambdaEmptyPayloadError: if the Lambda function returns a JSON null payload
     :return: the full boto3 invoke response with ``Payload`` already read and decoded
     """
-    params: dict[str, Any] = {
+    params: InvocationRequestTypeDef = {
         "FunctionName": function_name,
         "InvocationType": "RequestResponse",
         "LogType": "None",
@@ -122,11 +121,13 @@ def invoke(
             raise LambdaEmptyPayloadError(msg)
         response["Payload"] = decoded
 
-    if "FunctionError" in response:
+    function_error = response.get("FunctionError")
+    if function_error is not None:
         raise LambdaExecutionError(
             function_name=function_name,
-            error_code=response["FunctionError"],
-            payload=response["Payload"],
+            error_code=function_error,
+            # Payload is typed as StreamingBody but is an object in case or error
+            payload=cast("dict | list", response["Payload"]),
         )
 
     if response["StatusCode"] != LAMBDA_SUCCESS_STATUS:
@@ -136,4 +137,4 @@ def invoke(
         )
         raise LambdaUnexpectedStatusError(msg)
 
-    return response
+    return cast("LambdaInvokeResponse", response)

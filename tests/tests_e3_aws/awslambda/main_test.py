@@ -22,7 +22,7 @@ from e3.aws.awslambda import (
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import botocore.client
+    from types_boto3_lambda import LambdaClient
 
 LAMBDA_UNEXPECTED_STATUS_CODE = 401
 REGION = "us-east-1"
@@ -40,12 +40,12 @@ def _make_payload(data: bytes) -> StreamingBody:
 
 
 @pytest.fixture
-def client() -> botocore.client.BaseClient:
+def client() -> LambdaClient:
     """Return a boto3 Lambda client."""
     return boto3.client("lambda", region_name=REGION)
 
 
-def test_invoke_without_payload(client: botocore.client.BaseClient) -> None:
+def test_invoke_without_payload(client: LambdaClient) -> None:
     """Test invoke without a payload does not include Payload in the API call.
 
     Also verifies that the response Payload is decoded as parsed JSON.
@@ -65,7 +65,7 @@ def test_invoke_without_payload(client: botocore.client.BaseClient) -> None:
     assert result["Payload"] == {"result": "ok"}
 
 
-def test_invoke_with_payload(client: botocore.client.BaseClient) -> None:
+def test_invoke_with_payload(client: LambdaClient) -> None:
     """Test invoke serializes the payload and passes it to the API call."""
     with Stubber(client) as stubber:
         stubber.add_response(
@@ -83,7 +83,7 @@ def test_invoke_with_payload(client: botocore.client.BaseClient) -> None:
 
 
 def test_invoke_raises_invalid_payload_error_when_payload_is_not_json(
-    client: botocore.client.BaseClient,
+    client: LambdaClient,
 ) -> None:
     """Test LambdaInvalidPayloadError is raised when payload is not valid JSON."""
     with Stubber(client) as stubber:
@@ -102,7 +102,7 @@ def test_invoke_raises_invalid_payload_error_when_payload_is_not_json(
 
 
 def test_invoke_raises_invalid_payload_error_when_response_is_empty(
-    client: botocore.client.BaseClient,
+    client: LambdaClient,
 ) -> None:
     """Test invoke raises LambdaInvalidPayloadError when the response body is empty."""
     with Stubber(client) as stubber:
@@ -118,7 +118,7 @@ def test_invoke_raises_invalid_payload_error_when_response_is_empty(
 
 
 def test_invoke_raises_empty_payload_error_when_payload_is_json_null(
-    client: botocore.client.BaseClient,
+    client: LambdaClient,
 ) -> None:
     """Test invoke raises LambdaEmptyPayloadError when the response is JSON null."""
     with Stubber(client) as stubber:
@@ -133,9 +133,7 @@ def test_invoke_raises_empty_payload_error_when_payload_is_json_null(
     assert FUNCTION_NAME in str(exc_info.value)
 
 
-def test_invoke_raises_execution_error_on_function_error(
-    client: botocore.client.BaseClient,
-) -> None:
+def test_invoke_raises_execution_error_on_function_error(client: LambdaClient) -> None:
     """Test invoke raises LambdaExecutionError when FunctionError is in the response."""
     error_payload = json.dumps(
         {"errorMessage": "something went wrong", "errorType": "RuntimeError"}
@@ -164,7 +162,7 @@ def test_invoke_raises_execution_error_on_function_error(
 
 
 def test_invoke_raises_execution_error_without_error_message(
-    client: botocore.client.BaseClient,
+    client: LambdaClient,
 ) -> None:
     """Test LambdaExecutionError message when errorMessage is absent from payload."""
     error_payload = json.dumps({"errorType": "SomeError"}).encode()
@@ -185,7 +183,7 @@ def test_invoke_raises_execution_error_without_error_message(
 
 
 def test_invoke_raises_invalid_payload_error_when_function_error_payload_is_not_json(
-    client: botocore.client.BaseClient,
+    client: LambdaClient,
 ) -> None:
     """Test LambdaInvalidPayloadError raised for non-JSON FunctionError payload."""
     with Stubber(client) as stubber:
@@ -204,9 +202,7 @@ def test_invoke_raises_invalid_payload_error_when_function_error_payload_is_not_
     assert FUNCTION_NAME in str(exc_info.value)
 
 
-def test_invoke_raises_unexpected_status_error(
-    client: botocore.client.BaseClient,
-) -> None:
+def test_invoke_raises_unexpected_status_error(client: LambdaClient) -> None:
     """Test invoke raises LambdaUnexpectedStatusError for non-200 status codes."""
     with Stubber(client) as stubber:
         stubber.add_response(

@@ -14,7 +14,6 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
-import botocore.client
 import botocore.exceptions
 from troposphere import GetAtt, Ref, Sub, awslambda, logs
 from typing_extensions import override
@@ -39,6 +38,8 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from troposphere import AWSObject
+    from types_boto3_lambda import LambdaClient
+    from types_boto3_lambda.type_defs import GetFunctionRequestTypeDef
     from types_boto3_s3 import S3Client
 
     from e3.aws.troposphere import Stack
@@ -774,9 +775,7 @@ class PyFunction(Function):
         ]
 
     @client("lambda")
-    def _exist_version(
-        self, version: Version, client: botocore.client.BaseClient
-    ) -> bool:
+    def _exist_version(self, version: Version, client: LambdaClient) -> bool:
         """Check if a version of the function exists.
 
         The check works by listing all the versions and checking the descriptions
@@ -798,7 +797,7 @@ class PyFunction(Function):
     def download_code_asset(
         self,
         dest: str | Path,
-        client: botocore.client.BaseClient,
+        client: LambdaClient,
         filename: str | None = None,
         qualifier: str | None = None,
     ) -> None:
@@ -809,11 +808,11 @@ class PyFunction(Function):
         :param filename: destination file
         :param qualifier: an alias or version of the function
         """
-        params: dict[str, Any] = {}
+        params: GetFunctionRequestTypeDef = {"FunctionName": self.name}
         if qualifier is not None:
             params["Qualifier"] = qualifier
 
-        resp = client.get_function(FunctionName=self.name, **params)
+        resp = client.get_function(**params)
 
         HTTPSession().download_file(
             url=resp["Code"]["Location"], dest=dest, filename=filename
