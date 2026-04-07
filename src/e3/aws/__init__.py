@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from types_boto3_cloudformation import CloudFormationClient
     from types_boto3_dynamodb import DynamoDBClient
     from types_boto3_ec2 import EC2Client
+    from types_boto3_ecr import ECRClient
     from types_boto3_iam import IAMClient
     from types_boto3_lambda import LambdaClient
     from types_boto3_s3 import S3Client
@@ -298,6 +299,9 @@ class Session:
     def client(self, name: Literal["ec2"], region: str | None = ...) -> EC2Client: ...
 
     @overload
+    def client(self, name: Literal["ecr"], region: str | None = ...) -> ECRClient: ...
+
+    @overload
     def client(self, name: Literal["iam"], region: str | None = ...) -> IAMClient: ...
 
     @overload
@@ -318,6 +322,7 @@ class Session:
         | CloudFormationClient
         | DynamoDBClient
         | EC2Client
+        | ECRClient
         | IAMClient
         | LambdaClient
         | botocore.client.BaseClient
