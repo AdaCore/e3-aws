@@ -133,8 +133,10 @@ class Session:
         self.default_region = self.regions[0]
 
         self.force_stub = stub
-        self.clients: dict[str, botocore.client.Client] = {}
-        self.stubbers: dict[str, botocore.stub.Stubber] = {}
+        # Clients per regions per services
+        self.clients: dict[str, dict[str, botocore.client.BaseClient]] = {}
+        # Stubbers per regions per services
+        self.stubbers: dict[str, dict[str, Stubber]] = {}
 
         self._account_alias: str | None = None
 
@@ -241,7 +243,7 @@ class Session:
 
         return self._identity
 
-    def stub(self, name: str, region: str | None = None) -> botocore.stub.Stubber:
+    def stub(self, name: str, region: str | None = None) -> Stubber:
         """Return stub for a given client.
 
         Note that if the client does not exist yet it will be created.
@@ -252,7 +254,8 @@ class Session:
         :return: the stub instance
         """
         if not self.force_stub:
-            return None
+            msg = "Stubs are not activated"
+            raise RuntimeError(msg)
         if region is None:
             region = self.default_region
 
@@ -299,7 +302,9 @@ class Session:
     ) -> LambdaClient: ...
 
     @overload
-    def client(self, name: str, region: str | None = ...) -> botocore.client.Client: ...
+    def client(
+        self, name: str, region: str | None = ...
+    ) -> botocore.client.BaseClient: ...
 
     def client(
         self, name: str, region: str | None = None
@@ -310,7 +315,7 @@ class Session:
         | DynamoDBClient
         | EC2Client
         | LambdaClient
-        | botocore.client.Client
+        | botocore.client.BaseClient
     ):
         """Get a client.
 
