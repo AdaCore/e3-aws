@@ -22,12 +22,14 @@ from e3.aws.ec2 import BlockDeviceMapping, EC2Element
 from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
+    from types_boto3_ec2.type_defs import FilterTypeDef, ImageTypeDef
+
     from e3.aws import Session
 
     from typing import Any
 
 
-class AMI(EC2Element):
+class AMI(EC2Element["ImageTypeDef"]):
     """Represent an AMI."""
 
     PROPERTIES: ClassVar[dict[str, Any]] = {
@@ -51,7 +53,7 @@ class AMI(EC2Element):
         self,
         ami_id: str,
         region: str | None = None,
-        data: dict[str, Any] | None = None,
+        data: ImageTypeDef | None = None,
         session: Session | None = None,
     ) -> None:
         """Inialize an AMI description object.
@@ -116,7 +118,7 @@ class AMI(EC2Element):
     def block_device_mappings(self) -> list[BlockDeviceMapping]:
         """Return the list of block device mappings."""
         return [
-            BlockDeviceMapping(bdm, region=self.region)
+            BlockDeviceMapping(dict(bdm), region=self.region)
             for bdm in self.data.get("BlockDeviceMappings", [])
         ]
 
@@ -141,7 +143,7 @@ class AMI(EC2Element):
     @session()
     def ls(
         cls,
-        filters: list[dict[str, Any]] | None = None,
+        filters: list[FilterTypeDef] | None = None,
         session: Session | None = None,
         owners: list[str] | None = None,
     ) -> list[AMI]:
@@ -202,7 +204,7 @@ class AMI(EC2Element):
         assert session is not None
         result: dict[tuple[str, ...], tuple[int, AMI]] = {}
 
-        filters = [
+        filters: list[FilterTypeDef] = [
             {"Name": "tag-key", "Values": ["platform"]},
             {"Name": "tag-key", "Values": ["timestamp"]},
             {"Name": "tag-key", "Values": ["os_version"]},
