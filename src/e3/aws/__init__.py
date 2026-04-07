@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from types_boto3_cloudformation import CloudFormationClient
+    from types_boto3_dynamodb import DynamoDBClient
     from types_boto3_lambda import LambdaClient
     from types_boto3_s3 import S3Client
     from types_boto3_sts import STSClient
@@ -285,6 +286,11 @@ class Session:
 
     @overload
     def client(
+        self, name: Literal["dynamodb"], region: str | None = ...
+    ) -> DynamoDBClient: ...
+
+    @overload
+    def client(
         self, name: Literal["lambda"], region: str | None = ...
     ) -> LambdaClient: ...
 
@@ -297,6 +303,7 @@ class Session:
         S3Client
         | STSClient
         | CloudFormationClient
+        | DynamoDBClient
         | LambdaClient
         | botocore.client.Client
     ):
