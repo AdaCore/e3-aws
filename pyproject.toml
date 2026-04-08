@@ -134,3 +134,4 @@ typing = ["typing"]
 
 [tool.ruff.lint.pylint]
 max-args = 8
+max-statements = 75
