@@ -131,3 +131,7 @@ section-order = [
 [tool.ruff.lint.isort.sections]
 e3 = ["e3*"]
 typing = ["typing"]
+
+[tool.ruff.lint.pylint]
+max-args = 8
+max-statements = 75
