@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from e3.aws.troposphere import Stack
-from e3.aws.troposphere.awslambda import Py38Function
+from e3.aws.troposphere.awslambda import PyFunction
 from e3.aws.troposphere.iam.policy_document import PolicyDocument
 from e3.aws.troposphere.iam.policy_statement import Trust
 from e3.aws.troposphere.s3 import BucketWithRoles
@@ -24,10 +24,11 @@ def test_bucket(stack: Stack) -> None:
 
     topic_test = Topic(name="test-topic")
     queue_test = Queue(name="test-queue")
-    lambda_test = Py38Function(
+    lambda_test = PyFunction(
         name="mypylambda",
         description="this is a test",
         role="somearn",
+        runtime="python3.9",
         code_dir="my_code_dir",
         handler="app.main",
     )

@@ -926,55 +926,6 @@ class PyFunction(Function):
             print("No files")
 
 
-class Py38Function(PyFunction):
-    """Lambda using the Python 3.8 runtime."""
-
-    def __init__(
-        self,
-        name: str,
-        description: str,
-        role: str | GetAtt | Role,
-        code_dir: str | Path,
-        handler: str,
-        version: int | Version | AutoVersion | None = None,
-        min_version: int | None = None,
-        alias: str | Alias | BlueGreenAliases | None = None,
-        requirement_file: str | Path | None = None,
-        code_version: int | None = None,
-        timeout: int = 3,
-        memory_size: int | None = None,
-        ephemeral_storage_size: int | None = None,
-        logs_retention_in_days: int | None = None,
-        reserved_concurrent_executions: int | None = None,
-        logging_config: awslambda.LoggingConfig | None = None,
-        dl_config: awslambda.DeadLetterConfig | None = None,
-    ) -> None:
-        """Initialize an AWS lambda function using Python 3.8 runtime.
-
-        See PyFunction for params description.
-        """
-        super().__init__(
-            name=name,
-            description=description,
-            role=role,
-            code_dir=code_dir,
-            handler=handler,
-            version=version,
-            min_version=min_version,
-            alias=alias,
-            requirement_file=requirement_file,
-            code_version=code_version,
-            timeout=timeout,
-            runtime="python3.8",
-            memory_size=memory_size,
-            ephemeral_storage_size=ephemeral_storage_size,
-            logs_retention_in_days=logs_retention_in_days,
-            reserved_concurrent_executions=reserved_concurrent_executions,
-            logging_config=logging_config,
-            dl_config=dl_config,
-        )
-
-
 class Alias(Construct):
     """A lambda alias."""
 
