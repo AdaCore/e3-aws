@@ -25,10 +25,19 @@
             "Description": "this is a test",
             "Role": "somearn",
             "FunctionName": "mypylambda",
-            "Runtime": "python3.8",
+            "Runtime": "python3.9",
             "Handler": "app.main"
         },
         "Type": "AWS::Lambda::Function"
+    },
+    "MypylambdaLogGroup": {
+        "DeletionPolicy": "Retain",
+        "Properties": {
+            "LogGroupName": "/aws/lambda/mypylambda",
+            "RetentionInDays": 731
+        },
+        "Type": "AWS::Logs::LogGroup",
+        "UpdateReplacePolicy": "Retain"
     },
     "TestBucket": {
         "DeletionPolicy": "Retain",

@@ -29,7 +29,6 @@ from e3.aws.troposphere.awslambda import (
     BlueGreenAliases,
     BlueGreenVersions,
     Function,
-    Py38Function,
     PyFunction,
     Version,
 )
@@ -69,28 +68,6 @@ EXPECTED_STACK_TEMPLATE = {
             "Type": "String",
         }
     },
-}
-
-EXPECTED_PY38FUNCTION_TEMPLATE = EXPECTED_STACK_TEMPLATE | {
-    "Resources": {
-        "Mypylambda": {
-            "Properties": {
-                "Code": {
-                    "S3Bucket": "cfn_bucket",
-                    "S3Key": {
-                        "Fn::Sub": "assets/${MypylambdaSourcesS3Key}",
-                    },
-                },
-                "Description": "this is a test",
-                "FunctionName": "mypylambda",
-                "Handler": "app.main",
-                "Role": "somearn",
-                "Runtime": "python3.8",
-                "Timeout": 3,
-            },
-            "Type": "AWS::Lambda::Function",
-        }
-    }
 }
 
 EXPECTED_PYFUNCTION_DEFAULT_TEMPLATE = EXPECTED_STACK_TEMPLATE | {
@@ -563,20 +540,6 @@ def simple_lambda_function() -> PyFunction:
         code_dir="my_code_dir",
         handler="app.main",
     )
-
-
-def test_py38function(stack: Stack) -> None:
-    """Test Py38Function creation."""
-    stack.add(
-        Py38Function(
-            name="mypylambda",
-            description="this is a test",
-            role="somearn",
-            code_dir="my_code_dir",
-            handler="app.main",
-        )
-    )
-    assert stack.export() == EXPECTED_PY38FUNCTION_TEMPLATE
 
 
 def test_pyfunction_default(stack: Stack) -> None:
