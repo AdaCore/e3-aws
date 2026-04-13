@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from types_boto3_iam import IAMClient
     from types_boto3_lambda import LambdaClient
     from types_boto3_s3 import S3Client
+    from types_boto3_secretsmanager import SecretsManagerClient
     from types_boto3_sts import STSClient
     from types_boto3_sts.type_defs import AssumeRoleRequestTypeDef
 
@@ -283,6 +284,11 @@ class Session:
     def client(self, name: Literal["s3"], region: str | None = ...) -> S3Client: ...
 
     @overload
+    def client(
+        self, name: Literal["secretsmanager"], region: str | None = ...
+    ) -> SecretsManagerClient: ...
+
+    @overload
     def client(self, name: Literal["sts"], region: str | None = ...) -> STSClient: ...
 
     @overload
@@ -318,6 +324,7 @@ class Session:
         self, name: str, region: str | None = None
     ) -> (
         S3Client
+        | SecretsManagerClient
         | STSClient
         | CloudFormationClient
         | DynamoDBClient
