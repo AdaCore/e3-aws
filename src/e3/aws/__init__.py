@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from types_boto3_cloudformation import CloudFormationClient
+    from types_boto3_cloudfront import CloudFrontClient
     from types_boto3_dynamodb import DynamoDBClient
     from types_boto3_ec2 import EC2Client
     from types_boto3_ecr import ECRClient
@@ -298,6 +299,11 @@ class Session:
 
     @overload
     def client(
+        self, name: Literal["cloudfront"], region: str | None = ...
+    ) -> CloudFrontClient: ...
+
+    @overload
+    def client(
         self, name: Literal["dynamodb"], region: str | None = ...
     ) -> DynamoDBClient: ...
 
@@ -327,6 +333,7 @@ class Session:
         | SecretsManagerClient
         | STSClient
         | CloudFormationClient
+        | CloudFrontClient
         | DynamoDBClient
         | EC2Client
         | ECRClient
