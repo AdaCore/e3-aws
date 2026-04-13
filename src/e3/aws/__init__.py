@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from types_boto3_ecr import ECRClient
     from types_boto3_iam import IAMClient
     from types_boto3_lambda import LambdaClient
+    from types_boto3_pricing import PricingClient
     from types_boto3_s3 import S3Client
     from types_boto3_secretsmanager import SecretsManagerClient
     from types_boto3_sts import STSClient
@@ -323,6 +324,11 @@ class Session:
 
     @overload
     def client(
+        self, name: Literal["pricing"], region: str | None = ...
+    ) -> PricingClient: ...
+
+    @overload
+    def client(
         self, name: str, region: str | None = ...
     ) -> botocore.client.BaseClient: ...
 
@@ -339,6 +345,7 @@ class Session:
         | ECRClient
         | IAMClient
         | LambdaClient
+        | PricingClient
         | botocore.client.BaseClient
     ):
         """Get a client.

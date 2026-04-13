@@ -9,7 +9,8 @@ from e3.aws.util import get_region_name
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import botocore
+    from types_boto3_pricing import PricingClient
+    from types_boto3_pricing.type_defs import FilterTypeDef
 
     from typing import Any
 
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 class Pricing:
     """Pricing abstraction."""
 
-    def __init__(self, client: botocore.client.BaseClient) -> None:
+    def __init__(self, client: PricingClient) -> None:
         """Initialize Pricing.
 
         :param client: a client for the Pricing API
@@ -51,7 +52,7 @@ class Pricing:
         instance_type: str | None = None,
         os: str | None = None,
         region: str | None = None,
-        filters: list[dict[str, Any]] | None = None,
+        filters: list[FilterTypeDef] | None = None,
     ) -> list[PriceInformation]:
         """Get pricing informations for EC2 instances.
 
