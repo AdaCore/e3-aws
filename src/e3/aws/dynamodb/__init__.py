@@ -12,7 +12,21 @@ from botocore.exceptions import ClientError
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from boto3.resources.base import ServiceResource
+    from collections.abc import Mapping
+
+    from boto3.dynamodb.conditions import ConditionBase
+    from types_boto3_dynamodb import DynamoDBServiceResource
+    from types_boto3_dynamodb.literals import TableStatusType
+    from types_boto3_dynamodb.type_defs import (
+        KeysAndAttributesServiceResourceUnionTypeDef,
+        PutItemInputTablePutItemTypeDef,
+        PutItemOutputTableTypeDef,
+        QueryInputTableQueryTypeDef,
+        ScanInputTableScanTypeDef,
+        TableAttributeValueTypeDef,
+        UpdateItemInputTableUpdateItemTypeDef,
+        UpdateItemOutputTableTypeDef,
+    )
 
     from typing import Any, Literal
 
@@ -31,16 +45,13 @@ CONTAINS_OPERATION: OperationType = "contains"
 class DynamoDB:
     """DynamoDB abstraction."""
 
-    def __init__(
-        self,
-        client: ServiceResource,
-    ) -> None:
+    def __init__(self, client: DynamoDBServiceResource) -> None:
         """Initialize DynamoDB table."""
         self.client = client
 
     def load_data(
         self,
-        items: list[dict[str, Any]],
+        items: list[dict[str, TableAttributeValueTypeDef]],
         table_name: str,
         keys: list[str],
         *,
@@ -60,12 +71,12 @@ class DynamoDB:
 
     def add_item(
         self,
-        item: dict[str, Any],
+        item: dict[str, TableAttributeValueTypeDef],
         table_name: str,
         keys: list[str],
         *,
         exist_ok: bool | None = None,
-    ) -> dict[str, Any]:
+    ) -> PutItemOutputTableTypeDef:
         """Add item to a table.
 
         :param item: item to add
@@ -78,7 +89,7 @@ class DynamoDB:
         table = self.client.Table(table_name)
 
         logger.info(f"Adding item: {item} to {table_name}")
-        params: dict[str, Any] = {"Item": item}
+        params: PutItemInputTablePutItemTypeDef = {"Item": item}
         if not exist_ok:
             params.update(
                 {
@@ -96,8 +107,11 @@ class DynamoDB:
         return result
 
     def get_item(
-        self, item: dict[str, Any], table_name: str, keys: list[str]
-    ) -> dict[str, Any]:
+        self,
+        item: dict[str, TableAttributeValueTypeDef],
+        table_name: str,
+        keys: list[str],
+    ) -> dict[str, TableAttributeValueTypeDef]:
         """Retrieve an item from a table.
 
         :param item: item we want to retrieve
@@ -119,8 +133,11 @@ class DynamoDB:
             return response.get("Item", {})
 
     def batch_get_items(
-        self, items: list[dict[str, Any]], table_name: str, keys: list[str]
-    ) -> list[dict[str, Any]]:
+        self,
+        items: list[dict[str, TableAttributeValueTypeDef]],
+        table_name: str,
+        keys: list[str],
+    ) -> list[dict[str, TableAttributeValueTypeDef]]:
         """Retrieve multiple items from a table.
 
         When Amazon DynamoDB cannot process all items in a batch, a set of unprocessed
@@ -134,12 +151,12 @@ class DynamoDB:
         :return: retrieved item
         """
         logger.info(f"Retrieving items {items} from {table_name}...")
-        res = []
+        res: list[dict[str, TableAttributeValueTypeDef]] = []
 
         tries = 0
         max_tries = 5
         sleepy_time = 1  # Start with 1 second of sleep, then exponentially increase.
-        batch_keys = {
+        batch_keys: Mapping[str, KeysAndAttributesServiceResourceUnionTypeDef] = {
             table_name: {
                 "Keys": [
                     {key: item[key] for key in keys if key in item} for item in items
@@ -181,14 +198,14 @@ class DynamoDB:
 
     def update_item(
         self,
-        item: dict[str, Any],
+        item: dict[str, TableAttributeValueTypeDef],
         table_name: str,
         keys: tuple[str, str],
         data: dict[str, Any],
         condition_expression: str | None = None,
         expression_attribute_names: dict[str, str] | None = None,
         expression_attribute_values: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
+    ) -> UpdateItemOutputTableTypeDef:
         """Update an item of a table.
 
         :param item: item to be updated
@@ -233,7 +250,7 @@ class DynamoDB:
         logger.debug(f"ExpressionAttributeNames: {exp_attr_names}")
         logger.debug(f"UpdateExpression: {update_exp}")
 
-        params = {
+        params: UpdateItemInputTableUpdateItemTypeDef = {
             "Key": {key: item[key] for key in keys if key in item},
             "ExpressionAttributeValues": exp_attr_values,
             "ExpressionAttributeNames": exp_attr_names,
@@ -257,7 +274,7 @@ class DynamoDB:
         query: dict[str, list[str]],
         sort_key: tuple[str, str] | None = None,
         index_name: str | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, TableAttributeValueTypeDef]]:
         """Query items from a table.
 
         :param table_name: name of the table
@@ -296,7 +313,7 @@ class DynamoDB:
                 f"and #{key} = :{key}",
             )
 
-        attr = {
+        attr: QueryInputTableQueryTypeDef = {
             "ExpressionAttributeValues": {":val": attr_value, **sort_key_attr[0]},
             "ExpressionAttributeNames": {exp_name: attr_name, **sort_key_attr[1]},
             "KeyConditionExpression": f"{exp_name} = :val {sort_key_attr[2]}",
@@ -308,7 +325,7 @@ class DynamoDB:
         logger.debug(f"query attributes: {attr}")
 
         paging = True
-        items = []
+        items: list[dict[str, TableAttributeValueTypeDef]] = []
         while paging:
             result = table.query(**attr)
             items += result["Items"]
@@ -327,7 +344,7 @@ class DynamoDB:
         query_values: list[str],
         sort_key: tuple[str, str] | None = None,
         index_name: str | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, TableAttributeValueTypeDef]]:
         """Query items from a table with support for multiple values.
 
         :param table_name: name of the table to query
@@ -340,15 +357,15 @@ class DynamoDB:
         """
         table = self.client.Table(table_name)
         logger.info(f"Querying table {table_name} with ({query_key}: {query_values})")
-        items: list[dict[str, Any]] = []
+        items: list[dict[str, TableAttributeValueTypeDef]] = []
 
         for attr_value in query_values:
-            key_condition = Key(query_key).eq(attr_value)
+            key_condition: ConditionBase = Key(query_key).eq(attr_value)
             if sort_key:
                 key_condition = key_condition & Key(sort_key[0]).eq(sort_key[1])
 
-            attr = {
-                "KeyConditionExpression": key_condition,
+            attr: QueryInputTableQueryTypeDef = {
+                "KeyConditionExpression": key_condition
             }
 
             if index_name:
@@ -374,7 +391,7 @@ class DynamoDB:
         query: dict[str, list[Any]] | None = None,
         opt: OperationType = OR_OPERATION,
         index_name: str | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list[dict[str, TableAttributeValueTypeDef]]:
         """Return all items that match the query's criteria.
 
         if query is None, it returns all elements
@@ -392,7 +409,7 @@ class DynamoDB:
         :return: selected items
         """
         table = self.client.Table(table_name)
-        attr = {}
+        attr: ScanInputTableScanTypeDef = {}
         if query:
             exp_attr_names = {f"#{s.upper()}": s for s in list(query.keys())}
             # values in dictionary is a list
@@ -432,7 +449,7 @@ class DynamoDB:
 
         logger.debug(f"scan attributes: {attr}")
         paging = True
-        items = []
+        items: list[dict[str, TableAttributeValueTypeDef]] = []
         while paging:
             result = table.scan(**attr)
             items += result["Items"]
@@ -444,6 +461,6 @@ class DynamoDB:
 
         return items
 
-    def status(self, table_name: str) -> str:
+    def status(self, table_name: str) -> TableStatusType:
         """Get table Status."""
         return self.client.Table(table_name).table_status

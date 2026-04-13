@@ -81,8 +81,10 @@ def test_boto3() -> None:
             },
         )
         boto3_session = session.to_boto3()
-        boto3_creds = boto3_session.get_credentials().get_frozen_credentials()
+        boto3_creds = boto3_session.get_credentials()
+        assert boto3_creds is not None
+        boto3_frozen_creds = boto3_creds.get_frozen_credentials()
 
-        assert boto3_creds.access_key == "AK_test"
-        assert boto3_creds.secret_key == "SA_test"  # noqa: S105
-        assert boto3_creds.token == "ST_test"  # noqa: S105
+        assert boto3_frozen_creds.access_key == "AK_test"
+        assert boto3_frozen_creds.secret_key == "SA_test"  # noqa: S105
+        assert boto3_frozen_creds.token == "ST_test"  # noqa: S105

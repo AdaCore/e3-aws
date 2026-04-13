@@ -18,17 +18,28 @@ except ImportError:
 
 from enum import Enum
 
-import botocore.client
 import botocore.exceptions
 import yaml
 from typing_extensions import override
 
 from e3.env import Env
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Iterator
+
+    from types_boto3_cloudformation import CloudFormationClient
+    from types_boto3_cloudformation.literals import ResourceStatusType
+    from types_boto3_cloudformation.type_defs import (
+        CreateChangeSetInputTypeDef,
+        CreateChangeSetOutputTypeDef,
+        CreateStackInputTypeDef,
+        DescribeChangeSetOutputTypeDef,
+        EstimateTemplateCostOutputTypeDef,
+        StackTypeDef,
+        ValidateTemplateOutputTypeDef,
+    )
 
     from typing import Any, ParamSpec, TypeVar
 
@@ -71,9 +82,7 @@ def client(name: str) -> Callable:
 
 
 @client("cloudformation")
-def get_stack_template(
-    stack_name: str, /, client: botocore.client.Client
-) -> str | None:
+def get_stack_template(stack_name: str, /, client: CloudFormationClient) -> str | None:
     """Get the template of a stack.
 
     :param stack_name: the name or the unique stack ID that's associated with
@@ -82,7 +91,7 @@ def get_stack_template(
     :return: the template, or None if the stack doesn't exist
     """
     try:
-        return client.get_template(StackName=stack_name)["TemplateBody"]
+        return cast("str", client.get_template(StackName=stack_name)["TemplateBody"])
     except botocore.exceptions.ClientError as e:
         if e.response["Error"]["Code"] == "ValidationError":
             return None
@@ -593,7 +602,7 @@ class Stack:
     @client("cloudformation")
     def create(
         self,
-        client: botocore.client.Client,
+        client: CloudFormationClient,
         url: str | None = None,
         *,
         wait: bool = False,
@@ -608,7 +617,7 @@ class Stack:
             50Ko.
         :param wait: if True wait for creation completion
         """
-        parameters = {
+        parameters: CreateStackInputTypeDef = {
             "StackName": self.name,
             "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
         }
@@ -629,7 +638,7 @@ class Stack:
             logger.info(f"Done (status: {self.wait()})")
 
     @client("cloudformation")
-    def wait(self, client: botocore.client.Client) -> str:
+    def wait(self, client: CloudFormationClient) -> str:
         """Wait for the stack operation to complete.
 
         :param client: the CloudFormation client
@@ -662,7 +671,7 @@ class Stack:
         return True
 
     @client("cloudformation")
-    def state(self, client: botocore.client.BaseClient) -> dict[str, Any]:
+    def state(self, client: CloudFormationClient) -> StackTypeDef:
         """Return state of the stack on AWS."""
         result = client.describe_stacks(StackName=self.stack_id)["Stacks"][0]
         if self.stack_id != result["StackId"]:
@@ -671,8 +680,8 @@ class Stack:
 
     @client("cloudformation")
     def validate(
-        self, client: botocore.client.BaseClient, url: str | None = None
-    ) -> dict[str, Any]:
+        self, client: CloudFormationClient, url: str | None = None
+    ) -> ValidateTemplateOutputTypeDef:
         """Validate a template.
 
         :param client: a botocore client
@@ -688,8 +697,8 @@ class Stack:
 
     @client("cloudformation")
     def create_change_set(
-        self, name: str, client: botocore.client.BaseClient, url: str | None = None
-    ) -> dict[str, Any]:
+        self, name: str, client: CloudFormationClient, url: str | None = None
+    ) -> CreateChangeSetOutputTypeDef:
         """Create a change set.
 
         This creates a difference between the state of the stack on AWS servers
@@ -704,7 +713,7 @@ class Stack:
             version allows to use template of size up to 500Ko instead of
             50Ko.
         """
-        parameters = {
+        parameters: CreateChangeSetInputTypeDef = {
             "ChangeSetName": name,
             "StackName": self.name,
             "Capabilities": ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM"],
@@ -714,19 +723,16 @@ class Stack:
             parameters["RoleARN"] = self.cfn_role_arn
 
         if url is None:
-            return client.create_change_set(
-                TemplateBody=self.body,
-                **parameters,
-            )
-        return client.create_change_set(
-            TemplateURL=url,
-            **parameters,
-        )
+            parameters["TemplateBody"] = self.body
+            return client.create_change_set(**parameters)
+
+        parameters["TemplateURL"] = url
+        return client.create_change_set(**parameters)
 
     @client("cloudformation")
     def describe_change_set(
-        self, name: str, client: botocore.client.BaseClient
-    ) -> dict[str, Any]:
+        self, name: str, client: CloudFormationClient
+    ) -> DescribeChangeSetOutputTypeDef:
         """Describe a change set.
 
         Retrieve status of a given changeset
@@ -739,7 +745,7 @@ class Stack:
 
     @client("cloudformation")
     def delete_change_set(
-        self, name: str, client: botocore.client.BaseClient
+        self, name: str, client: CloudFormationClient
     ) -> dict[str, Any]:
         """Delete a change set.
 
@@ -751,7 +757,7 @@ class Stack:
         return client.delete_change_set(ChangeSetName=name, StackName=self.name)
 
     @client("cloudformation")
-    def delete(self, client: botocore.client.Client, *, wait: bool = False) -> None:
+    def delete(self, client: CloudFormationClient, *, wait: bool = False) -> None:
         """Delete a stack.
 
         Delete a stack. Note that operation is aynchron
@@ -775,7 +781,7 @@ class Stack:
     @client("cloudformation")
     def events(
         self,
-        client: botocore.client.BaseClient,
+        client: CloudFormationClient,
         *,
         failed_only: bool = False,
         mark_as_read: bool = True,
@@ -816,7 +822,7 @@ class Stack:
                 yield event
 
     @client("cloudformation")
-    def cost(self, client: botocore.client.BaseClient) -> dict[str, Any]:
+    def cost(self, client: CloudFormationClient) -> EstimateTemplateCostOutputTypeDef:
         """Compute cost of the stack (estimation).
 
         :param client: a botocore client
@@ -825,11 +831,7 @@ class Stack:
 
     @client("cloudformation")
     def execute_change_set(
-        self,
-        client: botocore.client.BaseClient,
-        changeset_name: str,
-        *,
-        wait: bool = False,
+        self, client: CloudFormationClient, changeset_name: str, *, wait: bool = False
     ) -> None:
         """Execute a changeset.
 
@@ -849,8 +851,8 @@ class Stack:
 
     @client("cloudformation")
     def resource_status(
-        self, client: botocore.client.BaseClient, *, in_progress_only: bool = True
-    ) -> dict[str, str]:
+        self, client: CloudFormationClient, *, in_progress_only: bool = True
+    ) -> dict[str, ResourceStatusType]:
         """Return status of each resources of the stack.
 
         The state of the stack taken is the one pushed on AWS (after a call
@@ -870,7 +872,7 @@ class Stack:
         return result
 
     @client("cloudformation")
-    def enable_termination_protection(self, client: botocore.client.BaseClient) -> None:
+    def enable_termination_protection(self, client: CloudFormationClient) -> None:
         """Enable termination protection for a stack."""
         aws_result = self.state()
         if aws_result["EnableTerminationProtection"]:
@@ -885,7 +887,7 @@ class Stack:
 
     @client("cloudformation")
     def set_stack_policy(
-        self, stack_policy_body: str, client: botocore.client.BaseClient
+        self, stack_policy_body: str, client: CloudFormationClient
     ) -> None:
         """Set a stack policy.
 

@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    import botocore.client
+    from types_boto3_s3 import S3Client
 
 
 class AssetLayout(Enum):
@@ -101,7 +101,7 @@ class DirectoryAsset(Asset):
         self,
         s3_bucket: str,
         s3_root_key: str,
-        client: botocore.client.S3 | None = None,
+        client: S3Client | None = None,
         *,
         dry_run: bool | None = None,
     ) -> None:
@@ -177,7 +177,7 @@ class FileAsset(Asset):
         self,
         s3_bucket: str,
         s3_root_key: str,
-        client: botocore.client.S3 | None = None,
+        client: S3Client | None = None,
         *,
         dry_run: bool | None = None,
     ) -> None:

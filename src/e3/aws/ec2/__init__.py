@@ -2,21 +2,32 @@
 
 from __future__ import annotations
 
-from dateutil.parser import parse as parse_date
+from collections.abc import Mapping
 
 from e3.aws import session
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar
 
 if TYPE_CHECKING:
     from datetime import datetime
 
+    from types_boto3_ec2.type_defs import (
+        FilterTypeDef,
+        InstanceTypeDef,
+        SecurityGroupTypeDef,
+        SnapshotTypeDef,
+        VolumeAttachmentTypeDef,
+        VolumeTypeDef,
+    )
+
     from e3.aws import Session
 
-    from typing import Any
+# TypeDef from types-boto3 for an EC2 element
+Boto3EC2TypeDef = TypeVar("Boto3EC2TypeDef", bound=Mapping[str, Any])
 
 
-class EC2Element:
+# TypeDef from types-boto3 for an EC2 element
+class EC2Element(Generic[Boto3EC2TypeDef]):
     """EC2 Element.
 
     All objects returned by EC2 API
@@ -24,7 +35,7 @@ class EC2Element:
 
     PROPERTIES: ClassVar[dict[str, Any]] = {}
 
-    def __init__(self, data: dict[str, Any], region: str | None = None) -> None:
+    def __init__(self, data: Boto3EC2TypeDef, region: str | None = None) -> None:
         """Initialize an EC2 Element.
 
         :param data: data as returned by botocore
@@ -57,7 +68,7 @@ class EC2Element:
         return self.tags.get("aws:cloudformation:logical-id")
 
 
-class SecurityGroup(EC2Element):
+class SecurityGroup(EC2Element["SecurityGroupTypeDef"]):
     """Security Group description."""
 
     PROPERTIES: ClassVar[dict[str, Any]] = {
@@ -75,7 +86,7 @@ class SecurityGroup(EC2Element):
         self,
         group_id: str | None = None,
         region: str | None = None,
-        data: dict[str, Any] | None = None,
+        data: SecurityGroupTypeDef | None = None,
         session: Session | None = None,
     ) -> None:
         """Initialize a security group.
@@ -99,9 +110,7 @@ class SecurityGroup(EC2Element):
     @classmethod
     @session()
     def ls(
-        cls,
-        filters: list[dict[str, Any]] | None = None,
-        session: Session | None = None,
+        cls, filters: list[FilterTypeDef] | None = None, session: Session | None = None
     ) -> list[SecurityGroup]:
         """List user security groups.
 
@@ -126,7 +135,7 @@ class SecurityGroup(EC2Element):
         return result
 
 
-class Instance(EC2Element):
+class Instance(EC2Element["InstanceTypeDef"]):
     """EC2 Instance."""
 
     PROPERTIES: ClassVar[dict[str, Any]] = {"InstanceId": "instance_id"}
@@ -139,7 +148,7 @@ class Instance(EC2Element):
         self,
         instance_id: str | None = None,
         region: str | None = None,
-        data: dict[str, Any] | None = None,
+        data: InstanceTypeDef | None = None,
         session: Session | None = None,
     ) -> None:
         """Initialize an EC2 instance description.
@@ -157,7 +166,7 @@ class Instance(EC2Element):
             assert session is not None
             data = session.client("ec2", region).describe_instances(
                 InstanceIds=[instance_id]
-            )["Reservations"]["Instances"][0]
+            )["Reservations"][0]["Instances"][0]
 
         super().__init__(data, region)
 
@@ -179,7 +188,7 @@ class Instance(EC2Element):
         :return: a list of network interface
         """
         return [
-            NetworkInterface(ni, region=self.region)
+            NetworkInterface(dict(ni), region=self.region)
             for ni in self.data.get("NetworkInterfaces", [])
         ]
 
@@ -198,16 +207,14 @@ class Instance(EC2Element):
         :return: the list of mappings
         """
         return [
-            BlockDeviceMapping(bdm, region=self.region)
+            BlockDeviceMapping(dict(bdm), region=self.region)
             for bdm in self.data["BlockDeviceMappings"]
         ]
 
     @classmethod
     @session()
     def ls(
-        cls,
-        filters: list[dict[str, Any]] | None = None,
-        session: Session | None = None,
+        cls, filters: list[FilterTypeDef] | None = None, session: Session | None = None
     ) -> list[Instance]:
         """List user instances.
 
@@ -242,7 +249,7 @@ class Instance(EC2Element):
         return result
 
 
-class BlockDeviceMapping(EC2Element):
+class BlockDeviceMapping(EC2Element[dict[str, Any]]):
     """Block Device Mappping."""
 
     PROPERTIES: ClassVar[dict[str, Any]] = {"DeviceName": "device_name"}
@@ -277,7 +284,7 @@ class BlockDeviceMapping(EC2Element):
         return None
 
 
-class VolumeAttachment(EC2Element):
+class VolumeAttachment(EC2Element["VolumeAttachmentTypeDef"]):
     """Volume Attachment."""
 
     PROPERTIES: ClassVar[dict[str, Any]] = {
@@ -299,7 +306,9 @@ class VolumeAttachment(EC2Element):
     delete_on_termination: bool
     """Indicates whether the EBS volume is deleted on instance termination."""
 
-    def __init__(self, data: dict[str, Any], region: str | None = None) -> None:
+    def __init__(
+        self, data: VolumeAttachmentTypeDef, region: str | None = None
+    ) -> None:
         """Initialize Volume Attachment description."""
         super().__init__(data, region)
         self._instance_cache: Instance | None = None
@@ -311,7 +320,7 @@ class VolumeAttachment(EC2Element):
 
         :return: attach time
         """
-        return parse_date(self.data["AttachTime"])
+        return self.data["AttachTime"]
 
     @property
     def instance(self) -> Instance:
@@ -334,7 +343,7 @@ class VolumeAttachment(EC2Element):
         return self._volume_cache
 
 
-class Volume(EC2Element):
+class Volume(EC2Element["VolumeTypeDef"]):
     """EC2 Volume."""
 
     PROPERTIES: ClassVar[dict[str, Any]] = {
@@ -367,7 +376,7 @@ class Volume(EC2Element):
         self,
         volume_id: str | None = None,
         region: str | None = None,
-        data: dict[str, Any] | None = None,
+        data: VolumeTypeDef | None = None,
         session: Session | None = None,
     ) -> None:
         """Initialize an EC2 volume description.
@@ -384,7 +393,7 @@ class Volume(EC2Element):
             assert region is not None
             assert session is not None
             data = session.client("ec2", region).describe_volumes(
-                InstanceIds=[volume_id]
+                VolumeIds=[volume_id]
             )["Volumes"][0]
 
         super().__init__(data, region)
@@ -403,7 +412,7 @@ class Volume(EC2Element):
 
         :return: time at which volume was created
         """
-        return parse_date(self.data["CreateTime"])
+        return self.data["CreateTime"]
 
     @session()
     def delete(self, session: Session | None = None) -> None:
@@ -414,7 +423,7 @@ class Volume(EC2Element):
     @classmethod
     @session()
     def ls(
-        cls, filters: list[dict[str, Any]] | None = None, session: Session | None = None
+        cls, filters: list[FilterTypeDef] | None = None, session: Session | None = None
     ) -> list[Volume]:
         """List user AMIs.
 
@@ -437,7 +446,7 @@ class Volume(EC2Element):
         return result
 
 
-class Snapshot(EC2Element):
+class Snapshot(EC2Element["SnapshotTypeDef"]):
     """Represent an EBS snapshot."""
 
     PROPERTIES: ClassVar[dict[str, Any]] = {
@@ -455,7 +464,7 @@ class Snapshot(EC2Element):
         self,
         snapshot_id: str | None = None,
         region: str | None = None,
-        data: dict[str, Any] | None = None,
+        data: SnapshotTypeDef | None = None,
         session: Session | None = None,
     ) -> None:
         """Initialize an EC2 snapshot description.
@@ -486,7 +495,7 @@ class Snapshot(EC2Element):
     @classmethod
     @session()
     def ls(
-        cls, filters: list[dict[str, Any]] | None = None, session: Session | None = None
+        cls, filters: list[FilterTypeDef] | None = None, session: Session | None = None
     ) -> list[Snapshot]:
         """List snapshots.
 
@@ -508,7 +517,7 @@ class Snapshot(EC2Element):
         return result
 
 
-class NetworkInterface(EC2Element):
+class NetworkInterface(EC2Element[dict[str, Any]]):
     """EC2 Network Interface."""
 
     def public_ip(self) -> str | None:

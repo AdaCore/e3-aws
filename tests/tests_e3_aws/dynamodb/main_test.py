@@ -14,11 +14,16 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterable
 
+    from types_boto3_dynamodb.type_defs import TableAttributeValueTypeDef
+
     from typing import Any
 
 TABLE_NAME = "customer"
 PRIMARY_KEYS = ["name"]
-CUSTOMERS = [{"name": "John", "age": 32}, {"name": "Doe", "age": 23}]
+CUSTOMERS: list[dict[str, TableAttributeValueTypeDef]] = [
+    {"name": "John", "age": 32},
+    {"name": "Doe", "age": 23},
+]
 
 
 def assert_customers(client: DynamoDB, customers: list[dict[str, Any]]) -> None:

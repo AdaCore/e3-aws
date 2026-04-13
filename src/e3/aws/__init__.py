@@ -23,7 +23,7 @@ from e3.env import Env
 from e3.error import E3Error
 from e3.os.process import Run
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, cast, overload
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,16 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
     from datetime import datetime
     from types import TracebackType
+
+    from types_boto3_cloudformation import CloudFormationClient
+    from types_boto3_dynamodb import DynamoDBClient
+    from types_boto3_ec2 import EC2Client
+    from types_boto3_ecr import ECRClient
+    from types_boto3_iam import IAMClient
+    from types_boto3_lambda import LambdaClient
+    from types_boto3_s3 import S3Client
+    from types_boto3_sts import STSClient
+    from types_boto3_sts.type_defs import AssumeRoleRequestTypeDef
 
     from typing import Any, ParamSpec, TypedDict, TypeVar
 
@@ -125,8 +135,10 @@ class Session:
         self.default_region = self.regions[0]
 
         self.force_stub = stub
-        self.clients: dict[str, botocore.client.Client] = {}
-        self.stubbers: dict[str, botocore.stub.Stubber] = {}
+        # Clients per regions per services
+        self.clients: dict[str, dict[str, botocore.client.BaseClient]] = {}
+        # Stubbers per regions per services
+        self.stubbers: dict[str, dict[str, Stubber]] = {}
 
         self._account_alias: str | None = None
 
@@ -172,7 +184,7 @@ class Session:
             keys are translated to be compatible to update os.environ.
         """
         client = self.client("sts", region=self.regions[0])
-        arguments: dict[str, Any] = {
+        arguments: AssumeRoleRequestTypeDef = {
             "RoleArn": role_arn,
             "RoleSessionName": role_session_name,
         }
@@ -187,18 +199,21 @@ class Session:
 
         response = client.assume_role(**arguments)
 
-        credentials = response["Credentials"]
+        credentials = cast("AWSCredentials", response["Credentials"])
         if as_env_var:
             key_to_envvar = {
                 "AccessKeyId": "AWS_ACCESS_KEY_ID",
                 "SecretAccessKey": "AWS_SECRET_ACCESS_KEY",
                 "SessionToken": "AWS_SESSION_TOKEN",
             }
-            credentials = {
-                key_to_envvar[k]: v
-                for k, v in credentials.items()
-                if k in key_to_envvar
-            }
+            credentials = cast(
+                "AWSCredentials",
+                {
+                    key_to_envvar[k]: v
+                    for k, v in credentials.items()
+                    if k in key_to_envvar
+                },
+            )
 
         return credentials
 
@@ -221,12 +236,16 @@ class Session:
         """Return identity information."""
         if self._identity is None:
             sts_client = self.client("sts")
-            self._identity = {"UserId": "", "Account": "", "Arn": ""}
-            self._identity.update(sts_client.get_caller_identity())
+            resp = sts_client.get_caller_identity()
+            self._identity = {
+                "UserId": resp.get("UserId", ""),
+                "Account": resp.get("Account", ""),
+                "Arn": resp.get("Arn", ""),
+            }
 
         return self._identity
 
-    def stub(self, name: str, region: str | None = None) -> botocore.stub.Stubber:
+    def stub(self, name: str, region: str | None = None) -> Stubber:
         """Return stub for a given client.
 
         Note that if the client does not exist yet it will be created.
@@ -237,7 +256,8 @@ class Session:
         :return: the stub instance
         """
         if not self.force_stub:
-            return None
+            msg = "Stubs are not activated"
+            raise RuntimeError(msg)
         if region is None:
             region = self.default_region
 
@@ -259,7 +279,54 @@ class Session:
             profile_name=self.profile,
         )
 
-    def client(self, name: str, region: str | None = None) -> botocore.client.Client:
+    @overload
+    def client(self, name: Literal["s3"], region: str | None = ...) -> S3Client: ...
+
+    @overload
+    def client(self, name: Literal["sts"], region: str | None = ...) -> STSClient: ...
+
+    @overload
+    def client(
+        self, name: Literal["cloudformation"], region: str | None = ...
+    ) -> CloudFormationClient: ...
+
+    @overload
+    def client(
+        self, name: Literal["dynamodb"], region: str | None = ...
+    ) -> DynamoDBClient: ...
+
+    @overload
+    def client(self, name: Literal["ec2"], region: str | None = ...) -> EC2Client: ...
+
+    @overload
+    def client(self, name: Literal["ecr"], region: str | None = ...) -> ECRClient: ...
+
+    @overload
+    def client(self, name: Literal["iam"], region: str | None = ...) -> IAMClient: ...
+
+    @overload
+    def client(
+        self, name: Literal["lambda"], region: str | None = ...
+    ) -> LambdaClient: ...
+
+    @overload
+    def client(
+        self, name: str, region: str | None = ...
+    ) -> botocore.client.BaseClient: ...
+
+    def client(
+        self, name: str, region: str | None = None
+    ) -> (
+        S3Client
+        | STSClient
+        | CloudFormationClient
+        | DynamoDBClient
+        | EC2Client
+        | ECRClient
+        | IAMClient
+        | LambdaClient
+        | botocore.client.BaseClient
+    ):
         """Get a client.
 
         :param name: client name
@@ -423,14 +490,15 @@ def assume_profile_main() -> None:
         "SessionToken": "AWS_SESSION_TOKEN",
     }
 
-    frozen_credentials = (
-        boto3.Session(
-            region_name="eu-west-1",
-            profile_name=args.profile,
-        )
-        .get_credentials()
-        .get_frozen_credentials()
-    )
+    session_creds = boto3.Session(
+        region_name="eu-west-1",
+        profile_name=args.profile,
+    ).get_credentials()
+    if session_creds is None:
+        msg = "No credentials found"
+        raise RuntimeError(msg)
+
+    frozen_credentials = session_creds.get_frozen_credentials()
 
     credentials = {v: getattr(frozen_credentials, k) for k, v in var_to_key.items()}
 
