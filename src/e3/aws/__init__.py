@@ -33,12 +33,15 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from types_boto3_cloudformation import CloudFormationClient
+    from types_boto3_cloudfront import CloudFrontClient
     from types_boto3_dynamodb import DynamoDBClient
     from types_boto3_ec2 import EC2Client
     from types_boto3_ecr import ECRClient
     from types_boto3_iam import IAMClient
     from types_boto3_lambda import LambdaClient
+    from types_boto3_pricing import PricingClient
     from types_boto3_s3 import S3Client
+    from types_boto3_secretsmanager import SecretsManagerClient
     from types_boto3_sts import STSClient
     from types_boto3_sts.type_defs import AssumeRoleRequestTypeDef
 
@@ -283,12 +286,22 @@ class Session:
     def client(self, name: Literal["s3"], region: str | None = ...) -> S3Client: ...
 
     @overload
+    def client(
+        self, name: Literal["secretsmanager"], region: str | None = ...
+    ) -> SecretsManagerClient: ...
+
+    @overload
     def client(self, name: Literal["sts"], region: str | None = ...) -> STSClient: ...
 
     @overload
     def client(
         self, name: Literal["cloudformation"], region: str | None = ...
     ) -> CloudFormationClient: ...
+
+    @overload
+    def client(
+        self, name: Literal["cloudfront"], region: str | None = ...
+    ) -> CloudFrontClient: ...
 
     @overload
     def client(
@@ -311,6 +324,11 @@ class Session:
 
     @overload
     def client(
+        self, name: Literal["pricing"], region: str | None = ...
+    ) -> PricingClient: ...
+
+    @overload
+    def client(
         self, name: str, region: str | None = ...
     ) -> botocore.client.BaseClient: ...
 
@@ -318,13 +336,16 @@ class Session:
         self, name: str, region: str | None = None
     ) -> (
         S3Client
+        | SecretsManagerClient
         | STSClient
         | CloudFormationClient
+        | CloudFrontClient
         | DynamoDBClient
         | EC2Client
         | ECRClient
         | IAMClient
         | LambdaClient
+        | PricingClient
         | botocore.client.BaseClient
     ):
         """Get a client.
