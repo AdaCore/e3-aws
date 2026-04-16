@@ -22,6 +22,7 @@ import botocore.exceptions
 import yaml
 from typing_extensions import override
 
+from e3.aws import iterate
 from e3.env import Env
 
 from typing import TYPE_CHECKING, cast
@@ -792,8 +793,6 @@ class Stack:
         :param mark_as_read: if True, all events read won't be returned on next
             calls to events method.
         """
-        from e3.aws import iterate
-
         latest_read_event = self.latest_read_event
         if mark_as_read:
             self.latest_read_event = None
