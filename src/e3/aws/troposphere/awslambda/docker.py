@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
-from pathlib import Path
 
 from e3.aws.troposphere.awslambda import Architecture, Function, UnknownPlatform
 from e3.aws.util.ecr import build_and_push_image
@@ -12,6 +11,8 @@ from e3.aws.util.ecr import build_and_push_image
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from python_on_whales import DockerClient
     from troposphere import AWSObject, GetAtt, awslambda
 
