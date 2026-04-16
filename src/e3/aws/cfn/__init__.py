@@ -22,6 +22,7 @@ import botocore.exceptions
 import yaml
 from typing_extensions import override
 
+from e3.aws import iterate
 from e3.env import Env
 
 from typing import TYPE_CHECKING, cast
@@ -41,7 +42,7 @@ if TYPE_CHECKING:
         ValidateTemplateOutputTypeDef,
     )
 
-    from typing import Any, ParamSpec, TypeVar
+    from typing import Any, ParamSpec, Self, TypeVar
 
     P = ParamSpec("P")
     T = TypeVar("T")
@@ -517,7 +518,7 @@ class Stack:
         self.uuid = str(uuid.uuid1(clock_seq=int(1000 * time.time())))
         self.latest_read_event: StackEvent | None = None
 
-    def add(self, element: Stack | Resource) -> Stack:
+    def add(self, element: Stack | Resource) -> Self:
         """Add a resource or merge a stack.
 
         :param element: if a resource add the resource to the stack. If a stack
@@ -533,7 +534,7 @@ class Stack:
         self.resources[element.name] = element
         return self
 
-    def __iadd__(self, element: Stack | Resource) -> Stack:
+    def __iadd__(self, element: Stack | Resource) -> Self:
         """Add a resource or merge a stack.
 
         :param element: if a resource add the resource to the stack. If a stack
@@ -664,9 +665,7 @@ class Stack:
         """
         try:
             self.state()
-        except Exception:
-            # Documentation does not specify the right exception that is raised
-            # by botocore.
+        except Exception:  # noqa: BLE001
             return False
         return True
 
@@ -792,8 +791,6 @@ class Stack:
         :param mark_as_read: if True, all events read won't be returned on next
             calls to events method.
         """
-        from e3.aws import iterate
-
         latest_read_event = self.latest_read_event
         if mark_as_read:
             self.latest_read_event = None

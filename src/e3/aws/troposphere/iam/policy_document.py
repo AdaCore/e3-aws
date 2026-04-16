@@ -9,6 +9,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from e3.aws.troposphere.iam.policy_statement import PolicyStatement
 
+    from typing import Self
+
 
 @dataclass
 class PolicyDocument:
@@ -29,7 +31,7 @@ class PolicyDocument:
         """
         return PolicyDocument(statements=self.statements + other.statements)
 
-    def __iadd__(self, other: PolicyDocument) -> PolicyDocument:
+    def __iadd__(self, other: PolicyDocument) -> Self:
         """Merge another policy document into this one.
 
         :param other: the policy document to merge

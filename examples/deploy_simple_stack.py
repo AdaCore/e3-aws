@@ -21,9 +21,9 @@ from __future__ import annotations
 
 import sys
 from functools import cached_property
-from typing_extensions import override
 
 from troposphere import GetAtt, Ref, Tags, ec2, iam
+from typing_extensions import override
 
 from e3.aws.troposphere import CFNProjectMain, Construct, Stack, name_to_id
 from e3.aws.troposphere.ec2 import VPCv2

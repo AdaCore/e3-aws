@@ -241,9 +241,9 @@ class FlaskLambdaHandler:
             environ["CONTENT_LENGTH"] = str(len(body))
 
         # Export headers into the WSGI environment
-        for header in headers:
+        for header, value in headers.items():
             wsgi_name = "HTTP_" + header.upper().replace("-", "_")
-            environ[wsgi_name] = headers[header]
+            environ[wsgi_name] = value
 
         # Set HTTP_COOKIE if necessary
         if cookies:

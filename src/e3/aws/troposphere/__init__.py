@@ -168,11 +168,8 @@ class Asset(Construct):
         :param check_exists: check if an S3 object exists before uploading it
         :param dry_run: don't upload the file if set
         """
-        logger.info(
-            "Upload {} to {}:{}".format(
-                os.path.relpath(file, root_dir).replace("\\", "/"), s3_bucket, s3_key
-            )
-        )
+        rel_path = os.path.relpath(file, root_dir).replace("\\", "/")
+        logger.info(f"Upload {rel_path} to {s3_bucket}:{s3_key}")
 
         if client is None:
             return

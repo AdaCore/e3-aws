@@ -6,7 +6,6 @@ import base64
 import logging
 import tempfile
 from collections.abc import Iterator
-from pathlib import Path
 
 from python_on_whales import DockerClient
 
@@ -15,6 +14,8 @@ from e3.fs import sync_tree
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from e3.aws import Session
 
 logger = logging.getLogger("e3.aws.utils.ecr")
