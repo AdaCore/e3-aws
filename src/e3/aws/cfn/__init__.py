@@ -665,9 +665,7 @@ class Stack:
         """
         try:
             self.state()
-        except Exception:
-            # Documentation does not specify the right exception that is raised
-            # by botocore.
+        except Exception:  # noqa: BLE001
             return False
         return True
 
