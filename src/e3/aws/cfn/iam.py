@@ -204,7 +204,7 @@ class PolicyDocument:
         self.statements.append(statement)
         return self
 
-    def extend(self, statements: list[Statement]) -> PolicyDocument:
+    def extend(self, statements: list[Statement]) -> Self:
         """Append a list of statements.
 
         :param statements: IAM Statements
@@ -213,7 +213,7 @@ class PolicyDocument:
         self.statements.extend(statements)
         return self
 
-    def __iadd__(self, statements: list[Statement]) -> PolicyDocument:  # type: ignore[misc]
+    def __iadd__(self, statements: list[Statement]) -> Self:  # type: ignore[misc]
         """See extend."""
         return self.extend(statements)
 

@@ -44,7 +44,7 @@ if TYPE_CHECKING:
 
     from e3.aws.troposphere import Stack
 
-    from typing import Any
+    from typing import Any, Self
 
 logger = logging.getLogger("e3.aws.troposphere.awslambda")
 
@@ -154,7 +154,7 @@ class PyFunctionAsset(Asset):
         self._archive_tmpd: TemporaryDirectory | None = None
         self._archive_dir: str | None = None
 
-    def __enter__(self) -> PyFunctionAsset:
+    def __enter__(self) -> Self:
         """Create a temporary archive directory."""
         if self._archive_dir is None:
             self._archive_tmpd = TemporaryDirectory()

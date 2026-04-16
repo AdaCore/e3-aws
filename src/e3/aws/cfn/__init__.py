@@ -41,7 +41,7 @@ if TYPE_CHECKING:
         ValidateTemplateOutputTypeDef,
     )
 
-    from typing import Any, ParamSpec, TypeVar
+    from typing import Any, ParamSpec, Self, TypeVar
 
     P = ParamSpec("P")
     T = TypeVar("T")
@@ -517,7 +517,7 @@ class Stack:
         self.uuid = str(uuid.uuid1(clock_seq=int(1000 * time.time())))
         self.latest_read_event: StackEvent | None = None
 
-    def add(self, element: Stack | Resource) -> Stack:
+    def add(self, element: Stack | Resource) -> Self:
         """Add a resource or merge a stack.
 
         :param element: if a resource add the resource to the stack. If a stack
@@ -533,7 +533,7 @@ class Stack:
         self.resources[element.name] = element
         return self
 
-    def __iadd__(self, element: Stack | Resource) -> Stack:
+    def __iadd__(self, element: Stack | Resource) -> Self:
         """Add a resource or merge a stack.
 
         :param element: if a resource add the resource to the stack. If a stack
