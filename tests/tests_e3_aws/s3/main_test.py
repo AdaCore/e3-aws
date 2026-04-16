@@ -140,7 +140,8 @@ def test_bucket_auto_delete() -> None:
     assert not client.bucket_exists
 
 
-def test_bucket_already_exist_error(client: S3) -> None:
+@pytest.mark.usefixtures("client")
+def test_bucket_already_exist_error() -> None:
     """Test creating an already existing bucket in a context."""
     with (
         pytest.raises(BucketExistsError),
