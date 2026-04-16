@@ -692,7 +692,7 @@ def test_pyfunction_with_requirements(
     )
 
     # Fix the archive directory to not have a temporary directory
-    my_lambda.code_asset._archive_dir = "MypylambdaSources"
+    my_lambda.code_asset._archive_dir = "MypylambdaSources"  # noqa: SLF001
 
     with patch("e3.aws.troposphere.awslambda.Run") as mock_run:
         mock_run.return_value.status = 0
