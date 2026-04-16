@@ -11,8 +11,7 @@ from e3.aws.cfn.s3 import Bucket
 def test_stack_create() -> None:
     """Test stack creation."""
     s = Stack(name="teststack")
-    s.body
-    assert True
+    assert s.body is not None
 
     with pytest.raises(AssertionError):
         # Create a stack with an invalid name
