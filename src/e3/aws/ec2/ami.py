@@ -233,8 +233,8 @@ class AMI(EC2Element["ImageTypeDef"]):
                 continue
 
             consider_ami = True
-            for tag in tag_filters:
-                if not re.match(tag_filters[tag], ami.tags.get(tag, "")):
+            for tag, pattern in tag_filters.items():
+                if not re.match(pattern, ami.tags.get(tag, "")):
                     consider_ami = False
                     continue
 
