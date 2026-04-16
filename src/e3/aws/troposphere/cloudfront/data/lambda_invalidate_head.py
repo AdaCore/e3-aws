@@ -5,9 +5,9 @@ from __future__ import annotations
 import os
 import time
 
-from typing import TYPE_CHECKING
-
 import boto3
+
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Any
