@@ -826,10 +826,10 @@ class PyFunction(Function):
         :param archive_path: path to the archive
         :return: the list of files in the archive
         """
-        with zipfile.ZipFile(archive_path) as zip:
+        with zipfile.ZipFile(archive_path) as archive:
             return [
                 f"{line}\n"
-                for line in sorted(zip.namelist())
+                for line in sorted(archive.namelist())
                 if not line.endswith(".pyc")
             ]
 
@@ -1306,11 +1306,11 @@ class BlueGreenAliases(Construct):
             :param default_name: default alias name if none is specified
             """
             name = config.name if config.name is not None else default_name
-            id = name_to_id(f"{self.lambda_name}-{name}-alias")
+            alias_id = name_to_id(f"{self.lambda_name}-{name}-alias")
             return Alias(
-                name=id,
+                name=alias_id,
                 description=f"{name} alias for {self.lambda_name} lambda",
-                alias_name=config.name if config.name is not None else id,
+                alias_name=config.name if config.name is not None else alias_id,
                 lambda_arn=self.lambda_arn,
                 lambda_version=config.version,
                 provisioned_concurrency_config=config.provisioned_concurrency_config,
