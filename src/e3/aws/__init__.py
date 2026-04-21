@@ -34,14 +34,18 @@ if TYPE_CHECKING:
 
     from types_boto3_cloudformation import CloudFormationClient
     from types_boto3_cloudfront import CloudFrontClient
+    from types_boto3_cloudwatch import CloudWatchClient
     from types_boto3_dynamodb import DynamoDBClient
     from types_boto3_ec2 import EC2Client
     from types_boto3_ecr import ECRClient
     from types_boto3_iam import IAMClient
     from types_boto3_lambda import LambdaClient
+    from types_boto3_logs import CloudWatchLogsClient
     from types_boto3_pricing import PricingClient
     from types_boto3_s3 import S3Client
+    from types_boto3_scheduler import EventBridgeSchedulerClient
     from types_boto3_secretsmanager import SecretsManagerClient
+    from types_boto3_ssm import SSMClient
     from types_boto3_sts import STSClient
     from types_boto3_sts.type_defs import AssumeRoleRequestTypeDef
 
@@ -287,8 +291,16 @@ class Session:
 
     @overload
     def client(
+        self, name: Literal["scheduler"], region: str | None = ...
+    ) -> EventBridgeSchedulerClient: ...
+
+    @overload
+    def client(
         self, name: Literal["secretsmanager"], region: str | None = ...
     ) -> SecretsManagerClient: ...
+
+    @overload
+    def client(self, name: Literal["ssm"], region: str | None = ...) -> SSMClient: ...
 
     @overload
     def client(self, name: Literal["sts"], region: str | None = ...) -> STSClient: ...
@@ -302,6 +314,11 @@ class Session:
     def client(
         self, name: Literal["cloudfront"], region: str | None = ...
     ) -> CloudFrontClient: ...
+
+    @overload
+    def client(
+        self, name: Literal["cloudwatch"], region: str | None = ...
+    ) -> CloudWatchClient: ...
 
     @overload
     def client(
@@ -324,6 +341,11 @@ class Session:
 
     @overload
     def client(
+        self, name: Literal["logs"], region: str | None = ...
+    ) -> CloudWatchLogsClient: ...
+
+    @overload
+    def client(
         self, name: Literal["pricing"], region: str | None = ...
     ) -> PricingClient: ...
 
@@ -336,10 +358,14 @@ class Session:
         self, name: str, region: str | None = None
     ) -> (
         S3Client
+        | EventBridgeSchedulerClient
         | SecretsManagerClient
+        | SSMClient
         | STSClient
         | CloudFormationClient
         | CloudFrontClient
+        | CloudWatchClient
+        | CloudWatchLogsClient
         | DynamoDBClient
         | EC2Client
         | ECRClient
