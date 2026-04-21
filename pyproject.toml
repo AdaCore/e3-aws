@@ -102,6 +102,8 @@ line-length = 88
 select = ["ALL"]
 
 ignore = [
+  "C901", # too complex function (MCCabe complexity)
+
   # Decision not to follow
   "G004", # we accept f-string in logging statements
   "ERA001", # too many false positive with this rule
