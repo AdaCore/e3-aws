@@ -205,7 +205,7 @@ class Asset(Construct):
 class Stack(cfn.Stack):
     """Cloudformation stack using troposphere resources."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         stack_name: str,
         description: str | None = None,

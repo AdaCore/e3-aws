@@ -404,7 +404,7 @@ class VPC(Construct):
       if there is no private subnet or NAT configured
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         name: str,
         region: str = "eu-west-1",

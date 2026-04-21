@@ -32,7 +32,7 @@ class S3WebsiteDistribution(Construct):
     are updated.
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         name: str,
         aliases: list[str],

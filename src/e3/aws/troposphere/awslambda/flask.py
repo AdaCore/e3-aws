@@ -118,7 +118,7 @@ class PyFlaskFunctionAsset(PyFunctionAsset):
 class PyFlaskFunction(PyFunction):
     """Provide PyFlaskFunction Construct."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         name: str,
         description: str,
@@ -212,7 +212,7 @@ class PyFlaskFunction(PyFunction):
 class Py38FlaskFunction(PyFlaskFunction):
     """Provide Py38FlaskFunction Construct."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         name: str,
         description: str,

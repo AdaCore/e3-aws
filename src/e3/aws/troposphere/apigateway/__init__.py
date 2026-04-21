@@ -501,7 +501,7 @@ class Api(Construct):
 class HttpApi(Api):
     """HTTP API support."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         name: str,
         description: str,
@@ -804,7 +804,7 @@ class RestApi(Api):
     # Apigateway v1 only allows a-zA-Z0-9_
     DEFAULT_STAGE_NAME = "default"
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         name: str,
         description: str,

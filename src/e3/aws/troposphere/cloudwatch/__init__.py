@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class Alarm(Construct):
     """A CloudWatch Alarm."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         name: str,
         description: str,

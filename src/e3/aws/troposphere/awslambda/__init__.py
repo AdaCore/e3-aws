@@ -288,7 +288,7 @@ class PyFunctionAsset(Asset):
 class Function(Construct):
     """A lambda function."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         name: str,
         description: str,
@@ -661,7 +661,7 @@ class PyFunction(Function):
         }
     )
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         name: str,
         description: str,
