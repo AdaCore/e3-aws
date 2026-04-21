@@ -416,7 +416,7 @@ class StackEventStatus:
 class StackEvent:
     """A stack event (see describe_stack_events API)."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         stack_id: str,
         event_id: str,

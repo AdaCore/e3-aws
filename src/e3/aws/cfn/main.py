@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 class CFNMain(Main, metaclass=abc.ABCMeta):
     """Main to handle CloudFormation stack from command line."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         regions: list[str],
         default_profile: str | None = None,

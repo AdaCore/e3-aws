@@ -89,7 +89,7 @@ class GlobalSecondaryIndex:
 class Table(Construct):
     """A DynamoDB Table."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         name: str,
         attribute_definitions: dict[str, str],

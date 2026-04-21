@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class DockerFunction(Function):
     """Lambda using a Docker image."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         name: str,
         description: str,

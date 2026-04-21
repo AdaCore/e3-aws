@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 class BucketWithRoles(Construct):
     """Provide resources for a s3 bucket with its access roles."""
 
-    def __init__(
+    def __init__(  # noqa: PLR0913
         self,
         name: str,
         iam_names_prefix: str,
