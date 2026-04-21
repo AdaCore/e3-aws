@@ -38,6 +38,8 @@ from e3.vcs.git import GitRepository
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from types_boto3_s3 import S3Client
 
 logger = logging.getLogger(__name__)
@@ -428,66 +430,103 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
         else:
             print("No template diff")
 
-    def execute_for_stack(self, stack: Stack, aws_env: Session | None = None) -> int:
-        """Execute application for a given stack and return exit status.
+    def _execute_push_or_update(self, stack: Stack) -> int | None:
+        """Handle the push/update sub-command.
 
-        :param Stack: the stack on which the application executes
+        :param stack: the stack to push or update
+        """
+        assert self.args is not None
+        self._upload_stack(stack)
+
+        logger.info(f"Validate template for stack {stack.name}")
+        if self.args.dry_run:
+            return None
+        try:
+            stack.validate(url=self.s3_template_url)
+        except Exception:
+            logger.exception("Invalid CloudFormation template")
+            logger.exception(stack.body)
+            raise
+        return self._push_stack_changeset(
+            stack=stack, s3_template_url=self.s3_template_url
+        )
+
+    def _execute_show(self, stack: Stack) -> int | None:
+        """Handle the show sub-command and return an exit code or None.
+
+        :param stack: the stack to show
+        """
+        assert self.args is not None
+        if self.args.diff and self.aws_env is None:
+            print("An AWS session is required to perform the diff")
+            return 1
+        self._show(stack=stack)
+        return None
+
+    def _execute_protect(self, stack: Stack) -> None:
+        """Handle the protect sub-command.
+
+        :param stack: the stack to protect
+        """
+        stack.enable_termination_protection()
+        if self.stack_policy_body is not None:
+            stack.set_stack_policy(self.stack_policy_body)
+        else:
+            print("No stack policy to set")
+
+    def _execute_show_cfn_policy(self, stack: Stack) -> None:
+        """Handle the show-cfn-policy sub-command.
+
+        :param stack: the stack for which to show the required CloudFormation policy
+        """
+        try:
+            print(
+                json.dumps(
+                    stack.cfn_policy_document().as_dict,  # type: ignore
+                    indent=2,
+                )
+            )
+        except AttributeError as attr_e:
+            print(f"command supported only with troposphere stacks: {attr_e}")
+
+    def _execute_delete(self, stack: Stack) -> None:
+        """Handle the delete sub-command.
+
+        :param stack: the stack to delete
+        """
+        assert self.args is not None
+        stack.delete(wait=self.args.wait_stack_creation)
+
+    def execute_for_stack(self, stack: Stack, aws_env: Session | None = None) -> int:
+        """Execute command for a given stack and return exit status.
+
+        :param Stack: the stack on which to execute the command
         :param aws_env: custom AWS session to use
         """
         assert self.args is not None
+        command_handlers: dict[str, Callable[[Stack], int | None]] = {
+            "push": self._execute_push_or_update,
+            "update": self._execute_push_or_update,
+            "show": self._execute_show,
+            "protect": self._execute_protect,
+            "show-cfn-policy": self._execute_show_cfn_policy,
+            "delete": self._execute_delete,
+        }
         try:
             self.start_session(
                 profile=self.args.profile, region=self.args.region, aws_env=aws_env
             )
-
-            if self.args.command in ("push", "update"):
-                # Synchronize resources to the S3 bucket
-                self._upload_stack(stack)
-
-                logger.info(f"Validate template for stack {stack.name}")
-                if not self.args.dry_run:
-                    try:
-                        stack.validate(url=self.s3_template_url)
-                    except Exception:
-                        logger.exception("Invalid cloud formation template")
-                        logger.exception(stack.body)
-                        raise
-
-                    return self._push_stack_changeset(
-                        stack=stack, s3_template_url=self.s3_template_url
-                    )
-
-            elif self.args.command == "show":
-                if self.args.diff and self.aws_env is None:
-                    print("An AWS session is required to perform the diff")
-                    return 1
-
-                self._show(stack=stack)
-            elif self.args.command == "protect":
-                # Enable termination protection
-                stack.enable_termination_protection()
-
-                if self.stack_policy_body is not None:
-                    stack.set_stack_policy(self.stack_policy_body)
-                else:
-                    print("No stack policy to set")
-            elif self.args.command == "show-cfn-policy":
-                try:
-                    print(
-                        json.dumps(
-                            stack.cfn_policy_document().as_dict,  # type: ignore
-                            indent=2,
-                        )
-                    )
-                except AttributeError as attr_e:
-                    print(f"command supported only with troposphere stacks: {attr_e}")
-            elif self.args.command == "delete":
-                stack.delete(wait=self.args.wait_stack_creation)
+            handler = command_handlers.get(self.args.command)
+            if handler is None:
+                logger.error(f"Unsupported command: {self.args.command}")
+                return 1
+            result = handler(stack)
+            if result is not None:
+                return result
         except botocore.exceptions.ClientError:
             logger.exception("ClientError encountered")
             return 1
-        else:
-            return 0
+        return 0
 
     def execute(
         self,
