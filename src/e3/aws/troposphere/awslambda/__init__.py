@@ -492,17 +492,19 @@ class Function(Construct):
             }
         )
 
-        if self.runtime is not None:
-            params["Runtime"] = self.runtime
-
-        if self.handler is not None:
-            params["Handler"] = self.handler
+        optional_params = {
+            "Runtime": self.runtime,
+            "Handler": self.handler,
+            "MemorySize": self.memory_size,
+            "ReservedConcurrentExecutions": self.reserved_concurrent_executions,
+            "LoggingConfig": self.logging_config,
+            "DeadLetterConfig": self.dl_config,
+            "VpcConfig": self.vpc_config,
+        }
+        params.update({k: v for k, v in optional_params.items() if v is not None})
 
         if self.architecture is not None:
             params["Architectures"] = [self.architecture.value]
-
-        if self.memory_size is not None:
-            params["MemorySize"] = self.memory_size
 
         if self.ephemeral_storage_size is not None:
             params["EphemeralStorage"] = awslambda.EphemeralStorage(
@@ -510,18 +512,6 @@ class Function(Construct):
             )
         if self.environment is not None:
             params["Environment"] = awslambda.Environment(Variables=self.environment)
-
-        if self.reserved_concurrent_executions is not None:
-            params["ReservedConcurrentExecutions"] = self.reserved_concurrent_executions
-
-        if self.logging_config is not None:
-            params["LoggingConfig"] = self.logging_config
-
-        if self.dl_config is not None:
-            params["DeadLetterConfig"] = self.dl_config
-
-        if self.vpc_config is not None:
-            params["VpcConfig"] = self.vpc_config
 
         result = [awslambda.Function(name_to_id(self.name), **params)]
         # If retention duration is given provide a log group.

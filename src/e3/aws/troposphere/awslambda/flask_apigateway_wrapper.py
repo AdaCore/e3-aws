@@ -132,7 +132,6 @@ class FlaskLambdaHandler:
         """
         del context
         request_ctx = event["requestContext"]
-        remote_user: str | None = None
 
         # http is True if the event comes from HTTP API gateway
         # otherwise it is false and the event is either from a REST API
@@ -141,10 +140,12 @@ class FlaskLambdaHandler:
         # elb is True if the event comes from ELB
         elb = "elb" in request_ctx
 
-        if "authorizer" in request_ctx:
-            remote_user = request_ctx["authorizer"].get("principalId")
-        elif "identity" in request_ctx:
-            remote_user = request_ctx["identity"].get("userArn")
+        # Falls back from authorizer to identity: if authorizer exists but has
+        # no principalId, we still pick up identity.userArn rather than leaving
+        # remote_user as None.
+        remote_user: str | None = request_ctx.get("authorizer", {}).get(
+            "principalId"
+        ) or request_ctx.get("identity", {}).get("userArn")
 
         # Normalized headers
         headers = {k.title(): v for k, v in event["headers"].items()}
