@@ -528,6 +528,47 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             return 1
         return 0
 
+    def _check_repository_state(self) -> int:
+        """Validate the repository state before a deploy.
+
+        :return: 0 if deploy can proceed, 1 otherwise
+        """
+        repo = GitRepository(".")
+
+        error = "Failed to get the current branch"
+        try:
+            branch = repo.git_cmd(["branch", "--show-current"], output=PIPE).out.strip()
+
+            # Check we are on the correct branch
+            if self.deploy_branch is not None and self.deploy_branch != branch:
+                print(f"Can only deploy from branch {self.deploy_branch}")
+                return 1
+
+            # Check there are no local changes
+            error = "Failed to check local changes"
+            changes = repo.git_cmd(["status", "-s"], output=PIPE).out.strip()
+            if changes != "":
+                print(
+                    "Can only deploy from a clean repository, ensure you have "
+                    "no modified files"
+                )
+                return 1
+
+            # Check the branch is up to date
+            error = f"Failed to fetch {branch}"
+            fetch_out = repo.git_cmd(
+                ["fetch", "origin", branch, "--dry-run"], output=PIPE
+            ).out
+            # Check if there is a line indicating a commit
+            if re.search(rf"{branch}\s*\-\>\s*origin\/", fetch_out):
+                print("Can only deploy from up to date branch, please do a git pull")
+                return 1
+        except Exception:
+            logger.exception(error)
+            return 1
+
+        return 0
+
     def execute(
         self,
         args: list[str] | None = None,
@@ -549,50 +590,9 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
             os.environ.get("CI") != "true"
             and self.args.command in ("push", "update")
             and not self.args.dry_run
+            and (repository_state_status := self._check_repository_state())
         ):
-            repo = GitRepository(".")
-
-            # Retrieve the current branch
-            try:
-                branch = repo.git_cmd(
-                    ["branch", "--show-current"], output=PIPE
-                ).out.strip()
-            except Exception:
-                logger.exception("Failed to get the current branch")
-                return 1
-
-            # Check we are on the correct branch
-            if self.deploy_branch is not None and self.deploy_branch != branch:
-                print(f"Can only deploy from branch {self.deploy_branch}")
-                return 1
-
-            # Check there are no local changes
-            try:
-                changes = repo.git_cmd(["status", "-s"], output=PIPE).out.strip()
-                if changes != "":
-                    print(
-                        "Can only deploy from a clean repository, ensure you have "
-                        "no modified files"
-                    )
-                    return 1
-            except Exception:
-                logger.exception("Failed to check local changes")
-                return 1
-
-            # Check the branch is up to date
-            try:
-                fetch_out = repo.git_cmd(
-                    ["fetch", "origin", branch, "--dry-run"], output=PIPE
-                ).out
-                # Check if there is a line indicating a commit
-                if re.search(rf"{branch}\s*\-\>\s*origin\/", fetch_out):
-                    print(
-                        "Can only deploy from up to date branch, please do a git pull"
-                    )
-                    return 1
-            except Exception:
-                logger.exception(f"Failed to fetch {branch}")
-                return 1
+            return repository_state_status
 
         return_val = 0
         stacks = self.create_stack()
