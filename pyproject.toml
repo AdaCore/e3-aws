@@ -102,9 +102,9 @@ line-length = 88
 select = ["ALL"]
 
 ignore = [
-  # Decision not to follow
-  "G004", # we accept f-string in logging statements
+  "C901", # too complex function (MCCabe complexity)
   "ERA001", # too many false positive with this rule
+  "G004", # we accept f-string in logging statements
   "PERF203", # `try`-`except` within a loop incurs performance overhead for Python < 3.11
   "PGH003", # allow type: ignore - can be done by mypy if we wanted to
   "S101", # use of assert statement, used for mypy
