@@ -404,6 +404,7 @@ class CFNProjectMain(CFNMain):
         s3_bucket: str,
         regions: list[str],
         deploy_branch: str | None = None,
+        s3_key: str | None = None,
     ) -> None:
         """Initialize a CFNProjectMain instance.
 
@@ -413,11 +414,12 @@ class CFNProjectMain(CFNMain):
         :param s3_bucket: see CFNMain
         :param regions: see CFNMain
         :param deploy_branch: git branch the script is allowed to deploy from
+        :param s3_key: see CFNMain
         """
         super().__init__(
             regions=regions,
             s3_bucket=s3_bucket,
-            s3_key=name,
+            s3_key=s3_key if s3_key is not None else name,
             assume_read_role=(
                 f"arn:aws:iam::{account_id}:role/cfn-user/CFNAllowReadOf{name}",
                 f"Read{name}Session",
