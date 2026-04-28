@@ -262,15 +262,17 @@ class Session:
             region is taken.
         :return: the stub instance
         """
-        if not self.force_stub:
-            msg = "Stubs are not activated"
-            raise RuntimeError(msg)
         if region is None:
             region = self.default_region
 
-        if name not in self.stubbers or region not in self.stubbers[name]:
+        if name not in self.clients or region not in self.clients[name]:
             # Create client
             self.client(name, region)
+        if name not in self.stubbers:
+            self.stubbers[name] = {}
+        if region not in self.stubbers[name]:
+            self.stubbers[name][region] = Stubber(self.clients[name][region])
+            self.stubbers[name][region].activate()
 
         return self.stubbers[name][region]
 
