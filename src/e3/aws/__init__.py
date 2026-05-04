@@ -32,12 +32,14 @@ if TYPE_CHECKING:
     from datetime import datetime
     from types import TracebackType
 
+    from types_boto3_autoscaling import AutoScalingClient
     from types_boto3_cloudformation import CloudFormationClient
     from types_boto3_cloudfront import CloudFrontClient
     from types_boto3_cloudwatch import CloudWatchClient
     from types_boto3_dynamodb import DynamoDBClient
     from types_boto3_ec2 import EC2Client
     from types_boto3_ecr import ECRClient
+    from types_boto3_ecs import ECSClient
     from types_boto3_iam import IAMClient
     from types_boto3_lambda import LambdaClient
     from types_boto3_logs import CloudWatchLogsClient
@@ -289,6 +291,11 @@ class Session:
         )
 
     @overload
+    def client(
+        self, name: Literal["autoscaling"], region: str | None = ...
+    ) -> AutoScalingClient: ...
+
+    @overload
     def client(self, name: Literal["s3"], region: str | None = ...) -> S3Client: ...
 
     @overload
@@ -334,6 +341,9 @@ class Session:
     def client(self, name: Literal["ecr"], region: str | None = ...) -> ECRClient: ...
 
     @overload
+    def client(self, name: Literal["ecs"], region: str | None = ...) -> ECSClient: ...
+
+    @overload
     def client(self, name: Literal["iam"], region: str | None = ...) -> IAMClient: ...
 
     @overload
@@ -364,6 +374,7 @@ class Session:
         | SecretsManagerClient
         | SSMClient
         | STSClient
+        | AutoScalingClient
         | CloudFormationClient
         | CloudFrontClient
         | CloudWatchClient
@@ -371,6 +382,7 @@ class Session:
         | DynamoDBClient
         | EC2Client
         | ECRClient
+        | ECSClient
         | IAMClient
         | LambdaClient
         | PricingClient
