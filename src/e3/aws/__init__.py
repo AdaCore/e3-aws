@@ -47,6 +47,7 @@ if TYPE_CHECKING:
     from types_boto3_s3 import S3Client
     from types_boto3_scheduler import EventBridgeSchedulerClient
     from types_boto3_secretsmanager import SecretsManagerClient
+    from types_boto3_sesv2 import SESV2Client
     from types_boto3_ssm import SSMClient
     from types_boto3_sts import STSClient
     from types_boto3_sts.type_defs import AssumeRoleRequestTypeDef
@@ -309,6 +310,11 @@ class Session:
     ) -> SecretsManagerClient: ...
 
     @overload
+    def client(
+        self, name: Literal["sesv2"], region: str | None = ...
+    ) -> SESV2Client: ...
+
+    @overload
     def client(self, name: Literal["ssm"], region: str | None = ...) -> SSMClient: ...
 
     @overload
@@ -372,6 +378,7 @@ class Session:
         S3Client
         | EventBridgeSchedulerClient
         | SecretsManagerClient
+        | SESV2Client
         | SSMClient
         | STSClient
         | AutoScalingClient
