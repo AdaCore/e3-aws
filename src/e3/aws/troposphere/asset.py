@@ -33,7 +33,7 @@ class DirectoryAsset(Asset):
         self,
         name: str,
         *,
-        data_dir: str,
+        data_dir: str | Path,
         ignore: str | Sequence[str] | None = None,
         versioning: bool = True,
         layout: AssetLayout = AssetLayout.TREE,
@@ -117,8 +117,8 @@ class DirectoryAsset(Asset):
                 self._upload_file(
                     s3_bucket=s3_bucket,
                     s3_key=f"{s3_root_key}{self.s3_key}/{f.relative_to(self.data_dir)}",
-                    root_dir=str(self.data_dir),
-                    file=str(f),
+                    root_dir=self.data_dir,
+                    file=f,
                     client=client,
                     check_exists=self.versioning,
                     dry_run=dry_run,
@@ -132,7 +132,7 @@ class FileAsset(Asset):
         self,
         name: str,
         *,
-        file_path: str,
+        file_path: str | Path,
         versioning: bool = True,
         layout: AssetLayout = AssetLayout.TREE,
     ) -> None:
@@ -191,7 +191,7 @@ class FileAsset(Asset):
         self._upload_file(
             s3_bucket=s3_bucket,
             s3_key=f"{s3_root_key}{self.s3_key}",
-            root_dir=str(Path(self.file_path).parent),
+            root_dir=Path(self.file_path).parent,
             file=self.file_path,
             client=client,
             check_exists=self.versioning,
