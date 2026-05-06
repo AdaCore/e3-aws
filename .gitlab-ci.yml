@@ -156,8 +156,8 @@ run linux tests:
 
 .windows-image:
   services:
-    - image:e3-windows-2022
-    - platform:x86_64-windows-2022
+    - platform:x86_64-windows-2025
+    - pipeline_mode:ec2_mode
     - cpu:2
     - mem:4
   before_script:
