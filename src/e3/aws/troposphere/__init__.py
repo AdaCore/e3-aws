@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from abc import ABC, abstractmethod
 from collections import deque
 from itertools import chain
@@ -151,8 +150,8 @@ class Asset(Construct):
         self,
         s3_bucket: str,
         s3_key: str,
-        root_dir: str,
-        file: str,
+        root_dir: str | Path,
+        file: str | Path,
         client: S3Client | None = None,
         *,
         check_exists: bool | None = None,
@@ -168,7 +167,9 @@ class Asset(Construct):
         :param check_exists: check if an S3 object exists before uploading it
         :param dry_run: don't upload the file if set
         """
-        rel_path = os.path.relpath(file, root_dir).replace("\\", "/")
+        file = Path(file)
+
+        rel_path = file.relative_to(root_dir).as_posix()
         logger.info(f"Upload {rel_path} to {s3_bucket}:{s3_key}")
 
         if client is None:
@@ -180,7 +181,7 @@ class Asset(Construct):
             return
 
         if not dry_run:
-            with Path(file).open("rb") as f:
+            with file.open("rb") as f:
                 s3.push(key=s3_key, content=f, exist_ok=True)
 
     @abstractmethod
