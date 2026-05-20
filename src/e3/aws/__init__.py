@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from types_boto3_iam import IAMClient
     from types_boto3_lambda import LambdaClient
     from types_boto3_logs import CloudWatchLogsClient
+    from types_boto3_organizations import OrganizationsClient
     from types_boto3_pricing import PricingClient
     from types_boto3_s3 import S3Client
     from types_boto3_scheduler import EventBridgeSchedulerClient
@@ -364,6 +365,11 @@ class Session:
 
     @overload
     def client(
+        self, name: Literal["organizations"], region: str | None = ...
+    ) -> OrganizationsClient: ...
+
+    @overload
+    def client(
         self, name: Literal["pricing"], region: str | None = ...
     ) -> PricingClient: ...
 
@@ -392,6 +398,7 @@ class Session:
         | ECSClient
         | IAMClient
         | LambdaClient
+        | OrganizationsClient
         | PricingClient
         | botocore.client.BaseClient
     ):
