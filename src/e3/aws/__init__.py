@@ -23,7 +23,9 @@ from e3.env import Env
 from e3.error import E3Error
 from e3.os.process import Run
 
-from typing import TYPE_CHECKING, Literal, cast, overload
+from typing import TYPE_CHECKING, Generic, Literal, TypeVar, cast, overload
+
+T = TypeVar("T")
 
 logger = logging.getLogger(__name__)
 
@@ -53,10 +55,9 @@ if TYPE_CHECKING:
     from types_boto3_sts import STSClient
     from types_boto3_sts.type_defs import AssumeRoleRequestTypeDef
 
-    from typing import Any, ParamSpec, TypedDict, TypeVar
+    from typing import Any, ParamSpec, TypedDict
 
     P = ParamSpec("P")
-    T = TypeVar("T")
 
     class AWSCredentials(TypedDict, total=False):
         """Annotate a dict containing AWS credentials.
@@ -647,6 +648,28 @@ def iterate(fun: Callable, key: str, **kwargs: Any) -> Iterator[Any]:  # noqa: A
         result = fun(NextToken=result["NextToken"], **kwargs)
         for data in result.get(key, []):
             yield data
+
+
+class Iterate(Generic[T]):
+    """Typed iterator over paginated botocore responses.
+
+    Wraps iterate and casts each element to T, allowing callers
+    to obtain a properly typed iterator without importing AWS type stubs at
+    runtime.
+    """
+
+    def __init__(self, fun: Callable, key: str, **kwargs: Any) -> None:  # noqa: ANN401
+        """Initialize the iterator.
+
+        :param fun: paginated botocore function to call
+        :param key: key in the response dict that contains the items
+        :param kwargs: additional keyword arguments forwarded to fun
+        """
+        self.it = iterate(fun=fun, key=key, **kwargs)
+
+    def __iter__(self) -> Iterator[T]:
+        """Iterate over the paginated results, casting each element to T."""
+        yield from (cast("T", el) for el in self.it)
 
 
 def name_to_id(name: str) -> str:
