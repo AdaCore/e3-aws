@@ -22,13 +22,13 @@ import botocore.exceptions
 import yaml
 from typing_extensions import override
 
-from e3.aws import iterate
+from e3.aws import Iterate
 from e3.env import Env
 
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable, Iterator
+    from collections.abc import Callable, Iterable, Iterator, Mapping
 
     from types_boto3_cloudformation import CloudFormationClient
     from types_boto3_cloudformation.literals import ResourceStatusType
@@ -38,6 +38,7 @@ if TYPE_CHECKING:
         CreateStackInputTypeDef,
         DescribeChangeSetOutputTypeDef,
         EstimateTemplateCostOutputTypeDef,
+        StackEventTypeDef,  # noqa: F401 Used in double quotes
         StackTypeDef,
         ValidateTemplateOutputTypeDef,
     )
@@ -444,7 +445,7 @@ class StackEvent:
         self.resource_properties = resource_properties
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> StackEvent:
+    def from_dict(cls, data: Mapping[str, Any]) -> StackEvent:
         """Create a stack event from a dict as returned by AWS API."""
         return cls(
             stack_id=data["StackId"],
@@ -795,7 +796,7 @@ class Stack:
         if mark_as_read:
             self.latest_read_event = None
 
-        for element in iterate(
+        for element in Iterate["StackEventTypeDef"](
             client.describe_stack_events, key="StackEvents", StackName=self.stack_id
         ):
             event = StackEvent.from_dict(element)
