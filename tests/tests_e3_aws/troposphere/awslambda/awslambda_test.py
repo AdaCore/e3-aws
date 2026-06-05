@@ -650,13 +650,24 @@ def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
 
 
 @pytest.mark.parametrize(
-    ("python_version", "platform_list"),
+    ("python_version", "architecture", "platform_list"),
     [
-        ("3.9", ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
-        ("3.10", ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
-        ("3.11", ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
+        ("3.9", None, ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
+        (
+            "3.9",
+            Architecture.X86_64,
+            ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"],
+        ),
+        (
+            "3.9",
+            Architecture.ARM64,
+            ["manylinux_2_17_aarch64", "manylinux_2_24_aarch64"],
+        ),
+        ("3.10", None, ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
+        ("3.11", None, ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
         (
             "3.12",
+            None,
             [
                 "manylinux_2_17_x86_64",
                 "manylinux_2_24_x86_64",
@@ -665,7 +676,18 @@ def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
             ],
         ),
         (
+            "3.12",
+            Architecture.ARM64,
+            [
+                "manylinux_2_17_aarch64",
+                "manylinux_2_24_aarch64",
+                "manylinux_2_28_aarch64",
+                "manylinux_2_34_aarch64",
+            ],
+        ),
+        (
             "3.13",
+            None,
             [
                 "manylinux_2_17_x86_64",
                 "manylinux_2_24_x86_64",
@@ -676,7 +698,10 @@ def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
     ],
 )
 def test_pyfunction_with_requirements(
-    python_version: str, platform_list: list[str], tmp_path: Path
+    python_version: str,
+    architecture: Architecture | None,
+    platform_list: list[str],
+    tmp_path: Path,
 ) -> None:
     """Test PyFunction creation."""
     code_dir = tmp_path
@@ -689,6 +714,7 @@ def test_pyfunction_with_requirements(
         code_dir=str(code_dir),
         handler="app.main",
         requirement_file="requirements.txt",
+        architecture=architecture,
     )
 
     # Fix the archive directory to not have a temporary directory
