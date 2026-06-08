@@ -679,6 +679,7 @@ def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
             "3.12",
             Architecture.ARM64,
             [
+                "manylinux2014_aarch64",
                 "manylinux_2_17_aarch64",
                 "manylinux_2_24_aarch64",
                 "manylinux_2_28_aarch64",
