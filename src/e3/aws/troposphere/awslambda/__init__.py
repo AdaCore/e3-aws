@@ -674,6 +674,7 @@ class PyFunction(Function):
                         "manylinux_2_34_x86_64",
                     ),
                     Architecture.ARM64: (
+                        "manylinux2014_aarch64",
                         "manylinux_2_17_aarch64",
                         "manylinux_2_24_aarch64",
                         "manylinux_2_28_aarch64",
