@@ -31,7 +31,7 @@ from e3.fs import mv, rm, sync_tree
 from e3.net.http import HTTPSession
 from e3.os.process import Run
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, TypedDict
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -56,6 +56,15 @@ class Architecture(Enum):
     ARM64 = "arm64"
 
 
+class RuntimeConfig(TypedDict):
+    """Provide a type for Python runtime packaging configurations."""
+
+    implementation: str
+    """pip implementation tag (e.g. cp for CPython)"""
+    platforms: dict[Architecture, tuple[str, ...]]
+    """pip platform tags to fetch wheels for, per CPU architecture"""
+
+
 class UnknownPlatform(Exception):  # noqa: N818
     """Unknown platform exception."""
 
@@ -75,6 +84,7 @@ def package_pyfunction_code(
     populate_package_dir: Callable[[str | Path], None],
     runtime: str | None = None,
     requirement_file: str | Path | None = None,
+    architecture: Architecture | None = None,
 ) -> None:
     """Package user code with dependencies.
 
@@ -85,11 +95,14 @@ def package_pyfunction_code(
         extra code
     :param runtime: the Python runtime
     :param requirement_file: the list of Python dependencies
+    :param architecture: the target CPU architecture for fetched wheels.
+        Defaults to Architecture.X86_64 to match AWS Lambda's default.
     """
     # Install the requirements
     if requirement_file is not None:
         assert runtime is not None
         runtime_config = PyFunction.RUNTIME_CONFIGS[runtime]
+        platforms = runtime_config["platforms"][architecture or Architecture.X86_64]
         p = Run(
             [
                 sys.executable,
@@ -97,7 +110,7 @@ def package_pyfunction_code(
                 "pip",
                 "install",
                 f"--python-version={runtime.lstrip('python')}",
-                *(f"--platform={platform}" for platform in runtime_config["platforms"]),
+                *(f"--platform={platform}" for platform in platforms),
                 f"--implementation={runtime_config['implementation']}",
                 "--only-binary=:all:",
                 f"--target={package_dir}",
@@ -134,6 +147,7 @@ class PyFunctionAsset(Asset):
         code_dir: str | Path,
         runtime: str,
         requirement_file: str | Path | None = None,
+        architecture: Architecture | None = None,
         layout: AssetLayout = AssetLayout.TREE,
     ) -> None:
         """Initialize PyFunctionAsset.
@@ -142,12 +156,15 @@ class PyFunctionAsset(Asset):
         :param code_dir: directory that contains the Python code
         :param runtime: the Python runtime
         :param requirement_file: the list of Python dependencies
+        :param architecture: the target CPU architecture, used to fetch wheels
+            matching the Lambda's CPU. Defaults to Architecture.X86_64.
         :param layout: the layout for this asset
         """
         super().__init__(name)
         self.code_dir = code_dir
         self.runtime = runtime
         self.requirement_file = requirement_file
+        self.architecture = architecture
         self.layout = layout
 
         # Temporary directory where the archive is created
@@ -201,6 +218,7 @@ class PyFunctionAsset(Asset):
             populate_package_dir=self.populate_package_dir,
             runtime=self.runtime,
             requirement_file=self.requirement_file,
+            architecture=self.architecture,
         )
 
         raw_archive_path = str((Path(self._archive_dir) / raw_archive_name).resolve())
@@ -626,12 +644,20 @@ class PyFunction(Function):
 
     AMAZON_LINUX_2_RUNTIMES = ("3.9", "3.10", "3.11")
     AMAZON_LINUX_2023_RUNTIMES = ("3.12", "3.13")
-    RUNTIME_CONFIGS: ClassVar[dict[str, dict[str, str | tuple[str, ...]]]] = {
+    RUNTIME_CONFIGS: ClassVar[dict[str, RuntimeConfig]] = {
         f"python{version}": {
             "implementation": "cp",
-            # Amazon Linux 2 glibc version is 2.26 and we support only x86_64
-            # architecture for now.
-            "platforms": ("manylinux_2_17_x86_64", "manylinux_2_24_x86_64"),
+            # Amazon Linux 2 glibc version is 2.26.
+            "platforms": {
+                Architecture.X86_64: (
+                    "manylinux_2_17_x86_64",
+                    "manylinux_2_24_x86_64",
+                ),
+                Architecture.ARM64: (
+                    "manylinux_2_17_aarch64",
+                    "manylinux_2_24_aarch64",
+                ),
+            },
         }
         for version in AMAZON_LINUX_2_RUNTIMES
     }
@@ -639,13 +665,21 @@ class PyFunction(Function):
         {
             f"python{version}": {
                 "implementation": "cp",
-                # Amazon Linux 2023 glibc version is 2.34
-                "platforms": (
-                    "manylinux_2_17_x86_64",
-                    "manylinux_2_24_x86_64",
-                    "manylinux_2_28_x86_64",
-                    "manylinux_2_34_x86_64",
-                ),
+                # Amazon Linux 2023 glibc version is 2.34.
+                "platforms": {
+                    Architecture.X86_64: (
+                        "manylinux_2_17_x86_64",
+                        "manylinux_2_24_x86_64",
+                        "manylinux_2_28_x86_64",
+                        "manylinux_2_34_x86_64",
+                    ),
+                    Architecture.ARM64: (
+                        "manylinux_2_17_aarch64",
+                        "manylinux_2_24_aarch64",
+                        "manylinux_2_28_aarch64",
+                        "manylinux_2_34_aarch64",
+                    ),
+                },
             }
             for version in AMAZON_LINUX_2023_RUNTIMES
         }
@@ -666,6 +700,7 @@ class PyFunction(Function):
         requirement_file: str | Path | None = None,
         code_version: int | None = None,
         timeout: int = 3,
+        architecture: Architecture | None = None,
         memory_size: int | None = None,
         ephemeral_storage_size: int | None = None,
         logs_retention_in_days: int | None = 731,
@@ -692,6 +727,8 @@ class PyFunction(Function):
             and packaged along with the lambda code
         :param code_version: code version
         :param timeout: maximum execution time (default: 3s)
+        :param architecture: x86_64 or arm64. (default: x86_64). Also drives the
+            CPU architecture of fetched wheels when requirement_file is set.
         :param memory_size: the amount of memory available to the function at
             runtime. The value can be any multiple of 1 MB.
         :param ephemeral_storage_size: The size of the function's /tmp directory
@@ -725,6 +762,7 @@ class PyFunction(Function):
             code_version=code_version,
             timeout=timeout,
             runtime=runtime,
+            architecture=architecture,
             memory_size=memory_size,
             ephemeral_storage_size=ephemeral_storage_size,
             logs_retention_in_days=logs_retention_in_days,
@@ -749,6 +787,7 @@ class PyFunction(Function):
                 code_dir=code_dir,
                 runtime=runtime,
                 requirement_file=requirement_file,
+                architecture=architecture,
             )
 
     def resources(self, stack: Stack) -> list[AWSObject | Construct]:
