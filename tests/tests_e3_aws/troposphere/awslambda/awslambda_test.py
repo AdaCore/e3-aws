@@ -750,6 +750,33 @@ def test_pyfunction_with_requirements(
     )
 
 
+def test_pyfunction_no_compile(tmp_path: Path) -> None:
+    """Test PyFunction passes --no-compile to pip when no_compile is True."""
+    my_lambda = PyFunction(
+        name="mypylambda",
+        description="this is a test",
+        role="somearn",
+        runtime="python3.12",
+        code_dir=str(tmp_path),
+        handler="app.main",
+        requirement_file="requirements.txt",
+        architecture=Architecture.ARM64,
+        no_compile=True,
+    )
+
+    # Fix the archive directory to not have a temporary directory
+    my_lambda.code_asset._archive_dir = "MypylambdaSources"  # noqa: SLF001
+
+    with patch("e3.aws.troposphere.awslambda.Run") as mock_run:
+        mock_run.return_value.status = 0
+        # Trigger packaging
+        _ = my_lambda.code_asset.s3_key
+
+    # --no-compile must be passed to pip (order is irrelevant)
+    pip_args = mock_run.call_args.args[0]
+    assert "--no-compile" in pip_args
+
+
 def test_pyfunction_policy_document(stack: Stack) -> None:
     """Test cfn_policy_document of PyFunction."""
     stack.add(
