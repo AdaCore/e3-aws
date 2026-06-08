@@ -85,6 +85,8 @@ def package_pyfunction_code(
     runtime: str | None = None,
     requirement_file: str | Path | None = None,
     architecture: Architecture | None = None,
+    *,
+    no_compile: bool | None = None,
 ) -> None:
     """Package user code with dependencies.
 
@@ -97,6 +99,10 @@ def package_pyfunction_code(
     :param requirement_file: the list of Python dependencies
     :param architecture: the target CPU architecture for fetched wheels.
         Defaults to Architecture.X86_64 to match AWS Lambda's default.
+    :param no_compile: whether to pass --no-compile to pip so dependencies
+        are not byte-compiled by the host interpreter. Defaults to None (pip's
+        default, which compiles). Set to True to allow packaging from any host,
+        e.g. building an arm64 lambda from an x86_64 machine.
     """
     # Install the requirements
     if requirement_file is not None:
@@ -113,6 +119,7 @@ def package_pyfunction_code(
                 *(f"--platform={platform}" for platform in platforms),
                 f"--implementation={runtime_config['implementation']}",
                 "--only-binary=:all:",
+                *(["--no-compile"] if no_compile else []),
                 f"--target={package_dir}",
                 "-r",
                 fspath(requirement_file),
@@ -149,6 +156,7 @@ class PyFunctionAsset(Asset):
         requirement_file: str | Path | None = None,
         architecture: Architecture | None = None,
         layout: AssetLayout = AssetLayout.TREE,
+        no_compile: bool | None = None,
     ) -> None:
         """Initialize PyFunctionAsset.
 
@@ -159,6 +167,7 @@ class PyFunctionAsset(Asset):
         :param architecture: the target CPU architecture, used to fetch wheels
             matching the Lambda's CPU. Defaults to Architecture.X86_64.
         :param layout: the layout for this asset
+        :param no_compile: see package_pyfunction_code
         """
         super().__init__(name)
         self.code_dir = code_dir
@@ -166,6 +175,7 @@ class PyFunctionAsset(Asset):
         self.requirement_file = requirement_file
         self.architecture = architecture
         self.layout = layout
+        self.no_compile = no_compile
 
         # Temporary directory where the archive is created
         self._archive_tmpd: TemporaryDirectory | None = None
@@ -219,6 +229,7 @@ class PyFunctionAsset(Asset):
             runtime=self.runtime,
             requirement_file=self.requirement_file,
             architecture=self.architecture,
+            no_compile=self.no_compile,
         )
 
         raw_archive_path = str((Path(self._archive_dir) / raw_archive_name).resolve())
@@ -710,6 +721,8 @@ class PyFunction(Function):
         logging_config: awslambda.LoggingConfig | None = None,
         dl_config: awslambda.DeadLetterConfig | None = None,
         vpc_config: awslambda.VPCConfig | None = None,
+        *,
+        no_compile: bool | None = None,
     ) -> None:
         """Initialize an AWS lambda function with a Python runtime.
 
@@ -748,6 +761,7 @@ class PyFunction(Function):
             a list of security groups and subnets in the VPC. When you connect a
             function to a VPC, it can access resources and the internet only
             through that VPC
+        :param no_compile: see package_pyfunction_code
         """
         assert runtime.startswith("python"), "PyFunction only accept Python runtimes"
         super().__init__(
@@ -789,6 +803,7 @@ class PyFunction(Function):
                 runtime=runtime,
                 requirement_file=requirement_file,
                 architecture=architecture,
+                no_compile=no_compile,
             )
 
     def resources(self, stack: Stack) -> list[AWSObject | Construct]:
