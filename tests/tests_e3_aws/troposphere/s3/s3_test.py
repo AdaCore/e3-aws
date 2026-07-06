@@ -223,3 +223,36 @@ def test_bucket_with_default_lifecycle_rule(stack: Stack) -> None:
         expected_template = json.load(fd)
 
     assert stack.export()["Resources"] == expected_template
+
+
+def test_bucket_with_policy_additional_args(stack: Stack) -> None:
+    """Test bucket creation with additional policy arguments."""
+    bucket = Bucket(
+        name="test-bucket",
+        bucket_policy_additional_args={
+            "DependsOn": ["SomeOtherResource"],
+            "DeletionPolicy": "Retain",
+        },
+    )
+    stack.add(bucket)
+
+    with (TEST_DIR / "bucket-with-policy-additional-args.json").open() as fd:
+        expected_template = json.load(fd)
+
+    assert stack.export()["Resources"] == expected_template
+
+
+def test_bucket_policy_additional_args_can_override_reserved_keys(
+    stack: Stack,
+) -> None:
+    """Override Bucket and PolicyDocument using bucket_policy_additional_args."""
+    custom_policy: dict = {"Statement": []}
+    bucket = Bucket(
+        name="test-bucket",
+        bucket_policy_additional_args={"PolicyDocument": custom_policy},
+    )
+    stack.add(bucket)
+
+    resources = stack.export()["Resources"]
+    policy_resource = resources["TestBucketPolicy"]
+    assert policy_resource["Properties"]["PolicyDocument"] == custom_policy
