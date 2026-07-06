@@ -55,6 +55,7 @@ class Bucket(Construct):
         ) = EncryptionAlgorithm.AES256,
         authorized_encryptions: list[EncryptionAlgorithm] | None = None,
         add_multipart_lifecycle_rule: bool = False,
+        bucket_policy_additional_args: dict[str, Any] | None = None,
         **bucket_kwargs: Any,  # noqa: ANN401
     ) -> None:
         """Initialize a bucket.
@@ -68,6 +69,9 @@ class Bucket(Construct):
             to authorize.
         :param add_multipart_lifecycle_rule: add default rule is to abort multipart
             uploads that remain incomplete after 7 days.
+        :param bucket_policy_additional_args: additional arguments to pass to the bucket
+            policy constructor. Keys ``Bucket`` and ``PolicyDocument`` are set
+            automatically but can be overridden by values provided here.
         :param bucket_kwargs: keyword arguments to pass to the bucket constructor
         """
         self.name = name
@@ -93,6 +97,7 @@ class Bucket(Construct):
         self.queue_configurations: list[tuple[dict[str, str], Queue | None, str]] = []
         self.notification_resources: list[AWSObject] = []
         self.depends_on: list[str] = []
+        self.bucket_policy_additional_args = bucket_policy_additional_args or {}
         self.bucket_kwargs = bucket_kwargs
 
         # Add minimal policy statements
@@ -268,12 +273,16 @@ class Bucket(Construct):
         }
 
         attr |= self.bucket_kwargs
+        policy_attr = {
+            "Bucket": self.ref,
+            "PolicyDocument": self.policy_document.as_dict,
+        }
+        policy_attr |= self.bucket_policy_additional_args
         return [
             s3.Bucket(name_to_id(self.name), **attr),
             s3.BucketPolicy(
                 name_to_id(self.name) + "Policy",
-                Bucket=self.ref,
-                PolicyDocument=self.policy_document.as_dict,
+                **policy_attr,
             ),
             *self.notification_resources,
         ]
