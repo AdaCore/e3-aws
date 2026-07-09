@@ -377,6 +377,8 @@ class StackEventOperation(Enum):
     import_rollback = "IMPORT_ROLLBACK"
     rollback = "ROLLBACK"
     review = "REVIEW"
+    export = "EXPORT"
+    export_rollback = "EXPORT_ROLLBACK"
 
     def __str__(self) -> str:
         """Return string representation of the operation."""
@@ -389,6 +391,8 @@ class StackEventOperation(Enum):
             "UPDATE_ROLLBACK": "update rollback",
             "ROLLBACK": "rollback",
             "REVIEW": "review",
+            "EXPORT": "export",
+            "EXPORT_ROLLBACK": "export rollback",
         }[self.value]
 
 
@@ -398,6 +402,7 @@ class StackEventState(Enum):
     in_progress = "IN_PROGRESS"
     failed = "FAILED"
     complete = "COMPLETE"
+    complete_cleanup_in_progress = "COMPLETE_CLEANUP_IN_PROGRESS"
     skipped = "SKIPPED"
 
     def __str__(self) -> str:
@@ -406,6 +411,7 @@ class StackEventState(Enum):
             "IN_PROGRESS": "started",
             "FAILED": "failed",
             "COMPLETE": "completed",
+            "COMPLETE_CLEANUP_IN_PROGRESS": "cleanup started",
             "SKIPPED": "skipped",
         }[self.value]
 
@@ -435,9 +441,10 @@ class StackEventStatus:
         :param event_status_str: a string representing the status
         :return: a StackEventStatus
         """
-        match = re.match(
-            r"(CREATE|DELETE|UPDATE|IMPORT|IMPORT_ROLLBACK|UPDATE_ROLLBACK|ROLLBACK|REVIEW)_"
-            r"(IN_PROGRESS|FAILED|COMPLETE|SKIPPED)",
+        match = re.fullmatch(
+            r"(CREATE|DELETE|UPDATE|EXPORT_ROLLBACK|EXPORT|IMPORT_ROLLBACK|IMPORT"
+            r"|UPDATE_ROLLBACK|ROLLBACK|REVIEW)_"
+            r"(IN_PROGRESS|FAILED|COMPLETE_CLEANUP_IN_PROGRESS|COMPLETE|SKIPPED)",
             event_status_str,
         )
         assert match is not None, f"invalid event status {event_status_str}"
