@@ -54,6 +54,41 @@ logger = logging.getLogger(__name__)
 VALID_STACK_NAME = re.compile("^[a-zA-Z][a-zA-Z0-9-]*$")
 VALID_STACK_NAME_MAX_LEN = 128
 
+# Transient CloudFormation stack statuses that indicate an operation is still
+# in flight and warrant polling. All other statuses (including the stable
+# REVIEW_IN_PROGRESS) are treated as terminal for the purpose of wait().
+_TRANSIENT_STACK_STATUSES: frozenset[str] = frozenset(
+    [
+        "CREATE_IN_PROGRESS",
+        "DELETE_IN_PROGRESS",
+        "IMPORT_IN_PROGRESS",
+        "IMPORT_ROLLBACK_IN_PROGRESS",
+        "ROLLBACK_IN_PROGRESS",
+        "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS",
+        "UPDATE_IN_PROGRESS",
+        "UPDATE_ROLLBACK_COMPLETE_CLEANUP_IN_PROGRESS",
+        "UPDATE_ROLLBACK_IN_PROGRESS",
+    ]
+)
+
+# Transient CloudFormation *resource* statuses for use in resource_status().
+# Derived from ResourceStatusType literals; distinct from stack statuses because
+# resources expose EXPORT_* statuses that stacks do not, and lack the
+# CLEANUP_IN_PROGRESS and REVIEW_IN_PROGRESS variants.
+_TRANSIENT_RESOURCE_STATUSES: frozenset[str] = frozenset(
+    [
+        "CREATE_IN_PROGRESS",
+        "DELETE_IN_PROGRESS",
+        "EXPORT_IN_PROGRESS",
+        "EXPORT_ROLLBACK_IN_PROGRESS",
+        "IMPORT_IN_PROGRESS",
+        "IMPORT_ROLLBACK_IN_PROGRESS",
+        "ROLLBACK_IN_PROGRESS",
+        "UPDATE_IN_PROGRESS",
+        "UPDATE_ROLLBACK_IN_PROGRESS",
+    ]
+)
+
 
 def client(name: str) -> Callable:
     """Decorate a function to handle automatically AWS client retrieval.
@@ -341,6 +376,7 @@ class StackEventOperation(Enum):
     import_resource = "IMPORT"
     import_rollback = "IMPORT_ROLLBACK"
     rollback = "ROLLBACK"
+    review = "REVIEW"
 
     def __str__(self) -> str:
         """Return string representation of the operation."""
@@ -352,6 +388,7 @@ class StackEventOperation(Enum):
             "IMPORT_ROLLBACK": "import rollback",
             "UPDATE_ROLLBACK": "update rollback",
             "ROLLBACK": "rollback",
+            "REVIEW": "review",
         }[self.value]
 
 
@@ -399,7 +436,7 @@ class StackEventStatus:
         :return: a StackEventStatus
         """
         match = re.match(
-            r"(CREATE|DELETE|UPDATE|IMPORT|IMPORT_ROLLBACK|UPDATE_ROLLBACK|ROLLBACK)_"
+            r"(CREATE|DELETE|UPDATE|IMPORT|IMPORT_ROLLBACK|UPDATE_ROLLBACK|ROLLBACK|REVIEW)_"
             r"(IN_PROGRESS|FAILED|COMPLETE|SKIPPED)",
             event_status_str,
         )
@@ -648,13 +685,13 @@ class Stack:
         """
         del client  # client is not used but is required by the decorator
         status = self.state()
-        while "PROGRESS" in status["StackStatus"]:
+        while status["StackStatus"] in _TRANSIENT_STACK_STATUSES:
             for event in self.events(mark_as_read=True):
                 logger.info(str(event))
             time.sleep(5.0)
             status = self.state()
 
-        # Get last eents
+        # Get last events
         for event in self.events(mark_as_read=True):
             logger.info(str(event))
         return status["StackStatus"]
@@ -865,7 +902,10 @@ class Stack:
         assert "StackResources" in aws_result
         result = {}
         for res in aws_result["StackResources"]:
-            if "PROGRESS" in res["ResourceStatus"] or not in_progress_only:
+            if (
+                res["ResourceStatus"] in _TRANSIENT_RESOURCE_STATUSES
+                or not in_progress_only
+            ):
                 result[res["LogicalResourceId"]] = res["ResourceStatus"]
         return result
 
