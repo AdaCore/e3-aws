@@ -59,9 +59,7 @@ class Architecture(Enum):
 class RuntimeConfig(TypedDict):
     """Provide a type for Python runtime packaging configurations."""
 
-    implementation: str
-    """pip implementation tag (e.g. cp for CPython)"""
-    platforms: dict[Architecture, tuple[str, ...]]
+    platforms: dict[Architecture, str]
     """pip platform tags to fetch wheels for, per CPU architecture"""
 
 
@@ -99,27 +97,29 @@ def package_pyfunction_code(
     :param requirement_file: the list of Python dependencies
     :param architecture: the target CPU architecture for fetched wheels.
         Defaults to Architecture.X86_64 to match AWS Lambda's default.
-    :param no_compile: whether to pass --no-compile to pip so dependencies
-        are not byte-compiled by the host interpreter. Defaults to None (pip's
-        default, which compiles). Set to True to allow packaging from any host,
-        e.g. building an arm64 lambda from an x86_64 machine.
+    :param no_compile: whether to skip byte-compiling dependencies with the host
+        interpreter. Defaults to None, which, like False, passes
+        --compile-bytecode to uv. Set to True to omit --compile-bytecode and use
+        uv's default of not compiling bytecode, e.g. when packaging for a
+        different Python runtime or architecture.
     """
     # Install the requirements
     if requirement_file is not None:
         assert runtime is not None
         runtime_config = PyFunction.RUNTIME_CONFIGS[runtime]
-        platforms = runtime_config["platforms"][architecture or Architecture.X86_64]
+        platform = runtime_config["platforms"][architecture or Architecture.X86_64]
+
         p = Run(
             [
                 sys.executable,
                 "-m",
+                "uv",
                 "pip",
                 "install",
                 f"--python-version={runtime.lstrip('python')}",
-                *(f"--platform={platform}" for platform in platforms),
-                f"--implementation={runtime_config['implementation']}",
+                f"--python-platform={platform}",
                 "--only-binary=:all:",
-                *(["--no-compile"] if no_compile else []),
+                *([] if no_compile else ["--compile-bytecode"]),
                 f"--target={package_dir}",
                 "-r",
                 fspath(requirement_file),
@@ -657,17 +657,10 @@ class PyFunction(Function):
     AMAZON_LINUX_2023_RUNTIMES = ("3.12", "3.13")
     RUNTIME_CONFIGS: ClassVar[dict[str, RuntimeConfig]] = {
         f"python{version}": {
-            "implementation": "cp",
             # Amazon Linux 2 glibc version is 2.26.
             "platforms": {
-                Architecture.X86_64: (
-                    "manylinux_2_17_x86_64",
-                    "manylinux_2_24_x86_64",
-                ),
-                Architecture.ARM64: (
-                    "manylinux_2_17_aarch64",
-                    "manylinux_2_24_aarch64",
-                ),
+                Architecture.X86_64: "x86_64-manylinux_2_24",
+                Architecture.ARM64: "aarch64-manylinux_2_24",
             },
         }
         for version in AMAZON_LINUX_2_RUNTIMES
@@ -675,22 +668,10 @@ class PyFunction(Function):
     RUNTIME_CONFIGS.update(
         {
             f"python{version}": {
-                "implementation": "cp",
                 # Amazon Linux 2023 glibc version is 2.34.
                 "platforms": {
-                    Architecture.X86_64: (
-                        "manylinux_2_17_x86_64",
-                        "manylinux_2_24_x86_64",
-                        "manylinux_2_28_x86_64",
-                        "manylinux_2_34_x86_64",
-                    ),
-                    Architecture.ARM64: (
-                        "manylinux2014_aarch64",
-                        "manylinux_2_17_aarch64",
-                        "manylinux_2_24_aarch64",
-                        "manylinux_2_28_aarch64",
-                        "manylinux_2_34_aarch64",
-                    ),
+                    Architecture.X86_64: "x86_64-manylinux_2_34",
+                    Architecture.ARM64: "aarch64-manylinux_2_34",
                 },
             }
             for version in AMAZON_LINUX_2023_RUNTIMES

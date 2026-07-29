@@ -650,58 +650,42 @@ def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
 
 
 @pytest.mark.parametrize(
-    ("python_version", "architecture", "platform_list"),
+    ("python_version", "architecture", "platform"),
     [
-        ("3.9", None, ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
+        ("3.9", None, "x86_64-manylinux_2_24"),
         (
             "3.9",
             Architecture.X86_64,
-            ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"],
+            "x86_64-manylinux_2_24",
         ),
         (
             "3.9",
             Architecture.ARM64,
-            ["manylinux_2_17_aarch64", "manylinux_2_24_aarch64"],
+            "aarch64-manylinux_2_24",
         ),
-        ("3.10", None, ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
-        ("3.11", None, ["manylinux_2_17_x86_64", "manylinux_2_24_x86_64"]),
+        ("3.10", None, "x86_64-manylinux_2_24"),
+        ("3.11", None, "x86_64-manylinux_2_24"),
         (
             "3.12",
             None,
-            [
-                "manylinux_2_17_x86_64",
-                "manylinux_2_24_x86_64",
-                "manylinux_2_28_x86_64",
-                "manylinux_2_34_x86_64",
-            ],
+            "x86_64-manylinux_2_34",
         ),
         (
             "3.12",
             Architecture.ARM64,
-            [
-                "manylinux2014_aarch64",
-                "manylinux_2_17_aarch64",
-                "manylinux_2_24_aarch64",
-                "manylinux_2_28_aarch64",
-                "manylinux_2_34_aarch64",
-            ],
+            "aarch64-manylinux_2_34",
         ),
         (
             "3.13",
             None,
-            [
-                "manylinux_2_17_x86_64",
-                "manylinux_2_24_x86_64",
-                "manylinux_2_28_x86_64",
-                "manylinux_2_34_x86_64",
-            ],
+            "x86_64-manylinux_2_34",
         ),
     ],
 )
 def test_pyfunction_with_requirements(
     python_version: str,
     architecture: Architecture | None,
-    platform_list: list[str],
+    platform: str,
     tmp_path: Path,
 ) -> None:
     """Test PyFunction creation."""
@@ -731,17 +715,18 @@ def test_pyfunction_with_requirements(
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.zip"
         )
 
-    # Ensure the right pip command is called
+    # Ensure the right uv command is called
     mock_run.assert_called_once_with(
         [
             sys.executable,
             "-m",
+            "uv",
             "pip",
             "install",
             f"--python-version={python_version}",
-            *(f"--platform={platform}" for platform in platform_list),
-            "--implementation=cp",
+            f"--python-platform={platform}",
             "--only-binary=:all:",
+            "--compile-bytecode",
             "--target=MypylambdaSources/package",
             "-r",
             "requirements.txt",
@@ -750,8 +735,9 @@ def test_pyfunction_with_requirements(
     )
 
 
-def test_pyfunction_no_compile(tmp_path: Path) -> None:
-    """Test PyFunction passes --no-compile to pip when no_compile is True."""
+@pytest.mark.parametrize("no_compile", [None, False, True])
+def test_pyfunction_no_compile(tmp_path: Path, *, no_compile: bool | None) -> None:
+    """Test PyFunction controls uv bytecode compilation with no_compile."""
     my_lambda = PyFunction(
         name="mypylambda",
         description="this is a test",
@@ -761,7 +747,7 @@ def test_pyfunction_no_compile(tmp_path: Path) -> None:
         handler="app.main",
         requirement_file="requirements.txt",
         architecture=Architecture.ARM64,
-        no_compile=True,
+        no_compile=no_compile,
     )
 
     # Fix the archive directory to not have a temporary directory
@@ -772,9 +758,9 @@ def test_pyfunction_no_compile(tmp_path: Path) -> None:
         # Trigger packaging
         _ = my_lambda.code_asset.s3_key
 
-    # --no-compile must be passed to pip (order is irrelevant)
-    pip_args = mock_run.call_args.args[0]
-    assert "--no-compile" in pip_args
+    uv_args = mock_run.call_args.args[0]
+    assert ("--compile-bytecode" in uv_args) is (not no_compile)
+    assert "--no-build" not in uv_args
 
 
 def test_pyfunction_policy_document(stack: Stack) -> None:
