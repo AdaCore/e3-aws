@@ -8,6 +8,16 @@ import logging
 import os
 import re
 import urllib.parse
+from datetime import datetime
+
+try:
+    from datetime import UTC
+except ImportError:
+    # Python < 3.11 does not have datetime.UTC
+    from datetime import timezone
+
+    UTC = timezone.utc
+
 from uuid import uuid4
 
 import boto3
@@ -31,7 +41,6 @@ logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
-    from datetime import datetime
     from types import TracebackType
 
     from types_boto3_autoscaling import AutoScalingClient
@@ -118,6 +127,7 @@ class Session:
             following keys: AccessKeyId, SecretAccessKey, SessionToken
             as returned by ``assume_role``
         """
+        self._expiration: datetime | None = None
         if profile is not None or credentials is None:
             self.session = botocore.session.Session(profile=profile)
         else:
@@ -127,6 +137,8 @@ class Session:
                 secret_key=credentials["SecretAccessKey"],
                 token=credentials["SessionToken"],
             )
+            # Know only for sessions built from an explicit credentials dict.
+            self._expiration = credentials.get("Expiration")
 
         self.profile = profile
         if regions is None:
@@ -256,6 +268,20 @@ class Session:
             }
 
         return self._identity
+
+    @property
+    def expiration(self) -> datetime | None:
+        """Return credentials expiration date.
+
+        Know only for sessions built from an explicit credentials dict.
+        """
+        return self._expiration
+
+    def is_expired(self) -> bool:
+        """Return True if this session's credentials are known to be expired."""
+        if self._expiration is None:
+            return False
+        return datetime.now(UTC) >= self._expiration
 
     def stub(self, name: str, region: str | None = None) -> Stubber:
         """Return stub for a given client.
