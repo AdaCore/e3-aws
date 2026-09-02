@@ -7,6 +7,8 @@ from tempfile import TemporaryDirectory
 from textwrap import dedent
 from unittest.mock import patch
 
+import pytest
+
 from e3.aws import AWSEnv
 from e3.aws.mock.troposphere.awslambda import mock_pyfunctionasset
 from e3.aws.troposphere import CFNProjectMain
@@ -16,8 +18,6 @@ from e3.aws.troposphere.iam.role import Role
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import pytest
-
     from e3.aws.cfn import Stack
 
 
@@ -133,11 +133,23 @@ def test_cfn_project_main_pyfunction(capfd: pytest.CaptureFixture[str]) -> None:
         assert captured.out == f_out.read()
 
 
-def test_cfn_project_main_diff(capfd: pytest.CaptureFixture[str]) -> None:
+@pytest.mark.parametrize(
+    "stack_name",
+    [
+        # Same stack name as project
+        None,
+        # Different stack name than project
+        "test-project",
+    ],
+)
+def test_cfn_project_main_diff(
+    stack_name: str | None, capfd: pytest.CaptureFixture[str]
+) -> None:
     """Test CFNProjectMain diff."""
     # Initial stack
     test = MyCFNProject(
         name="TestProject",
+        stack_name=stack_name,
         account_id="12345678",
         stack_description="TestStack",
         s3_bucket="cfn-test-deploy-bucket",
@@ -149,7 +161,9 @@ def test_cfn_project_main_diff(capfd: pytest.CaptureFixture[str]) -> None:
     aws_env.stub("cloudformation").add_response(
         "get_template",
         service_response={"TemplateBody": test.stack.body},
-        expected_params={"StackName": "TestProject"},
+        expected_params={
+            "StackName": "TestProject" if stack_name is None else stack_name
+        },
     )
 
     # Make a change to the template
