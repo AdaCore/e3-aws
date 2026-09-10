@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
     from types import TracebackType
 
+    from botocore.credentials import Credentials
     from types_boto3_autoscaling import AutoScalingClient
     from types_boto3_cloudformation import CloudFormationClient
     from types_boto3_cloudfront import CloudFrontClient
@@ -85,6 +86,10 @@ if TYPE_CHECKING:
         SecretAccessKey: str
         SessionToken: str
         Expiration: datetime
+
+
+class NoSessionCredentialsError(E3Error):
+    """Represent an error raised when no session credentials are available."""
 
 
 class AWSSessionRunError(E3Error):
@@ -307,9 +312,20 @@ class Session:
 
         return self.stubbers[name][region]
 
+    def get_credentials(self) -> Credentials:
+        """Return the :class:`botocore.credential.Credential` object of this session.
+
+        :raises NoSessionCredentialsError: if the credentials are None
+        """
+        credentials = self.session.get_credentials()
+        if credentials is None:
+            msg = "no credentials found in botocore session"
+            raise NoSessionCredentialsError(msg, origin="Session.get_credentials")
+        return credentials
+
     def to_boto3(self) -> boto3.Session:
         """Return boto3 session initialized from current botocore session."""
-        credentials = self.session.get_credentials()
+        credentials = self.get_credentials()
         frozen_credentials = credentials.get_frozen_credentials()
         return boto3.Session(
             aws_access_key_id=frozen_credentials.access_key,
@@ -745,7 +761,7 @@ class IAMAuth(requests.auth.AuthBase):
         if self.role is not None:
             session = self.session.assume_role(self.role, "iamauthsession")
 
-        credentials = session.session.get_credentials().get_frozen_credentials()
+        credentials = session.get_credentials().get_frozen_credentials()
 
         # Split back the url in order to be able to call AWSRequest
         aws_headers = dict(request.headers)
