@@ -84,12 +84,10 @@ class FlaskLambdaHandler:
         self.status = None
         self.response_headers = None
         try:
-            body = next(
-                iter(
-                    self.app.wsgi_app(
-                        self.create_flask_wsgi_environ(event, context),
-                        self.start_response,
-                    )
+            body = b"".join(
+                self.app.wsgi_app(
+                    self.create_flask_wsgi_environ(event, context),
+                    self.start_response,
                 )
             )
         except StopIteration:
