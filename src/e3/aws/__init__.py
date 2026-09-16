@@ -57,6 +57,7 @@ if TYPE_CHECKING:
     from types_boto3_logs import CloudWatchLogsClient
     from types_boto3_organizations import OrganizationsClient
     from types_boto3_pricing import PricingClient
+    from types_boto3_route53 import Route53Client
     from types_boto3_s3 import S3Client
     from types_boto3_scheduler import EventBridgeSchedulerClient
     from types_boto3_secretsmanager import SecretsManagerClient
@@ -418,6 +419,11 @@ class Session:
 
     @overload
     def client(
+        self, name: Literal["route53"], region: str | None = ...
+    ) -> Route53Client: ...
+
+    @overload
+    def client(
         self, name: str, region: str | None = ...
     ) -> botocore.client.BaseClient: ...
 
@@ -443,6 +449,7 @@ class Session:
         | LambdaClient
         | OrganizationsClient
         | PricingClient
+        | Route53Client
         | botocore.client.BaseClient
     ):
         """Get a client.
