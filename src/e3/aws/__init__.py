@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from types import TracebackType
 
     from botocore.credentials import Credentials
+    from types_boto3_acm_pca import ACMPCAClient
     from types_boto3_autoscaling import AutoScalingClient
     from types_boto3_cloudformation import CloudFormationClient
     from types_boto3_cloudfront import CloudFrontClient
@@ -338,6 +339,11 @@ class Session:
 
     @overload
     def client(
+        self, name: Literal["acm-pca"], region: str | None = ...
+    ) -> ACMPCAClient: ...
+
+    @overload
+    def client(
         self, name: Literal["autoscaling"], region: str | None = ...
     ) -> AutoScalingClient: ...
 
@@ -436,6 +442,7 @@ class Session:
         | SESV2Client
         | SSMClient
         | STSClient
+        | ACMPCAClient
         | AutoScalingClient
         | CloudFormationClient
         | CloudFrontClient
