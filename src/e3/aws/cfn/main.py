@@ -33,7 +33,7 @@ from e3.env import Env
 from e3.fs import find, sync_tree
 from e3.main import Main
 from e3.os.process import PIPE
-from e3.vcs.git import GitRepository
+from e3.vcs.git import GitError, GitRepository
 
 from typing import TYPE_CHECKING
 
@@ -556,9 +556,18 @@ class CFNMain(Main, metaclass=abc.ABCMeta):
 
             # Check the branch is up to date
             error = f"Failed to fetch {branch}"
-            fetch_out = repo.git_cmd(
-                ["fetch", "origin", branch, "--dry-run"], output=PIPE
-            ).out
+            try:
+                fetch_out = repo.git_cmd(
+                    ["fetch", "origin", branch, "--dry-run"], output=PIPE
+                ).out
+            except GitError as e:
+                if e.process is not None and "couldn't find remote ref" in (
+                    e.process.out or ""
+                ):
+                    fetch_out = ""
+                else:
+                    raise
+
             # Check if there is a line indicating a commit
             if re.search(rf"{branch}\s*\-\>\s*origin\/", fetch_out):
                 print("Can only deploy from up to date branch, please do a git pull")

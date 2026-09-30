@@ -330,8 +330,14 @@ def test_cfn_correct_branch_check_ko(
 
 
 @pytest.mark.parametrize(
-    ("fetch_out", "expected_status"),
+    ("fetch_out", "fetch_status", "expected_status"),
     [
+        # Remote ref not found
+        (
+            "couldn't find remote ref",
+            1,
+            0,
+        ),
         # No commit present on the remote branch
         (
             textwrap.dedent(
@@ -340,6 +346,7 @@ def test_cfn_correct_branch_check_ko(
                 * branch      main -> FETCH_HEAD
                 """
             ),
+            0,
             0,
         ),
         # One commit present on the remote branch
@@ -351,12 +358,14 @@ def test_cfn_correct_branch_check_ko(
                   abcd..efgh  main -> origin/main
                 """
             ),
+            0,
             1,
         ),
     ],
 )
 def test_cfn_branch_up_to_date_check(
     fetch_out: str,
+    fetch_status: int,
     expected_status: int,
     capfd: CaptureFixture,
     monkeypatch: MonkeyPatch,
@@ -364,6 +373,7 @@ def test_cfn_branch_up_to_date_check(
     """Test the branch up to date check.
 
     :param fetch_out: output returned by git fetch
+    :param fetch_status: status returned by git fetch
     :param expected_status: expected CFNMain exit status
     """
 
@@ -428,6 +438,7 @@ def test_cfn_branch_up_to_date_check(
                             "--dry-run",
                         ],
                         raw_out=fetch_out.encode(),
+                        status=fetch_status,
                     ),
                 ]
             }
