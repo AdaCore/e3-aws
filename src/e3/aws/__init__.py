@@ -45,6 +45,7 @@ if TYPE_CHECKING:
 
     from botocore.credentials import Credentials
     from types_boto3_acm_pca import ACMPCAClient
+    from types_boto3_apigateway import APIGatewayClient
     from types_boto3_autoscaling import AutoScalingClient
     from types_boto3_cloudformation import CloudFormationClient
     from types_boto3_cloudfront import CloudFrontClient
@@ -63,6 +64,7 @@ if TYPE_CHECKING:
     from types_boto3_scheduler import EventBridgeSchedulerClient
     from types_boto3_secretsmanager import SecretsManagerClient
     from types_boto3_sesv2 import SESV2Client
+    from types_boto3_sns import SNSClient
     from types_boto3_ssm import SSMClient
     from types_boto3_sts import STSClient
     from types_boto3_sts.type_defs import AssumeRoleRequestTypeDef
@@ -344,6 +346,11 @@ class Session:
 
     @overload
     def client(
+        self, name: Literal["apigateway"], region: str | None = ...
+    ) -> APIGatewayClient: ...
+
+    @overload
+    def client(
         self, name: Literal["autoscaling"], region: str | None = ...
     ) -> AutoScalingClient: ...
 
@@ -364,6 +371,9 @@ class Session:
     def client(
         self, name: Literal["sesv2"], region: str | None = ...
     ) -> SESV2Client: ...
+
+    @overload
+    def client(self, name: Literal["sns"], region: str | None = ...) -> SNSClient: ...
 
     @overload
     def client(self, name: Literal["ssm"], region: str | None = ...) -> SSMClient: ...
@@ -440,9 +450,11 @@ class Session:
         | EventBridgeSchedulerClient
         | SecretsManagerClient
         | SESV2Client
+        | SNSClient
         | SSMClient
         | STSClient
         | ACMPCAClient
+        | APIGatewayClient
         | AutoScalingClient
         | CloudFormationClient
         | CloudFrontClient
