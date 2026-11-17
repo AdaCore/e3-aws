@@ -127,7 +127,7 @@ class SimpleInstance(Construct):
             PropagateTagsToVolumeOnCreation=True,
             BlockDeviceMappings=[
                 ec2.BlockDeviceMapping(
-                    Ebs=ec2.EBSBlockDevice(VolumeType="gp3", VolumeSize="20"),
+                    Ebs=ec2.EbsBlockDevice(VolumeType="gp3", VolumeSize="20"),
                     DeviceName="/dev/sda1",
                 )
             ],

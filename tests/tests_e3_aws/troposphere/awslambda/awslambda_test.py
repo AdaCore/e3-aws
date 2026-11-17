@@ -562,6 +562,12 @@ def test_pyfunction_default(stack: Stack) -> None:
 
 def test_pyfunction(stack: Stack) -> None:
     """Test PyFunction creation."""
+    logging_config = LoggingConfig(
+        ApplicationLogLevel="INFO",
+        SystemLogLevel="WARN",
+    )
+    logging_config.properties["LogFormat"] = "JSON"
+
     stack.add(
         PyFunction(
             name="mypylambda",
@@ -578,11 +584,7 @@ def test_pyfunction(stack: Stack) -> None:
             logs_retention_in_days=7,
             reserved_concurrent_executions=1,
             environment={"env_key_1": "env_value_1", "env_key_2": "env_value2"},
-            logging_config=LoggingConfig(
-                ApplicationLogLevel="INFO",
-                LogFormat="JSON",
-                SystemLogLevel="WARN",
-            ),
+            logging_config=logging_config,
         )
     )
     print(stack.export())
@@ -591,6 +593,12 @@ def test_pyfunction(stack: Stack) -> None:
 
 def test_pyfunction_with_dlconfig(stack: Stack) -> None:
     """Test PyFunction with dead letter queue configuration."""
+    logging_config = LoggingConfig(
+        ApplicationLogLevel="INFO",
+        SystemLogLevel="WARN",
+    )
+    logging_config.properties["LogFormat"] = "JSON"
+
     dlq = Queue(name="PyFunctionDLQ")
     stack.add(dlq)
     stack.add(
@@ -606,11 +614,7 @@ def test_pyfunction_with_dlconfig(stack: Stack) -> None:
             logs_retention_in_days=7,
             reserved_concurrent_executions=1,
             environment={"env_key_1": "env_value_1", "env_key_2": "env_value2"},
-            logging_config=LoggingConfig(
-                ApplicationLogLevel="INFO",
-                LogFormat="JSON",
-                SystemLogLevel="WARN",
-            ),
+            logging_config=logging_config,
             dl_config=DeadLetterConfig(TargetArn=dlq.arn),
         )
     )
@@ -620,6 +624,12 @@ def test_pyfunction_with_dlconfig(stack: Stack) -> None:
 
 def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
     """Test PyFunction with VPC configuration."""
+    logging_config = LoggingConfig(
+        ApplicationLogLevel="INFO",
+        SystemLogLevel="WARN",
+    )
+    logging_config.properties["LogFormat"] = "JSON"
+
     stack.add(
         PyFunction(
             name="mypylambda",
@@ -633,11 +643,7 @@ def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
             logs_retention_in_days=7,
             reserved_concurrent_executions=1,
             environment={"env_key_1": "env_value_1", "env_key_2": "env_value2"},
-            logging_config=LoggingConfig(
-                ApplicationLogLevel="INFO",
-                LogFormat="JSON",
-                SystemLogLevel="WARN",
-            ),
+            logging_config=logging_config,
             vpc_config=VPCConfig(
                 "mypylambdavpc",
                 SecurityGroupIds=["sg-085912345678492fb"],
