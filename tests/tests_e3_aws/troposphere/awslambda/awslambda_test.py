@@ -658,19 +658,6 @@ def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
 @pytest.mark.parametrize(
     ("python_version", "architecture", "platform"),
     [
-        ("3.9", None, "x86_64-manylinux_2_24"),
-        (
-            "3.9",
-            Architecture.X86_64,
-            "x86_64-manylinux_2_24",
-        ),
-        (
-            "3.9",
-            Architecture.ARM64,
-            "aarch64-manylinux_2_24",
-        ),
-        ("3.10", None, "x86_64-manylinux_2_24"),
-        ("3.11", None, "x86_64-manylinux_2_24"),
         (
             "3.12",
             None,
@@ -683,7 +670,7 @@ def test_pyfunction_with_vpcconfig(stack: Stack) -> None:
         ),
         (
             "3.13",
-            None,
+            Architecture.X86_64,
             "x86_64-manylinux_2_34",
         ),
     ],
@@ -767,6 +754,28 @@ def test_pyfunction_no_compile(tmp_path: Path, *, no_compile: bool | None) -> No
     uv_args = mock_run.call_args.args[0]
     assert ("--compile-bytecode" in uv_args) is (not no_compile)
     assert "--no-build" not in uv_args
+
+
+@pytest.mark.parametrize("runtime", ["python3.9", "python3.10", "python3.11"])
+def test_pyfunction_rejects_al2_dependency_packaging(
+    runtime: str, tmp_path: Path
+) -> None:
+    """Report unsupported Amazon Linux 2 runtimes before installing dependencies."""
+    my_lambda = PyFunction(
+        name="mypylambda",
+        description="this is a test",
+        role="somearn",
+        runtime=runtime,
+        code_dir=tmp_path,
+        handler="app.main",
+        requirement_file="requirements.txt",
+    )
+
+    with (
+        my_lambda.code_asset,
+        pytest.raises(ValueError, match="Lambda dependency packaging requires"),
+    ):
+        _ = my_lambda.code_asset.s3_key
 
 
 def test_pyfunction_policy_document(stack: Stack) -> None:

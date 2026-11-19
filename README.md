@@ -15,3 +15,7 @@ This module also provide a **Stack** stack abstraction that handles the addition
 of constructs or raw AWSObject to a stack and its deployement.
 
 See examples directory for examples of how to build and deploy stacks.
+
+### Packaging Python Lambda dependencies
+
+Dependency packaging supports Python 3.12 and 3.13 on Amazon Linux 2023.
