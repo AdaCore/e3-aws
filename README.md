@@ -18,4 +18,9 @@ See examples directory for examples of how to build and deploy stacks.
 
 ### Packaging Python Lambda dependencies
 
-Dependency packaging supports Python 3.12 and 3.13 on Amazon Linux 2023.
+Dependency packaging supports Python 3.12 and 3.13 on Amazon Linux 2023. When a
+Python Lambda specifies a `requirement_file`, e3-aws uses `uv` to install its
+dependencies into the deployment ZIP. Install [uv][uv-install] and make it
+available on `PATH` in the environment that builds the Lambda asset.
+
+[uv-install]: https://docs.astral.sh/uv/getting-started/installation/

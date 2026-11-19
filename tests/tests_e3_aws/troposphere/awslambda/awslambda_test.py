@@ -698,7 +698,11 @@ def test_pyfunction_with_requirements(
     # Fix the archive directory to not have a temporary directory
     my_lambda.code_asset._archive_dir = "MypylambdaSources"  # noqa: SLF001
 
-    with patch("e3.aws.troposphere.awslambda.Run") as mock_run:
+    uv_path = str(tmp_path / "bin" / "uv")
+    with (
+        patch("e3.aws.troposphere.awslambda.which", return_value=uv_path) as mock_which,
+        patch("e3.aws.troposphere.awslambda.Run") as mock_run,
+    ):
         mock_run.return_value.status = 0
 
         # Check the S3 key is correctly determined with the checksum of an
@@ -709,13 +713,13 @@ def test_pyfunction_with_requirements(
         )
 
     # Ensure the right uv command is called
+    mock_which.assert_called_once_with("uv")
     mock_run.assert_called_once_with(
         [
-            sys.executable,
-            "-m",
-            "uv",
+            uv_path,
             "pip",
             "install",
+            f"--python={sys.executable}",
             f"--python-version={python_version}",
             f"--python-platform={platform}",
             "--only-binary=:all:",
@@ -746,7 +750,10 @@ def test_pyfunction_no_compile(tmp_path: Path, *, no_compile: bool | None) -> No
     # Fix the archive directory to not have a temporary directory
     my_lambda.code_asset._archive_dir = "MypylambdaSources"  # noqa: SLF001
 
-    with patch("e3.aws.troposphere.awslambda.Run") as mock_run:
+    with (
+        patch("e3.aws.troposphere.awslambda.which", return_value="uv"),
+        patch("e3.aws.troposphere.awslambda.Run") as mock_run,
+    ):
         mock_run.return_value.status = 0
         # Trigger packaging
         _ = my_lambda.code_asset.s3_key
@@ -756,11 +763,24 @@ def test_pyfunction_no_compile(tmp_path: Path, *, no_compile: bool | None) -> No
     assert "--no-build" not in uv_args
 
 
-@pytest.mark.parametrize("runtime", ["python3.9", "python3.10", "python3.11"])
-def test_pyfunction_rejects_al2_dependency_packaging(
-    runtime: str, tmp_path: Path
+@pytest.mark.parametrize(
+    ("runtime", "error", "message"),
+    [
+        ("python3.9", ValueError, "Lambda dependency packaging requires"),
+        ("python3.10", ValueError, "Lambda dependency packaging requires"),
+        ("python3.11", ValueError, "Lambda dependency packaging requires"),
+        ("python3.12", RuntimeError, "Install uv and add it to PATH"),
+    ],
+)
+def test_pyfunction_dependency_packaging_error(
+    runtime: str,
+    error: type[Exception],
+    message: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Report unsupported Amazon Linux 2 runtimes before installing dependencies."""
+    """Report unsupported runtimes and missing uv before installing dependencies."""
+    monkeypatch.setenv("PATH", str(tmp_path))
     my_lambda = PyFunction(
         name="mypylambda",
         description="this is a test",
@@ -773,7 +793,7 @@ def test_pyfunction_rejects_al2_dependency_packaging(
 
     with (
         my_lambda.code_asset,
-        pytest.raises(ValueError, match="Lambda dependency packaging requires"),
+        pytest.raises(error, match=message),
     ):
         _ = my_lambda.code_asset.s3_key
 
