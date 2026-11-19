@@ -11,6 +11,7 @@ from functools import cached_property
 from hashlib import sha256
 from os import fspath
 from pathlib import Path
+from shutil import which
 from tempfile import TemporaryDirectory
 from zipfile import ZipFile
 
@@ -94,7 +95,8 @@ def package_pyfunction_code(
     :param populate_package_dir: callback to populate the package directory with
         extra code
     :param runtime: the Python runtime
-    :param requirement_file: the list of Python dependencies
+    :param requirement_file: the list of Python dependencies. Requires the uv
+        executable on PATH in the packaging environment.
     :param architecture: the target CPU architecture for fetched wheels.
         Defaults to Architecture.X86_64 to match AWS Lambda's default.
     :param no_compile: whether to skip byte-compiling dependencies with the host
@@ -102,20 +104,35 @@ def package_pyfunction_code(
         --compile-bytecode to uv. Set to True to omit --compile-bytecode and use
         uv's default of not compiling bytecode, e.g. when packaging for a
         different Python runtime or architecture.
+    :raise RuntimeError: uv is missing from PATH or fails to install dependencies
+    :raise ValueError: the runtime is unsupported for dependency packaging
     """
     # Install the requirements
     if requirement_file is not None:
         assert runtime is not None
-        runtime_config = PyFunction.RUNTIME_CONFIGS[runtime]
+        runtime_config = PyFunction.RUNTIME_CONFIGS.get(runtime)
+        if runtime_config is None:
+            supported_runtimes = ", ".join(PyFunction.RUNTIME_CONFIGS)
+            msg = (
+                f"Lambda dependency packaging requires one of {supported_runtimes}. "
+                f"Received {runtime}."
+            )
+            raise ValueError(msg)
         platform = runtime_config["platforms"][architecture or Architecture.X86_64]
+        uv_path = which("uv")
+        if uv_path is None:
+            msg = (
+                "Packaging Python Lambda dependencies requires uv. "
+                "Install uv and add it to PATH in the build environment."
+            )
+            raise RuntimeError(msg)
 
         p = Run(
             [
-                sys.executable,
-                "-m",
-                "uv",
+                uv_path,
                 "pip",
                 "install",
+                f"--python={sys.executable}",
                 f"--python-version={runtime.lstrip('python')}",
                 f"--python-platform={platform}",
                 "--only-binary=:all:",
@@ -126,7 +143,9 @@ def package_pyfunction_code(
             ],
             output=None,
         )
-        assert p.status == 0
+        if p.status != 0:
+            msg = f"uv failed to install Lambda dependencies (exit code {p.status})."
+            raise RuntimeError(msg)
 
     # Populate the package directory with extra code
     if populate_package_dir is not None:
@@ -653,30 +672,17 @@ class Function(Construct):
 class PyFunction(Function):
     """Lambda with a Python runtime."""
 
-    AMAZON_LINUX_2_RUNTIMES = ("3.9", "3.10", "3.11")
     AMAZON_LINUX_2023_RUNTIMES = ("3.12", "3.13")
     RUNTIME_CONFIGS: ClassVar[dict[str, RuntimeConfig]] = {
         f"python{version}": {
-            # Amazon Linux 2 glibc version is 2.26.
+            # Amazon Linux 2023 glibc version is 2.34.
             "platforms": {
-                Architecture.X86_64: "x86_64-manylinux_2_24",
-                Architecture.ARM64: "aarch64-manylinux_2_24",
+                Architecture.X86_64: "x86_64-manylinux_2_34",
+                Architecture.ARM64: "aarch64-manylinux_2_34",
             },
         }
-        for version in AMAZON_LINUX_2_RUNTIMES
+        for version in AMAZON_LINUX_2023_RUNTIMES
     }
-    RUNTIME_CONFIGS.update(
-        {
-            f"python{version}": {
-                # Amazon Linux 2023 glibc version is 2.34.
-                "platforms": {
-                    Architecture.X86_64: "x86_64-manylinux_2_34",
-                    Architecture.ARM64: "aarch64-manylinux_2_34",
-                },
-            }
-            for version in AMAZON_LINUX_2023_RUNTIMES
-        }
-    )
 
     def __init__(  # noqa: PLR0913
         self,
@@ -718,8 +724,8 @@ class PyFunction(Function):
         :param code_asset: asset containing the python code
         :param code_dir: directory containing the python code
         :param requirement_file: requirement file for the application code.
-            Required packages are automatically fetched (works only from linux)
-            and packaged along with the lambda code
+            Dependency packaging supports the Amazon Linux 2023 runtimes listed in
+            RUNTIME_CONFIGS and requires uv on PATH in the packaging environment.
         :param code_version: code version
         :param timeout: maximum execution time (default: 3s)
         :param architecture: x86_64 or arm64. (default: x86_64). Also drives the

@@ -12,8 +12,7 @@ dependencies = [
   "botocore",
   "e3-core",
   "pyyaml",
-  "troposphere",
-  "uv"
+  "troposphere"
 ]
 
 [project.scripts]
