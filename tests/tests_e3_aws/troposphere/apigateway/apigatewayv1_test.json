@@ -45,7 +45,7 @@
         },
         "Type": "AWS::ApiGateway::Resource"
     },
-    "TestapiDefaultDeployment": {
+    "TestapiDefaultDeployment82c912274ed1055d": {
         "Properties": {
             "Description": "Deployment resource of default stage",
             "RestApiId": {
@@ -72,7 +72,7 @@
                 "Ref": "Testapi"
             },
             "DeploymentId": {
-                "Ref": "TestapiDefaultDeployment"
+                "Ref": "TestapiDefaultDeployment82c912274ed1055d"
             },
             "Description": "stage default",
             "MethodSettings": [

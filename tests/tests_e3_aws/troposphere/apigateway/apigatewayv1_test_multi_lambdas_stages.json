@@ -201,7 +201,7 @@
         },
         "Type": "AWS::ApiGateway::Resource"
     },
-    "TestapiDefaultDeployment": {
+    "TestapiDefaultDeploymentc7efaabdf55ca920": {
         "Properties": {
             "Description": "Deployment resource of default stage",
             "RestApiId": {
@@ -214,7 +214,7 @@
             "TestapiProductsANYMethod"
         ]
     },
-    "TestapiBetaDeployment": {
+    "TestapiBetaDeployment408bd8286f71d35c": {
         "Properties": {
             "Description": "Deployment resource of beta stage",
             "RestApiId": {
@@ -242,7 +242,7 @@
                 "Ref": "Testapi"
             },
             "DeploymentId": {
-                "Ref": "TestapiDefaultDeployment"
+                "Ref": "TestapiDefaultDeploymentc7efaabdf55ca920"
             },
             "Description": "stage default",
             "MethodSettings": [
@@ -276,7 +276,7 @@
                 "Ref": "Testapi"
             },
             "DeploymentId": {
-                "Ref": "TestapiBetaDeployment"
+                "Ref": "TestapiBetaDeployment408bd8286f71d35c"
             },
             "Description": "stage beta",
             "MethodSettings": [

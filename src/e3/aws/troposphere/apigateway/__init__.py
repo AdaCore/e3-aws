@@ -7,6 +7,7 @@ import logging
 from abc import abstractmethod
 from enum import Enum
 from functools import cached_property
+from hashlib import sha256
 
 from troposphere import (
     AWSObject,
@@ -957,21 +958,27 @@ class RestApi(Api):
         """
         result = []
 
-        # Get the list of methods for DependsOn
-        method_list = [
-            r
-            for r in self._declare_resources(resource_list=self.resource_list)
-            if isinstance(r, apigateway.Method)
-        ]
+        api_resources = self._declare_resources(resource_list=self.resource_list)
+        routes = {
+            resource.title: resource.to_dict()
+            for resource in api_resources
+            if isinstance(resource, (apigateway.Resource, apigateway.Method))
+        }
 
-        # create deployment resource
-        deployment_name = self.logical_id + name_to_id(stage_name) + "Deployment"
+        # A REST deployment is a snapshot. Changing its dependencies alone
+        # does not make CloudFormation create a new deployment.
+        deployment_prefix = self.logical_id + name_to_id(stage_name) + "Deployment"
+        definition = json.dumps((deployment_prefix, routes), sort_keys=True)
+        fingerprint = sha256(definition.encode("utf-8")).hexdigest()[:16]
+        deployment_name = deployment_prefix[: 255 - len(fingerprint)] + fingerprint
         result.append(
             apigateway.Deployment(
                 deployment_name,
                 Description=f"Deployment resource of {stage_name} stage",
                 RestApiId=Ref(self.logical_id),
-                DependsOn=[m.name for m in method_list],
+                DependsOn=[
+                    r.title for r in api_resources if isinstance(r, apigateway.Method)
+                ],
             )
         )
 

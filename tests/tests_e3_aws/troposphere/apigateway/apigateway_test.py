@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from e3.aws.troposphere import Stack
 from e3.aws.troposphere.apigateway import (
     GET,
     JWT_AUTH,
@@ -31,10 +32,7 @@ from e3.aws.troposphere.awslambda import (
 )
 from e3.aws.troposphere.iam.policy_statement import Allow, PolicyStatement
 
-from typing import TYPE_CHECKING, Any, cast
-
-if TYPE_CHECKING:
-    from e3.aws.troposphere import Stack
+from typing import Any, cast
 
 TEST_DIR = Path(__file__).resolve().parent
 
@@ -535,6 +533,43 @@ def test_rest_api_stages(stack: Stack, lambda_fun: PyFunction) -> None:
 
     print(stack.export()["Resources"])
     assert stack.export()["Resources"] == expected
+
+
+def test_rest_api_redeploys_stages_after_adding_route() -> None:
+    """An added route creates a deployment for each existing stage."""
+
+    def export_resources(resource_list: list[Resource]) -> dict[str, Any]:
+        stack = Stack("teststack")
+        stack.add(
+            RestApi(
+                name="testapi",
+                description="this is a test",
+                lambda_arn="arn:aws:lambda:us-east-1:123456789012:function:test",
+                resource_list=resource_list,
+                stages_config=[
+                    StageConfiguration("default"),
+                    StageConfiguration("beta"),
+                ],
+            )
+        )
+        return cast("dict[str, Any]", stack.export()["Resources"])
+
+    existing_route = Resource(path="foo", method_list=[Method("GET")])
+    new_route = Resource(path="bar", method_list=[Method("POST")])
+    before = export_resources([existing_route])
+    after = export_resources([existing_route, new_route])
+    reordered = export_resources([new_route, existing_route])
+
+    for stage_id in ("TestapiDefaultStage", "TestapiBetaStage"):
+        old_properties = before[stage_id]["Properties"]
+        deployment_id = after[stage_id]["Properties"]["DeploymentId"]["Ref"]
+        assert deployment_id != old_properties["DeploymentId"]["Ref"]
+        assert after[stage_id]["Properties"] == {
+            **old_properties,
+            "DeploymentId": {"Ref": deployment_id},
+        }
+        assert after[stage_id] == reordered[stage_id]
+        assert "TestapiBarPOSTMethod" in after[deployment_id]["DependsOn"]
 
 
 def test_rest_api_lambda_alias(stack: Stack, lambda_fun: PyFunction) -> None:
