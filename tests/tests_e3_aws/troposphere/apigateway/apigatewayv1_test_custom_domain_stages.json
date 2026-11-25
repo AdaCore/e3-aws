@@ -75,7 +75,7 @@
         },
         "Type": "AWS::ApiGateway::Resource"
     },
-    "TestapiDefaultDeployment5f1dbff96791a76a": {
+    "TestapiDefaultDeployment9707e087275aad6c": {
         "Properties": {
             "Description": "Deployment resource of default stage",
             "RestApiId": {
@@ -84,7 +84,8 @@
         },
         "Type": "AWS::ApiGateway::Deployment",
         "DependsOn": [
-            "TestapiANYMethod"
+            "TestapiANYMethod",
+            "Testauthorizer"
         ]
     },
     "TestapiDefaultStage": {
@@ -102,7 +103,7 @@
                 "Ref": "Testapi"
             },
             "DeploymentId": {
-                "Ref": "TestapiDefaultDeployment5f1dbff96791a76a"
+                "Ref": "TestapiDefaultDeployment9707e087275aad6c"
             },
             "Description": "stage default",
             "MethodSettings": [
@@ -118,7 +119,7 @@
         },
         "Type": "AWS::ApiGateway::Stage"
     },
-    "TestapiBetaDeployment6bad56e4e645e8df": {
+    "TestapiBetaDeploymente7cc851109d61fb1": {
         "Properties": {
             "Description": "Deployment resource of beta stage",
             "RestApiId": {
@@ -127,7 +128,8 @@
         },
         "Type": "AWS::ApiGateway::Deployment",
         "DependsOn": [
-            "TestapiANYMethod"
+            "TestapiANYMethod",
+            "Testauthorizer"
         ]
     },
     "TestapiBetaStage": {
@@ -145,7 +147,7 @@
                 "Ref": "Testapi"
             },
             "DeploymentId": {
-                "Ref": "TestapiBetaDeployment6bad56e4e645e8df"
+                "Ref": "TestapiBetaDeploymente7cc851109d61fb1"
             },
             "Description": "stage beta",
             "MethodSettings": [

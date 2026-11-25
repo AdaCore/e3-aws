@@ -572,6 +572,88 @@ def test_rest_api_redeploys_stages_after_adding_route() -> None:
         assert "TestapiBarPOSTMethod" in after[deployment_id]["DependsOn"]
 
 
+@pytest.mark.parametrize(
+    ("header", "user_pool"),
+    [("X-Authorization", "us-east-1_abc123"), ("Authorization", "us-east-1_def456")],
+)
+def test_rest_api_redeploys_stage_after_authorizer_change(
+    header: str, user_pool: str
+) -> None:
+    """An authorizer update creates a deployment even when its methods stay the same."""
+
+    def export_resources(header: str, user_pool: str) -> dict[str, Any]:
+        stack = Stack("teststack")
+        api = RestApi(
+            name="testapi",
+            description="this is a test",
+            lambda_arn="arn:aws:lambda:us-east-1:123456789012:function:test",
+            method_list=[Method("GET", authorizer_name="test-authorizer")],
+        )
+        api.add_cognito_authorizer(
+            name="test-authorizer",
+            providers_arn=[
+                f"arn:aws:cognito-idp:us-east-1:123456789012:userpool/{user_pool}"
+            ],
+            header=header,
+        )
+        stack.add(api)
+        return cast("dict[str, Any]", stack.export()["Resources"])
+
+    before = export_resources("Authorization", "us-east-1_abc123")
+    after = export_resources(header, user_pool)
+    stage_id = "TestapiDefaultStage"
+    old_properties = before[stage_id]["Properties"]
+    deployment_id = after[stage_id]["Properties"]["DeploymentId"]["Ref"]
+
+    assert after["TestapiGETMethod"] == before["TestapiGETMethod"]
+    assert deployment_id != old_properties["DeploymentId"]["Ref"]
+    assert after[stage_id]["Properties"] == {
+        **old_properties,
+        "DeploymentId": {"Ref": deployment_id},
+    }
+    assert after[deployment_id]["DependsOn"] == ["TestapiGETMethod", "TestAuthorizer"]
+    assert after == export_resources(header, user_pool)
+
+
+def test_rest_api_redeploys_stage_after_resource_policy_change() -> None:
+    """Changing only the REST API policy creates a deployment for the existing stage."""
+
+    def export_resources(source_ip: str) -> dict[str, Any]:
+        stack = Stack("teststack")
+        stack.add(
+            RestApi(
+                name="testapi",
+                description="this is a test",
+                lambda_arn="arn:aws:lambda:us-east-1:123456789012:function:test",
+                method_list=[Method("GET")],
+                policy=[
+                    Allow(
+                        action="execute-api:Invoke",
+                        principal="*",
+                        resource="execute-api:/*/*/*",
+                        condition={"IpAddress": {"aws:SourceIp": source_ip}},
+                    ),
+                ],
+            )
+        )
+        return cast("dict[str, Any]", stack.export()["Resources"])
+
+    before = export_resources("192.0.2.0/24")
+    after = export_resources("192.0.2.0/25")
+    stage_id = "TestapiDefaultStage"
+    old_properties = before[stage_id]["Properties"]
+    deployment_id = after[stage_id]["Properties"]["DeploymentId"]["Ref"]
+
+    assert after["TestapiGETMethod"] == before["TestapiGETMethod"]
+    assert deployment_id != old_properties["DeploymentId"]["Ref"]
+    assert after[stage_id]["Properties"] == {
+        **old_properties,
+        "DeploymentId": {"Ref": deployment_id},
+    }
+    assert after[deployment_id]["Properties"]["RestApiId"] == {"Ref": "Testapi"}
+    assert after == export_resources("192.0.2.0/25")
+
+
 def test_rest_api_lambda_alias(stack: Stack, lambda_fun: PyFunction) -> None:
     """Test REST API with lambda alias."""
     lambda_versions = AutoVersion(2, lambda_function=lambda_fun)

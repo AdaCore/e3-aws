@@ -940,6 +940,13 @@ class RestApi(Api):
             "Type": "COGNITO_USER_POOLS",
         }
 
+    def _declare_authorizers(self) -> list[apigateway.Authorizer]:
+        """Create the authorizer resources for the REST API."""
+        return [
+            apigateway.Authorizer(name_to_id(name), **params)
+            for name, params in self.authorizers.items()
+        ]
+
     @override
     def declare_stage(
         self,
@@ -959,16 +966,21 @@ class RestApi(Api):
         result = []
 
         api_resources = self._declare_resources(resource_list=self.resource_list)
-        routes = {
+        api_resources.extend(self._declare_authorizers())
+        api_definition = {
             resource.title: resource.to_dict()
             for resource in api_resources
-            if isinstance(resource, (apigateway.Resource, apigateway.Method))
+            if isinstance(
+                resource,
+                (apigateway.Resource, apigateway.Method, apigateway.Authorizer),
+            )
         }
+        api_definition[self.logical_id] = self._declare_rest_api().to_dict()
 
         # A REST deployment is a snapshot. Changing its dependencies alone
         # does not make CloudFormation create a new deployment.
         deployment_prefix = self.logical_id + name_to_id(stage_name) + "Deployment"
-        definition = json.dumps((deployment_prefix, routes), sort_keys=True)
+        definition = json.dumps((deployment_prefix, api_definition), sort_keys=True)
         fingerprint = sha256(definition.encode("utf-8")).hexdigest()[:16]
         deployment_name = deployment_prefix[: 255 - len(fingerprint)] + fingerprint
         result.append(
@@ -977,7 +989,9 @@ class RestApi(Api):
                 Description=f"Deployment resource of {stage_name} stage",
                 RestApiId=Ref(self.logical_id),
                 DependsOn=[
-                    r.title for r in api_resources if isinstance(r, apigateway.Method)
+                    r.title
+                    for r in api_resources
+                    if isinstance(r, (apigateway.Method, apigateway.Authorizer))
                 ],
             )
         )
@@ -1356,15 +1370,8 @@ class RestApi(Api):
 
         return result
 
-    @override
-    def resources(self, stack: Stack) -> list[AWSObject]:
-        """Return list of AWSObject associated with the construct."""
-        result = []
-
-        # Create a log group for the API
-        result.append(logs.LogGroup(self.log_group_id, LogGroupName=self.name))
-
-        # Create the API itself
+    def _declare_rest_api(self) -> apigateway.RestApi:
+        """Create the REST API resource."""
         api_params = {
             "Description": self.description,
             "Name": self.name,
@@ -1376,6 +1383,24 @@ class RestApi(Api):
             api_params["EndpointAccessMode"] = self.endpoint_access_mode.value
         if self.security_policy is not None:
             api_params["SecurityPolicy"] = self.security_policy.value
+        if self._endpoint_configuration is not None:
+            api_params["EndpointConfiguration"] = self._endpoint_configuration
+        if self.minimum_compression_size is not None:
+            api_params["MinimumCompressionSize"] = self.minimum_compression_size
+        if self.binary_media_types is not None:
+            api_params["BinaryMediaTypes"] = self.binary_media_types
+
+        return apigateway.RestApi(self.logical_id, **api_params)
+
+    @override
+    def resources(self, stack: Stack) -> list[AWSObject]:
+        """Return list of AWSObject associated with the construct."""
+        result = []
+
+        # Create a log group for the API
+        result.append(logs.LogGroup(self.log_group_id, LogGroupName=self.name))
+
+        if self.security_policy is not None:
             if self.security_policy in LEGACY_SECURITY_POLICIES:
                 logger.warning(
                     f"{self.security_policy.value} is a legacy security policy. "
@@ -1391,16 +1416,8 @@ class RestApi(Api):
                     f"compatible with {self.endpoint_configuration_type.value} "
                     "endpoint configuration type"
                 )
-        if self._endpoint_configuration is not None:
-            api_params["EndpointConfiguration"] = self._endpoint_configuration
 
-        if self.minimum_compression_size is not None:
-            api_params["MinimumCompressionSize"] = self.minimum_compression_size
-
-        if self.binary_media_types is not None:
-            api_params["BinaryMediaTypes"] = self.binary_media_types
-
-        result.append(apigateway.RestApi(self.logical_id, **api_params))
+        result.append(self._declare_rest_api())
 
         # Create API resources and methods
         result += self._declare_resources(resource_list=self.resource_list)
@@ -1422,8 +1439,6 @@ class RestApi(Api):
                 domain_name=self.domain_name, hosted_zone_id=self.hosted_zone_id
             )
 
-        # Declare the authorizers
-        for auth_name, auth_params in self.authorizers.items():
-            result.append(apigateway.Authorizer(name_to_id(auth_name), **auth_params))
+        result.extend(self._declare_authorizers())
 
         return result
