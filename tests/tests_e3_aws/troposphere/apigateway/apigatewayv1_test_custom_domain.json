@@ -75,7 +75,7 @@
         },
         "Type": "AWS::ApiGateway::Resource"
     },
-    "TestapiDefaultDeployment": {
+    "TestapiDefaultDeployment9707e087275aad6c": {
         "Properties": {
             "Description": "Deployment resource of default stage",
             "RestApiId": {
@@ -84,7 +84,8 @@
         },
         "Type": "AWS::ApiGateway::Deployment",
         "DependsOn": [
-            "TestapiANYMethod"
+            "TestapiANYMethod",
+            "Testauthorizer"
         ]
     },
     "TestapiDefaultStage": {
@@ -102,7 +103,7 @@
                 "Ref": "Testapi"
             },
             "DeploymentId": {
-                "Ref": "TestapiDefaultDeployment"
+                "Ref": "TestapiDefaultDeployment9707e087275aad6c"
             },
             "Description": "stage default",
             "MethodSettings": [

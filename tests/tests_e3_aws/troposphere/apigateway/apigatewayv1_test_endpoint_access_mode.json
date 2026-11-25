@@ -77,7 +77,7 @@
         },
         "Type": "AWS::ApiGateway::Method"
     },
-    "TestapiDefaultDeployment": {
+    "TestapiDefaultDeployment35b8bfa0e4e35750": {
         "DependsOn": [
             "TestapiANYMethod"
         ],
@@ -101,7 +101,7 @@
                 "Format": "{\"source_ip\": \"$context.identity.sourceIp\", \"request_time\": \"$context.requestTime\", \"method\": \"$context.httpMethod\", \"path\": \"$context.path\", \"protocol\": \"$context.protocol\", \"status\": \"$context.status\", \"response_length\": \"$context.responseLength\", \"request_id\": \"$context.requestId\", \"extendedRequestId\": \"$context.extendedRequestId\", \"integration_error\": \"$context.integration.error\"}"
             },
             "DeploymentId": {
-                "Ref": "TestapiDefaultDeployment"
+                "Ref": "TestapiDefaultDeployment35b8bfa0e4e35750"
             },
             "Description": "stage default",
             "MethodSettings": [
